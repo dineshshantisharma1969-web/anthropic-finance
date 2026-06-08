@@ -27,7 +27,7 @@ python3 combine.py
 ```
 
 ## Conventions used
-- PO numbers: `IMP/PO/UNBS/2324/01..12` (sequential, adjust as needed).
+- PO numbers: `01/2023-24/UNBS .. 12/2023-24/UNBS` (sequential / FY, adjust as needed).
 - Payment Terms: "AS MUTUALLY AGREED".
 - Line: Qty 1, Unit "Nos", Rate = full taxable amount; IGST 18%.
 - "Amount" column = taxable value; Grand Total = taxable + 18% IGST

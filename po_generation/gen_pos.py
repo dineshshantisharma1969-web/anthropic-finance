@@ -77,7 +77,7 @@ for seq, inv, typ, taxable, podate, period in recs:
     info = HIRE if typ=='H' else SUP
     igst = round(taxable*0.18)
     gross = taxable + igst
-    po_no = f'IMP/PO/UNBS/2324/{seq}'
+    po_no = f'{seq}/2023-24/UNBS'
     d = docx.Document('/root/blank.docx')
 
     # T0 C0 : Impressions -> Delhi
