@@ -33,7 +33,21 @@ Make the meal type deterministic from the time the entry is logged (IST). Replac
 | 16:00 – 18:59   | Snack     |
 | 19:00 – 03:59   | Dinner    |
 
+## Show the meal in the Telegram confirmation
+To make the bot's reply state which meal it logged, edit the `Send Summary` node's
+`Text` field (currently `={{ $json.output }}`) to:
+
+```
+={{ $json.output }}
+
+🍽️ Logged under: {{ ({0:"Dinner",1:"Dinner",2:"Dinner",3:"Dinner",4:"Breakfast",5:"Breakfast",6:"Breakfast",7:"Breakfast",8:"Breakfast",9:"Breakfast",10:"Breakfast",11:"Lunch",12:"Lunch",13:"Lunch",14:"Lunch",15:"Lunch",16:"Snack",17:"Snack",18:"Snack",19:"Dinner",20:"Dinner",21:"Dinner",22:"Dinner",23:"Dinner"})[$now.setZone("Asia/Kolkata").hour] }}
+```
+
+It reuses the same time expression and runs in the same execution as `Log Food Entry`,
+so the label shown always matches the `Meal Type` written to the sheet.
+
 ## Notes
-- This was applied as a single-field UI edit rather than a programmatic workflow rewrite,
+- Both changes are single-field UI edits rather than a programmatic workflow rewrite,
   to avoid unbinding the live Telegram / OpenAI / Google Sheets credentials.
-- To adjust the windows later, change which hour keys (0–23) map to which meal label.
+- To adjust the windows later, change which hour keys (0–23) map to which meal label
+  in BOTH expressions so the sheet and the Telegram message stay in sync.
