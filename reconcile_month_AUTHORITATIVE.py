@@ -41,8 +41,16 @@ def run(path, out=None, sheet=0):
     if 'EMPCODE' not in df0.columns:
         sys.exit("FATAL: no EMPCODE column; wrong sheet?")
     emp=df0['EMPCODE']
-    junk=emp.isna()|(emp.astype(str).str.strip().isin(['','nan','NaN','None']))
-    n_junk=int(junk.sum()); df=df0[~junk].reset_index(drop=True); n=len(df)
+    s=emp.astype(str).str.strip()
+    blank=emp.isna()|s.isin(['','nan','NaN','None'])
+    nonnum=pd.to_numeric(emp,errors='coerce').isna()&~blank   # placeholder/total rows e.g. _RESIDUAL_RECLASS_NB_
+    junk=blank|nonnum
+    n_junk=int(junk.sum()); n_blank=int(blank.sum()); n_named=int(nonnum.sum())
+    if n_named:
+        dropped=s[nonnum].tolist()
+        print(f"  !! dropped {n_named} NON-EMPLOYEE rows (text EMPCODE): {dropped}")
+        print(f"     their ECR_PF sum = {pd.to_numeric(df0.loc[nonnum,'ECR_PF'],errors='coerce').fillna(0).sum():,.0f}")
+    df=df0[~junk].reset_index(drop=True); n=len(df)
     def num(c): return pd.to_numeric(df[c],errors='coerce').fillna(0).values if c in df.columns else np.zeros(n)
     ecr=num('ECR_PF'); fut=num('ESIC_AS_PER_FUTURE'); netp=num('NETPAYABLE')
     basic_o=num('BASIC'); da_o=num('DA'); nd=num('NORMALDAYS')
