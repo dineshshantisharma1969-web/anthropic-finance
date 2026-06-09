@@ -1,3 +1,4 @@
+work/
+parse.py
 __pycache__/
 *.pyc
-work/
