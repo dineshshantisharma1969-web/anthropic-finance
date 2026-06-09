@@ -39,7 +39,14 @@ def run(path, out=None, sheet=0):
     path=Path(path); FM=month_days(path.stem)
     df0=pd.read_excel(path, sheet_name=sheet)
     if 'EMPCODE' not in df0.columns:
-        sys.exit("FATAL: no EMPCODE column; wrong sheet?")
+        # raw export may carry a banner above the header; find the row holding EMPCODE
+        probe=pd.read_excel(path, sheet_name=sheet, header=None, nrows=25)
+        hdr=next((i for i in range(len(probe))
+                  if probe.iloc[i].astype(str).str.upper().str.strip().eq('EMPCODE').any()), None)
+        if hdr is None:
+            sys.exit("FATAL: no EMPCODE column; wrong sheet?")
+        print(f"  (auto-detected header on row {hdr+1})")
+        df0=pd.read_excel(path, sheet_name=sheet, header=hdr)
     emp=df0['EMPCODE']
     s=emp.astype(str).str.strip()
     blank=emp.isna()|s.isin(['','nan','NaN','None'])
