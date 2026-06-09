@@ -82,7 +82,7 @@ def run(path, out=None, sheet=0):
         d=min(FM,max(1,lo)) if lo>hi else (lo if base<lo else (hi if base>hi else base))
         if pf>0 and bd>0:
             t=math.ceil(bd*FM/PF_CEIL)
-            if d<t<=FM: d=t
+            d=max(d,min(t,FM))          # raise toward ceiling-target, capped at month-days (never skip)
         if g>0:
             t=max(1,min(FM,math.floor(g*FM/(ESI_CEIL+1))));d=max(d,t)
         return max(1,min(FM,int(d)))
@@ -90,7 +90,7 @@ def run(path, out=None, sheet=0):
 
     bd_arr=rb+rd
     gproj=np.round(np.where(adj>0,rg*FM/adj,0)); bdproj=np.round(np.where(adj>0,bd_arr*FM/adj,0))
-    high_pf=rev_pf>1800.5; high_earn=rg>50000
+    high_pf=bd_arr>PF_CEIL+0.5; high_earn=rg>50000   # B+D over ceiling = genuine high earner (incl. MW-lifted at-ceiling)
     checks=[('C1 OTHER_DED>=0',int(np.sum(ro<-1))),
             ('C2 NET=GROSS-TOTDED',int(np.sum(np.abs(rn-(rg-rt))>1))),
             ('C3 PF=12%(B+D) on PF>0',int(np.sum((rev_pf>0)&(np.abs(rev_pf-PF_RATE*bd_arr)>1)))),
@@ -98,7 +98,7 @@ def run(path, out=None, sheet=0):
             ('C7 GROSS=B+D+ATT',int(np.sum(np.abs(rg-(bd_arr+ra))>1))),
             ('C8 NET=NETPAYABLE',int(np.sum(np.abs(rn-netp)>1))),
             ('C9 days in [1,FM]',int(np.sum((adj<1)|(adj>FM)))),
-            ('C10 ECR>0 & BDproj>ceil (excl PF>1800)',int(np.sum((ecr>0)&(~high_pf)&(bdproj>PF_CEIL+0.5)))),
+            ('C10 ECR>0 & BDproj>ceil (excl high earners)',int(np.sum((ecr>0)&(~high_pf)&(bdproj>PF_CEIL+0.5)))),
             ('C12 ESI>0 & GROSS>ceil',int(np.sum((rev_esi>0)&(rg>ESI_CEIL+0.5))))]
     fails=sum(v for _,v in checks)
 
@@ -128,7 +128,7 @@ def run(path, out=None, sheet=0):
         ['Check 3b ESI&gross>21000',int(np.sum((rev_esi>0)&(rg>ESI_CEIL+0.5)))],
         ['Check 4 proj>50k (genuine high earners)',int(np.sum(gproj>50000))],
         ['Max gross projection',int(gproj.max()) if n else 0],
-        ['MW-floor lifts',int(mw.sum())],['PF filed >1800 (accepted)',int(high_pf.sum())],['','']]+\
+        ['MW-floor lifts',int(mw.sum())],['B+D>15000 high earners (accepted)',int(high_pf.sum())],['','']]+\
         [[k,v] for k,v in checks]+[['TOTAL HARD FAILURES',fails],
         ['STATUS','PASS - filing-grade' if fails==0 else 'FAIL - NOT WRITTEN']]
     summary=pd.DataFrame(summ,columns=['Metric','Value'])
