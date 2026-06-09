@@ -67,13 +67,9 @@ def run(path, out=None, sheet=0):
         rev_pf[i]=pf;rev_esi[i]=esi;rb[i]=bd-da_alloc;rd[i]=da_alloc
         rg[i]=g;ra[i]=g-bd;rt[i]=g-npay;ro[i]=(g-npay)-pf-esi;rn[i]=npay
     sd=lambda i:max(1,min(FM,int(round(nd[i])) if nd[i]>0 else 1))
-    for i in range(n):  # min-wage floor
-        if rev_pf[i]>0 and nd[i]>0:
-            fl=(basic_o[i]/nd[i])*sd(i)
-            if rb[i]<fl-0.5:
-                rb[i]=fl;rev_pf[i]=round(PF_RATE*(rb[i]+rd[i]),2);mw[i]=True;bd=rb[i]+rd[i]
-                if rg[i]<bd: rg[i]=bd
-                ra[i]=rg[i]-bd;rt[i]=rg[i]-rn[i];ro[i]=rt[i]-rev_pf[i]-rev_esi[i]
+    # HARD RULE: REVISED_PF == ECR_PF (filed/deposited amount) at all costs.
+    # B+D is pinned at ECR_PF/0.12, so PF = 12% x (B+D) = ECR_PF exactly, every row.
+    # No min-wage basic-floor uplift is applied (it would restate PF above filed).
     for i in range(n):  # E3 negative OTHER_DED -> ATT (NET unchanged)
         if ro[i]<-0.5:
             amt=-ro[i];ra[i]+=amt;rg[i]+=amt;rt[i]+=amt;ro[i]=0.0;act[i]='E3_neg_other_to_att'
@@ -124,7 +120,12 @@ def run(path, out=None, sheet=0):
         ('12%_OF_REVISED_BD',np.round(PF_RATE*bd_arr,2)),('DIFF_12PCT_vs_PF',np.round(PF_RATE*bd_arr-rev_pf,2)),
         ('MONTHLY_BD_PROJECTION',bdproj.astype(int)),('MONTHLY_GROSS_PROJECTION',gproj.astype(int)),
         ('NET_PAYABLE_DIFF',np.round(rn-netp,2)),('CAPPING_ACTION',act),
-        ('HIGH_EARNER_EXCEPTION',np.where(high_earn,'GENUINE_HIGH_EARNER',''))]:
+        ('HIGH_EARNER_EXCEPTION',np.where(high_earn,'GENUINE_HIGH_EARNER','')),
+        # --- PF deducted vs deposited, side by side (12% rule on full Basic+DA) ---
+        ('PF_WAGE_BASE_FULL',np.round(basic_o+da_o,2)),
+        ('PF_DEDUCTED_12PCT',np.round(PF_RATE*(basic_o+da_o),2)),
+        ('PF_DEPOSITED_ECR',np.round(ecr,2)),
+        ('PF_NOT_DEPOSITED',np.round(PF_RATE*(basic_o+da_o)-ecr,2))]:
         o[col]=val
 
     summ=[['Month',path.stem],['Calendar days',FM],['Input rows',len(df0)],
