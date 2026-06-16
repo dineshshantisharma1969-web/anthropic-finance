@@ -121,10 +121,44 @@ Excluded rows are **not** appended to Daily Transactions, but are flagged
 ### Other tabs
 | Tab | Purpose |
 |-----|---------|
-| Daily Transactions | main data (15 cols) |
-| Monthly Summary | auto-updated totals |
-| Run Log | loop execution history (date, status, rows added, notes) |
-| Config | bank names, account numbers, classification keywords |
+| *(first tab)* "ISPL Bank Statement Tracker" | main data (15 cols) — the data tab. **Referenced by NAME**, not gid (a CSV-imported sheet's first tab is not gid 0). |
+| Dashboard | ✅ built — daily + cumulative figures (see below), rebuilt daily by the dashboard workflow |
+
+> Originally-envisioned Monthly Summary / Run Log / Config tabs can be added later; the
+> live figures the user asked for are delivered by the **Dashboard** tab.
+
+## Dashboard
+
+**Dashboard** tab (auto-maintained) — one row per date plus a `TOTAL` row:
+
+| Col | Field |
+|-----|-------|
+| A | Date |
+| B | Daily Receipts |
+| C | Daily Payments |
+| D | Daily Net |
+| E | Cumulative Receipts |
+| F | Cumulative Payments |
+| G | Cumulative Net |
+
+All figures **exclude inter-bank transfers** (`Inter-Bank Excluded? = NO` only).
+
+Maintained by n8n workflow **ISPL Bank Dashboard Refresh** (`QrtxpYLVuedOPU0e`,
+source `scripts/ispl_bank_dashboard_refresh.workflow.ts`): daily 09:15 it
+**clears + rebuilds** the Dashboard tab from Daily Transactions (Schedule → Clear
+Dashboard → Read Daily Transactions → Build Daily + Cumulative (Code) → Write Dashboard).
+First run on 2026-06-16 populated it:
+
+| Date | Daily Receipts | Daily Payments | Cumulative Net |
+|------|---------------:|---------------:|---------------:|
+| 2026-06-13 | 33,445.70 | 12,924.00 | 20,521.70 |
+| 2026-06-14 | 3,00,389.39 | 0.00 | 3,20,911.09 |
+| 2026-06-15 | 1,98,12,707.69 | 22,19,888.00 | 1,79,13,730.78 |
+| 2026-06-16 | 3,22,470.16 | 0.00 | 1,82,36,200.94 |
+| **TOTAL** | **2,04,69,012.94** | **22,32,812.00** | **1,82,36,200.94** |
+
+> A chart can be added on the Dashboard range in one click (Insert → Chart); the n8n
+> Google Sheets node cannot create charts, so it's left as a manual/Apps-Script step.
 
 ---
 
@@ -144,12 +178,17 @@ one durable mechanism:
      Tracker` (Google Sheets upsert on **Reference No**).
    - Credentials: Google Drive `X6ONNTZzVhhKFi37`, Google Sheets `MzcFHNlXKDc9lIZ0`.
 
-   **Before relying on it — two manual steps:**
-   1. **Activate** the workflow in n8n (it is created inactive) and run it once manually to
-      confirm the `Extract from File` output shape and the `gid 0` target tab are correct.
-   2. **Timezone:** `triggerAtHour: 9` fires at 09:00 in the **n8n instance timezone**. If the
-      instance runs UTC, set the workflow/instance TZ to `Asia/Kolkata` (or change the hour) so
-      it fires at 9 AM IST.
+   Paired with **ISPL Bank Dashboard Refresh** (`QrtxpYLVuedOPU0e`) at 09:15 — see Dashboard
+   section. (The dashboard workflow has been test-run successfully; it reads the data tab by
+   name and rebuilds the Dashboard tab.)
+
+   **Before relying on the main loop — two manual steps:**
+   1. **Activate** both workflows in n8n (created inactive). Run the main loop once manually to
+      confirm the `Extract from File` output shape (the data-tab reference is already fixed to
+      use the tab **name**, verified working in the dashboard workflow).
+   2. **Timezone:** `triggerAtHour` fires in the **n8n instance timezone**. If the instance runs
+      UTC, set the instance/workflow TZ to `Asia/Kolkata` (or change the hour) so the loop fires
+      at 9 AM IST and the dashboard at 9:15 AM IST.
 2. **Claude Code scheduled session / trigger** configured in the web UI, re-running the
    `/loop` command each morning.
 3. **Manual** — run the `/loop` command each morning from the terminal.

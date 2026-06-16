@@ -134,7 +134,7 @@ const appendSheet = node({
       resource: 'sheet',
       operation: 'appendOrUpdate',
       documentId: { __rl: true, mode: 'id', value: SHEET_ID },
-      sheetName: { __rl: true, mode: 'id', value: '0' },
+      sheetName: { __rl: true, mode: 'name', value: 'ISPL Bank Statement Tracker' },
       columns: {
         mappingMode: 'autoMapInputData',
         value: {},
