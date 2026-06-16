@@ -27,7 +27,7 @@ it to the **ISPL Bank Statement Tracker** Google Sheet.
 | Drive folder ("DAILY BANK STATEMENTS") | `129fqVeuWpUgwiSRNFkomywsLvUIsoVan` | ✅ |
 | ISPL bank accounts (for inter-bank filter) | ICICI `039951000005`, DBS `858200061542`, SBI `SBIN0004xx`, Kotak (own-name credits) | ✅ confirmed from data |
 | Pegasus Outsourcing Services LLP (IC-POSLLP) | **skipped** — separate legal entity, not tracked here | ✅ per instruction |
-| Scheduling mechanism | see "Scheduling" section | ⬜ decide |
+| Scheduling mechanism | **n8n Schedule Trigger** (workflow `Cv3IBhUaGD7DpHk7`) | ✅ built |
 
 > **Source of today's data:** the statement did NOT arrive by email (PC Jain's
 > 2026-06-16 mail said "HDFC SITE NOT WORKING"). The user placed the files in the
@@ -134,9 +134,22 @@ The `/loop` skill expects a `9am` daily fire. **Note:** a Claude Code *web* sess
 cannot self-schedule a daily wake (no cron/wakeup primitive in that environment). Pick
 one durable mechanism:
 
-1. **n8n Schedule Trigger** (recommended) — a `Schedule Trigger` (09:00 IST) →
-   Gmail → parse → Sheets workflow, matching this spec. Consistent with the other
-   ISPL automations in this repo.
+1. **n8n Schedule Trigger** ✅ **BUILT** — workflow **ISPL Bank Statement Loop**
+   (`Cv3IBhUaGD7DpHk7`). Source committed at
+   `scripts/ispl_bank_statement_loop.workflow.ts`.
+   - Flow: `Daily 9AM Trigger` → `Find Today Statement Files` (Drive folder, modified today)
+     → `Keep ICICI & DBS Only` (filter; Pegasus excluded) → `Loop Over Statement Files`
+     → `Download` → `Extract Rows From XLSX` → `Parse Classify Filter` (Code: the same
+     parsing/inter-bank/classification logic as `build_bank_tracker.py`) → `Append To
+     Tracker` (Google Sheets upsert on **Reference No**).
+   - Credentials: Google Drive `X6ONNTZzVhhKFi37`, Google Sheets `MzcFHNlXKDc9lIZ0`.
+
+   **Before relying on it — two manual steps:**
+   1. **Activate** the workflow in n8n (it is created inactive) and run it once manually to
+      confirm the `Extract from File` output shape and the `gid 0` target tab are correct.
+   2. **Timezone:** `triggerAtHour: 9` fires at 09:00 in the **n8n instance timezone**. If the
+      instance runs UTC, set the workflow/instance TZ to `Asia/Kolkata` (or change the hour) so
+      it fires at 9 AM IST.
 2. **Claude Code scheduled session / trigger** configured in the web UI, re-running the
    `/loop` command each morning.
 3. **Manual** — run the `/loop` command each morning from the terminal.
