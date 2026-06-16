@@ -33,8 +33,8 @@ const clearDash = node({
       operation: 'clear',
       documentId: { __rl: true, mode: 'id', value: SHEET_ID },
       sheetName: { __rl: true, mode: 'name', value: 'Dashboard' },
-      clear: 'wholeSheet',
-      keepFirstRow: false
+      clear: 'specificRange',
+      range: 'A:G'
     },
     credentials: { googleSheetsOAuth2Api: SHEETS_CRED() }
   },

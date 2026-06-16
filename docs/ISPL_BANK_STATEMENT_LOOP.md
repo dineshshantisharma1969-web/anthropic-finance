@@ -169,6 +169,19 @@ Built by one-shot workflow **ISPL Bank Dashboard Charts** (`YDBoXgV2kUa4QeOh`, s
 Dashboard data is rebuilt daily — **run this workflow only once** (re-running adds duplicate
 charts). The n8n Google Sheets node cannot create charts, hence the HTTP/Sheets-API approach.
 
+### Styling + KPI scorecards
+One-shot workflow **ISPL Dashboard Style & KPIs** (`xk5S0HhZD9FjKWcC`, source
+`scripts/ispl_dashboard_style_kpis.workflow.ts`) — applied on 2026-06-16:
+- **Data labels** on every series of both charts.
+- **₹ currency formatting** on the data cells (B:G) → axis, tooltips and labels show ₹.
+- Live **"Today" KPI cells** in `I/J` (col J = `=LOOKUP(2,1/(col<>""),col)` → latest day's value).
+- **3 scorecard charts** (`Today's Receipts` `699728460`, `Today's Payments` `89391805`,
+  `Today's Net Cash Flow` `448051791`) reading those KPI cells.
+
+> Because the KPI cells live in column J, the **daily refresh now clears only `A:G`**
+> (not the whole sheet) so the KPI formulas and scorecards survive. Run the Style & KPIs
+> workflow **once only** — re-running adds duplicate scorecards.
+
 ---
 
 ## Scheduling
