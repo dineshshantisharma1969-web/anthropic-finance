@@ -97,7 +97,7 @@ const parseTxns = node({
       language: 'javaScript',
       jsCode:
         "const items = $input.all();\n" +
-        "const rows = items.map(it => Object.values(it.json).map(v => (v === null || v === undefined) ? '' : v));\n" +
+        "const rows = items.map(it => (Array.isArray(it.json.row) ? it.json.row : Object.values(it.json)).map(v => (v === null || v === undefined) ? '' : v));\n" +
         "const flat = rows.map(r => r.join(' | ')).join(String.fromCharCode(10));\n" +
         "let bank = 'UNKNOWN';\n" +
         "if (flat.includes('858200061542')) bank = 'DBS 858200061542';\n" +
