@@ -157,8 +157,17 @@ First run on 2026-06-16 populated it:
 | 2026-06-16 | 3,22,470.16 | 0.00 | 1,82,36,200.94 |
 | **TOTAL** | **2,04,69,012.94** | **22,32,812.00** | **1,82,36,200.94** |
 
-> A chart can be added on the Dashboard range in one click (Insert → Chart); the n8n
-> Google Sheets node cannot create charts, so it's left as a manual/Apps-Script step.
+### Charts (native, embedded in the Dashboard tab)
+Two interactive Google Sheets charts were added via the Sheets API (`spreadsheets.batchUpdate`
+→ `addChart`), called from an n8n HTTP Request node using the Google Sheets OAuth credential:
+
+- **Column** — "ISPL — Daily Receipts vs Payments" (Daily Receipts green, Daily Payments red).
+- **Line (smoothed)** — "ISPL — Cumulative Receipts, Payments & Net" (green / red / blue).
+
+Built by one-shot workflow **ISPL Bank Dashboard Charts** (`YDBoXgV2kUa4QeOh`, source
+`scripts/ispl_bank_dashboard_charts.workflow.ts`). Charts persist and auto-update as the
+Dashboard data is rebuilt daily — **run this workflow only once** (re-running adds duplicate
+charts). The n8n Google Sheets node cannot create charts, hence the HTTP/Sheets-API approach.
 
 ---
 
