@@ -37,14 +37,16 @@ const keepBankFile = node({
   type: 'n8n-nodes-base.filter',
   version: 2.3,
   config: {
-    name: 'Keep ICICI & DBS Only',
+    name: 'Keep Bank Statements',
     parameters: {
       conditions: {
         options: { caseSensitive: false, leftValue: '', typeValidation: 'loose' },
         combinator: 'or',
         conditions: [
           { leftValue: expr('{{ $json.name }}'), rightValue: 'ICICI', operator: { type: 'string', operation: 'contains' } },
-          { leftValue: expr('{{ $json.name }}'), rightValue: 'DBS', operator: { type: 'string', operation: 'contains' } }
+          { leftValue: expr('{{ $json.name }}'), rightValue: 'DBS', operator: { type: 'string', operation: 'contains' } },
+          { leftValue: expr('{{ $json.name }}'), rightValue: 'KOTAK', operator: { type: 'string', operation: 'contains' } },
+          { leftValue: expr('{{ $json.name }}'), rightValue: 'HDFC', operator: { type: 'string', operation: 'contains' } }
         ]
       }
     }
@@ -99,25 +101,37 @@ const parseTxns = node({
         "const items = $input.all();\n" +
         "const rows = items.map(it => (Array.isArray(it.json.row) ? it.json.row : Object.values(it.json)).map(v => (v === null || v === undefined) ? '' : v));\n" +
         "const flat = rows.map(r => r.join(' | ')).join(String.fromCharCode(10));\n" +
-        "let bank = 'UNKNOWN';\n" +
-        "if (flat.includes('858200061542')) bank = 'DBS 858200061542';\n" +
-        "else if (flat.includes('039951000005')) bank = 'ICICI 039951000005';\n" +
+        "const U = flat.toUpperCase();\n" +
+        "let bank='UNKNOWN';\n" +
+        "if (flat.includes('858200061542')) bank='DBS 858200061542';\n" +
+        "else if (flat.includes('039951000005')) bank='ICICI 039951000005';\n" +
+        "else if (U.includes('KOTAK MAHINDRA')) bank='KOTAK (KKBK0000195)';\n" +
+        "else if (flat.includes('57500000129944') || U.includes('TRANSACTION BRANCH')) bank='HDFC 57500000129944';\n" +
         "const today = $now.setZone('Asia/Kolkata').toFormat('yyyy-LL-dd');\n" +
         "const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};\n" +
-        "function normDate(s){ if(!s) return ''; s=String(s).trim(); const m=s.match(/(\\d{1,2})[\\/\\-]([A-Za-z]{3})[\\/\\-](\\d{4})/); if(m){return m[3]+'-'+months[m[2].toLowerCase()]+'-'+String(m[1]).padStart(2,'0');} return s; }\n" +
+        "function pad(n){return String(n).padStart(2,'0');}\n" +
+        "function normDate(s){ if(!s) return ''; s=String(s).trim(); const m=s.match(/(\\d{1,2})[\\/\\-]([A-Za-z]{3})[\\/\\-](\\d{4})/); if(m){return m[3]+'-'+months[m[2].toLowerCase()]+'-'+pad(m[1]);} return s; }\n" +
+        "function dmy(s){ if(!s) return ''; const m=String(s).trim().match(/(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})/); if(m){return m[3]+'-'+pad(m[2])+'-'+pad(m[1]);} return ''; }\n" +
+        "function mdy(s){ if(!s) return ''; const m=String(s).trim().match(/(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})/); if(m){return m[3]+'-'+pad(m[1])+'-'+pad(m[2]);} return ''; }\n" +
         "function num(v){ if(v===''||v===null||v===undefined) return ''; const n=parseFloat(String(v).replace(/,/g,'').replace(/[^0-9.\\-]/g,'')); return isNaN(n)?'':n; }\n" +
-        "function modeOf(n){ n=(n||'').toUpperCase(); if(n.includes('ICICIPOS')||n.startsWith('EZY/')) return 'POS'; if(n.includes('RTGS')) return 'RTGS'; if(n.includes('IMPS')) return 'IMPS'; if(n.startsWith('INF/INFT')||n.includes('INFT')) return 'INFT'; if(n.includes('NEFT')) return 'NEFT'; if(n.startsWith('CLG')||n.includes('IWCLG')) return 'CHQ'; if(n.startsWith('CMS')) return 'CMS'; if(n.startsWith('TRF')) return 'TRF'; return 'OTHER'; }\n" +
-        "function isInter(n){ n=(n||'').toUpperCase(); if(/IMPRESSIONS SERVICES/.test(n)) return true; if(/FUND\\d/.test(n)) return true; return false; }\n" +
+        "function modeOf(n){ n=(n||'').toUpperCase(); if(n.includes('ICICIPOS')||n.startsWith('EZY/')) return 'POS'; if(n.includes('RTGS')) return 'RTGS'; if(n.includes('IMPS')) return 'IMPS'; if(n.startsWith('INF/INFT')||n.includes('INFT')) return 'INFT'; if(n.includes('NEFT')) return 'NEFT'; if(n.startsWith('CLG')||n.includes('IWCLG')||n.includes('CHQ')) return 'CHQ'; if(n.startsWith('CMS')) return 'CMS'; if(n.startsWith('TRF')) return 'TRF'; return 'OTHER'; }\n" +
+        "function isInter(narr,type,party){ const u=(narr||'').toUpperCase(); const p=(party||'').toUpperCase(); if(/FUND\\d/.test(u)) return true; if(u.includes('TRFD')) return true; if(type==='PAYMENT' && /IMPRESSIONS SERVICES/.test(u)) return true; if(type==='RECEIPT' && /IMPRESSIONS SERVICES/.test(p)) return true; return false; }\n" +
         "function classify(n,t){ const u=(n||'').toUpperCase(); if(u.includes('PAYROLL')||u.includes('SALARY')) return 'Payroll / Statutory'; if(u.includes('ESI')||u.includes('EPF')) return 'Payroll / Statutory'; if(u.includes('GST')||u.includes('TDS')||u.includes('IT DEPT')) return 'Tax Payment'; if(u.includes('RENT')||u.includes('LEASE')) return 'Rent'; if(u.includes('INTEREST')||u.includes('INT CHRG')||u.includes('CHARGES')) return 'Bank Charges'; if(u.includes('LOMBARD')||u.includes('INSURANCE')) return 'Vendor Payment'; if(modeOf(n)==='POS') return 'Client Receipt'; if(t==='RECEIPT'){ if(modeOf(n)==='CMS') return 'CMS Collection'; return 'Client Receipt'; } if(modeOf(n)==='CMS') return 'CMS Settlement / Review Required'; return 'Review Required'; }\n" +
         "function partyNeft(n){ const p=String(n).split('-'); return p.length>=3? p[2].trim().slice(0,60):''; }\n" +
         "function rec(date,vdate,narr,party,m,ref,type,dr,cr,ib){ return { json: { 'Date':date,'Value Date':vdate,'Bank Account':bank,'Narration':narr,'Party Name':party,'Mode':m,'Reference No':ref,'Type':type,'Debit': dr===''?'':dr,'Credit': cr===''?'':cr,'Balance':'','Auto Tag': ib?'Inter-Bank Transfer':classify(narr,type),'Inter-Bank Excluded?': ib?'YES':'NO','Source Email Date':today,'Processed On':today } }; }\n" +
         "const out=[];\n" +
         "if(bank.startsWith('ICICI')){\n" +
         "  const h = rows.findIndex(r => String(r[0]).trim()==='S.N.' || r.some(c=>String(c).includes('Tran. Id')));\n" +
-        "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; if(!r) continue; const tranId=String(r[1]||'').trim(); if(!tranId) continue; const vdate=normDate(r[2]); const narr=String(r[6]||'').trim(); const wd=num(r[7]); const dp=num(r[8]); if(wd==='' && dp==='') continue; const type= dp!=='' ? 'RECEIPT':'PAYMENT'; const m=modeOf(narr); let party=(m==='NEFT'||m==='RTGS')?partyNeft(narr):(m==='POS'?'POS Settlement':(m==='INFT'?'IMPRESSIONS SERVICES PVT LTD (own)':'')); if(narr.toUpperCase().startsWith('CMS/ CMS')) party=narr.split('/').pop().trim(); const ib=isInter(narr); out.push(rec(vdate,vdate,narr,party,m,tranId,type,wd,dp,ib)); }\n" +
+        "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; if(!r) continue; const tranId=String(r[1]||'').trim(); if(!tranId) continue; const vdate=normDate(r[2]); const narr=String(r[6]||'').trim(); const wd=num(r[7]); const dp=num(r[8]); if(wd==='' && dp==='') continue; const type= dp!=='' ? 'RECEIPT':'PAYMENT'; const m=modeOf(narr); let party=(m==='NEFT'||m==='RTGS')?partyNeft(narr):(m==='POS'?'POS Settlement':(m==='INFT'?'IMPRESSIONS SERVICES PVT LTD (own)':'')); if(narr.toUpperCase().startsWith('CMS/ CMS')) party=narr.split('/').pop().trim(); const ib=isInter(narr,type,party); out.push(rec(vdate,vdate,narr,party,m,tranId,type,wd,dp,ib)); }\n" +
         "} else if(bank.startsWith('DBS')){\n" +
         "  const h = rows.findIndex(r => String(r[0]).trim()==='Date' && r.some(c=>String(c).toLowerCase().includes('debit')));\n" +
-        "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const d0=String(r[0]||'').trim(); if(!/\\d/.test(d0)) continue; const date=normDate(r[0]); const vdate=normDate(r[1]); const desc=(String(r[2]||'')+' '+String(r[3]||'')).trim(); const dr=num(r[4]); const cr=num(r[5]); if(dr==='' && cr==='') continue; const type= cr!=='' ? 'RECEIPT':'PAYMENT'; const m=modeOf(desc); const refm=desc.match(/(NEFTIN|NEFT|RTGS)\\s+(\\S+)/); const ref=refm?refm[2]:(date+'-'+(dr||cr)); let party=''; const pm=desc.match(/(?:NEFTIN|NEFT|RTGS)\\s+\\S+\\s+(.*?)\\s+(KOTAK|DEU|HSBC|HDFC|ICICI|BANK OF AMERICA|STANDARD CHARTERED|FEDERAL|YES BANK|STATE BANK|CITI|BASSEIN)/i); if(pm) party=pm[1].trim().slice(0,60); const ib=isInter(desc); out.push(rec(date,vdate,desc.slice(0,200),party,m,ref,type,dr,cr,ib)); }\n" +
+        "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const d0=String(r[0]||'').trim(); if(!/\\d/.test(d0)) continue; const date=normDate(r[0]); const vdate=normDate(r[1]); const desc=(String(r[2]||'')+' '+String(r[3]||'')).trim(); const dr=num(r[4]); const cr=num(r[5]); if(dr==='' && cr==='') continue; const type= cr!=='' ? 'RECEIPT':'PAYMENT'; const m=modeOf(desc); const refm=desc.match(/(NEFTIN|NEFT|RTGS)\\s+(\\S+)/); const ref=refm?refm[2]:(date+'-'+(dr||cr)); let party=''; const pm=desc.match(/(?:NEFTIN|NEFT|RTGS)\\s+\\S+\\s+(.*?)\\s+(KOTAK|DEU|HSBC|HDFC|ICICI|BANK OF AMERICA|STANDARD CHARTERED|FEDERAL|YES BANK|STATE BANK|CITI|BASSEIN)/i); if(pm) party=pm[1].trim().slice(0,60); const ib=isInter(desc,type,party); out.push(rec(date,vdate,desc.slice(0,200),party,m,ref,type,dr,cr,ib)); }\n" +
+        "} else if(bank.startsWith('KOTAK')){\n" +
+        "  const h = rows.findIndex(r => String(r[0]).trim()==='Sl. No.' || r.some(c=>String(c).includes('Dr / Cr')));\n" +
+        "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const dc=String(r[6]||'').trim().toUpperCase(); if(dc!=='DR'&&dc!=='CR') continue; const date=mdy(r[2])||mdy(String(r[1]).split(' ')[0]); const desc=String(r[3]||'').trim(); const amt=num(r[5]); if(amt==='') continue; const ref=String(r[4]||'').trim()||('KOT-'+date+'-'+amt); const type=dc==='CR'?'RECEIPT':'PAYMENT'; const m=modeOf(desc); const party=(m==='NEFT'||m==='RTGS')?partyNeft(desc):''; const ib=isInter(desc,type,party); out.push(rec(date,date,desc.slice(0,200),party,m,ref,type, dc==='DR'?amt:'', dc==='CR'?amt:'', ib)); }\n" +
+        "} else if(bank.startsWith('HDFC')){\n" +
+        "  const h = rows.findIndex(r => String(r[0]).trim()==='Transaction Date' && r.some(c=>String(c).toLowerCase().includes('debit')));\n" +
+        "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const dc=String(r[3]||'').trim().toUpperCase(); if(dc!=='C'&&dc!=='D') continue; const desc=String(r[1]||'').trim(); const amt=num(r[2]); if(amt==='') continue; const date=dmy(r[5])||dmy(String(r[0]).split(' ')[0]); const ref=String(r[4]||'').trim()||('HDF-'+date+'-'+amt); const type=dc==='C'?'RECEIPT':'PAYMENT'; const m=modeOf(desc); const party=(m==='NEFT'||m==='RTGS')?partyNeft(desc):''; const ib=isInter(desc,type,party); out.push(rec(date,date,desc.slice(0,200),party,m,ref,type, dc==='D'?amt:'', dc==='C'?amt:'', ib)); }\n" +
         "}\n" +
         "return out;\n"
     }
