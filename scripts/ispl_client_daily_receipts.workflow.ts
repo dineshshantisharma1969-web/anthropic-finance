@@ -7,7 +7,7 @@ const scheduleTrigger = trigger({
   version: 1.3,
   config: {
     name: 'Daily 9:20 Refresh',
-    parameters: { rule: { interval: [{ field: 'days', daysInterval: 1, triggerAtHour: 9, triggerAtMinute: 20 }] } }
+    parameters: { rule: { interval: [{ field: 'days', daysInterval: 1, triggerAtHour: 9, triggerAtMinute: 50 }] } }
   },
   output: [{}]
 });
