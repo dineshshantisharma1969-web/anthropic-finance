@@ -49,6 +49,15 @@ def num(s):
 def clean_code(s):
     return s.astype(str).str.strip().str.split(".").str[0]
 
+def detect_salary_header(path, maxscan=12):
+    """Find the header row by scanning the first rows for known salary headers."""
+    raw = pd.read_excel(path, header=None, nrows=maxscan, dtype=object)
+    want = {_norm(x) for x in ("EMPCODE", "EMP CODE", "FULLNAME", "NETPAYABLE")}
+    for i in range(len(raw)):
+        if {_norm(c) for c in raw.iloc[i].tolist()} & want:
+            return i
+    return 0
+
 
 # --------------------------------------------------------------------------- #
 # Loaders                                                                      #
@@ -395,7 +404,8 @@ def main():
     ap.add_argument("--ecr", nargs="+", required=True)
     ap.add_argument("--future", required=True)
     ap.add_argument("--month", required=True, help="YYYY-MM, e.g. 2026-04")
-    ap.add_argument("--salary-header", type=int, default=4)
+    ap.add_argument("--salary-header", default="auto",
+                    help="header row index (0-based), or 'auto' to detect (default)")
     ap.add_argument("--out-prefix", required=True)
     a = ap.parse_args()
 
@@ -406,7 +416,9 @@ def main():
     print("Loading ECR ...");    ecr = load_ecr(a.ecr)
     print("Loading Future ...");  fut = load_future(a.future)
     print("Loading salary ...")
-    sal = pd.read_excel(a.salary, header=a.salary_header)
+    hdr = detect_salary_header(a.salary) if str(a.salary_header) == "auto" else int(a.salary_header)
+    print(f"  salary header row index = {hdr}")
+    sal = pd.read_excel(a.salary, header=hdr)
     original_cols = list(sal.columns)
     print(f"  salary: {sal.shape[0]} rows x {sal.shape[1]} cols")
 
