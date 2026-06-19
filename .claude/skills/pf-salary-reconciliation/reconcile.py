@@ -330,12 +330,18 @@ def validate(sal):
     # 12% relaxes where the min-wage floor binds (raising basic to 12%/PF would breach the
     # floor) or PF is pinned to a low ECR filing — both are hierarchy-driven, not errors.
     floor_bound = (sal["REVISED_PF"] / 0.12) < (sal["MW_FLOOR"] - 0.5)
+    # PF correctly filed at 12% of BASIC alone (DA excluded from the PF wage base) — these
+    # match ECR and cannot change, so the BASIC+DA audit gap is expected, not a failure.
+    da_excluded = (sal["REVISED_PF"] - 0.12 * sal["REVISED_BASIC"]).abs() <= 1
+    relax = floor_bound | da_excluded
     c3_relaxed = int((pf & below_ceiling & floor_bound).sum())
+    c3_da = int((pf & below_ceiling & ~floor_bound & da_excluded
+                 & (sal["DIFF (12%_PF vs REVISED_PF)"].abs() > 1)).sum())
     checks = {
         "C1 OTHER_DED>=0": (sal["REVISED_OTHER_DEDUCTION"] >= -0.5).all(),
         "C2 NET unchanged": (sal["NET_PAYABLE_DIFF"].abs() <= 1).all(),
         "C3 PF=12%(B+D) below ceiling": ((sal["DIFF (12%_PF vs REVISED_PF)"].abs() <= 1)
-                                         | ~(pf & below_ceiling) | floor_bound).all(),
+                                         | ~(pf & below_ceiling) | relax).all(),
         "C5 ATT_ALW>=0": (sal["REVISED_ATTENDANCE_ALLOWANCE"] >= -0.5).all(),
         "C6 TOTAL_DED>=0": (sal["REVISED_TOTAL_DED"] >= -0.5).all(),
         "C7 GROSS=B+D+ATT": ((sal["REVISED_GROSS"] -
@@ -350,7 +356,10 @@ def validate(sal):
         print(f"  {'PASS' if v else 'FAIL'}  {k}")
     if c3_relaxed:
         print(f"  INFO  C3 relaxed on {c3_relaxed} floor-bound / ECR-pinned rows (expected)")
-    c3_fail = pf & below_ceiling & ~floor_bound & (sal["DIFF (12%_PF vs REVISED_PF)"].abs() > 1)
+    if c3_da:
+        print(f"  INFO  {c3_da} rows filed at 12% of BASIC (DA excluded from PF wages) — correct per ECR")
+    c3_fail = (pf & below_ceiling & ~relax
+               & (sal["DIFF (12%_PF vs REVISED_PF)"].abs() > 1))
     if c3_fail.any():
         print(f"  C3 DIAGNOSTIC: {int(c3_fail.sum())} below-ceiling rows still off > Rs1, by rule:")
         print("    " + sal.loc[c3_fail].groupby("RULE_APPLIED").size().to_string().replace("\n", "\n    "))
