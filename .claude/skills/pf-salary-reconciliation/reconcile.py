@@ -220,7 +220,7 @@ def reconcile(sal, ecr, fut, fmd):
     # ---- audit columns ------------------------------------------------- #
     bdf = sal["REVISED_BASIC"] + sal["REVISED_DA"]
     sal["Future_ESI"] = sal["FUTURE_ESI"]
-    sal["ESIC AS PER FUTURE"] = np.where(emp_in_esi, sal["FUTURE_ESI"], 0.0)
+    sal["ESIC AS PER FUTURE"] = np.where(sal["IS_PRIMARY_ESI"], sal["FUTURE_ESI"], 0.0)
     sal["ESI DIFFERENCE (Future-REVISED)"] = sal["ESIC AS PER FUTURE"] - sal["REVISED_ESIC"]
     sal["NET_PAYABLE_DIFF"] = sal["REVISED_NET_PAYABLE"] - sal["NET_v"]
     sal["12% OF (REVISED_BASIC+DA)"] = (0.12 * bdf).round(2)
