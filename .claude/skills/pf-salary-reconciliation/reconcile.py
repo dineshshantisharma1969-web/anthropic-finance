@@ -119,10 +119,9 @@ def reconcile(sal, ecr, fut, full_month):
 
     sal["EMPCODE"] = clean_code(sal[C["EMPCODE"]])
     sal["SITECODE_C"] = clean_code(sal[C["SITECODE"]])
-    rc = sal.groupby("EMPCODE").size().rename("ROW_COUNT")
-    sal = sal.merge(rc, on="EMPCODE", how="left")
-    sal = sal.merge(ecr, left_on="EMPCODE", right_on="EMP CODE", how="left")
-    sal["ECR_PF"] = num(sal.get("ECR_PF")).fillna(0.0)
+    sal["ROW_COUNT"] = sal["EMPCODE"].map(sal.groupby("EMPCODE").size()).fillna(1).astype(int)
+    # lookup join (not merge) so we never collide with existing salary columns
+    sal["ECR_PF"] = num(sal["EMPCODE"].map(dict(zip(ecr["EMP CODE"].astype(str), ecr["ECR_PF"]))))
 
     # working numeric copies
     for k in ("SDD", "ND", "FB", "FD", "BASIC", "DA", "PF", "ESIC", "OD", "GROSS", "NET", "ESIW"):
@@ -243,9 +242,10 @@ def reconcile(sal, ecr, fut, full_month):
     sal["ADJ_WORKING_DAYS"] = sal["ADJ_WORKING_DAYS"].clip(1, 31).round().astype(int)
 
     # ---- ESI passes ----------------------------------------------------- #
-    sal = sal.merge(fut, on="EMPCODE", how="left")
-    sal["FUTURE_ESI"] = num(sal.get("FUTURE_ESI"))
-    in_fut = sal["EMPCODE"].isin(set(fut["EMPCODE"]))
+    futc = fut["EMPCODE"].astype(str)
+    sal["FUTURE_ESI"] = num(sal["EMPCODE"].map(dict(zip(futc, fut["FUTURE_ESI"]))))
+    sal["FUTURE_SITECODE"] = sal["EMPCODE"].map(dict(zip(futc, fut["FUTURE_SITECODE"])))
+    in_fut = sal["EMPCODE"].isin(set(futc))
 
     # E1 primary-site alignment
     primary = np.zeros(len(sal), dtype=bool)
@@ -363,6 +363,15 @@ AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_
          "NOTES", "%", "remark", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
          "REVISED_%", "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION"]
 
+# Prior-run / output / working columns to strip from an incoming salary sheet so
+# re-runs are idempotent and never collide with what the pipeline produces.
+DROP_ON_LOAD = set(AUDIT) | {
+    "ECR_PF", "EMP CODE", "ROW_COUNT", "IS_MAIN_PF", "IS_PRIMARY_ESI", "MW_FLOOR",
+    "ECR_PF_CAPPED", "SITECODE_C", "FUTURE_ESI", "FUTURE_SITECODE", "EMPCODE_CLEAN",
+    "ESIC_AS_PER_FUTURE", "ESIC AS PER FUTURE", "ESI DIFFERENCE (Future-REVISED)",
+    "12% OF REVISED_BASIC", "12% OF REVISED_BASIC+DA", "ESIC.1", "RULE_APPLIED",
+    "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "REVISED_OTHER_DEDUCTION"}
+
 def write_outputs(sal, original_cols, prefix):
     final = sal.copy()
     keep = [c for c in original_cols if c != "ESIC.1"] + \
@@ -419,6 +428,10 @@ def main():
     hdr = detect_salary_header(a.salary) if str(a.salary_header) == "auto" else int(a.salary_header)
     print(f"  salary header row index = {hdr}")
     sal = pd.read_excel(a.salary, header=hdr)
+    pre = [c for c in sal.columns if c in DROP_ON_LOAD]
+    if pre:
+        print(f"  stripping {len(pre)} prior-run/output columns so the run is clean")
+        sal = sal.drop(columns=pre)
     original_cols = list(sal.columns)
     print(f"  salary: {sal.shape[0]} rows x {sal.shape[1]} cols")
 
