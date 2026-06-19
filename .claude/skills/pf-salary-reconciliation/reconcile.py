@@ -99,6 +99,11 @@ def reconcile(sal, ecr, fut, fmd):
     sal["SITECODE_C"] = clean_code(sal[C["SITECODE"]])
     for k in ("ND", "B", "DA", "ESIW", "GROSS", "NET"):
         sal[k + "_v"] = num(sal[C[k]])
+    # FIXED-rate columns (optional) — used to anchor days to the worker's real rate
+    for k, names in (("FB", ["FIXED_BASIC"]), ("FG", ["FIXEDGROSS", "FIXED_GROSS"]),
+                     ("SDD", ["SITEDIVISIONDAYS"])):
+        col = resolve(sal, *names, required=False)
+        sal[k + "_v"] = num(sal[col]) if col else pd.Series(0.0, index=sal.index)
 
     # employee-level anchors
     sal["ECR_PF"] = num(sal["EMPCODE"].map(dict(zip(ecr["EMP CODE"].astype(str), ecr["ECR_PF"]))))
@@ -144,25 +149,6 @@ def reconcile(sal, ecr, fut, fmd):
     sal["REVISED_OTHER_DEDUCTION"] = (new_GROSS - np_) - pf - esi
     sal["RULE_075_RELAXED"] = (esi > 0) & (new_GROSS > GROSS_a + 1)
 
-    # ---- low-skill high-gross anomaly cleanup -------------------------- #
-    # House boy / house lady etc. showing GROSS > Rs50,000 is an inflated row
-    # (large attendance allowance offset by a large OTHER_DEDUCTION). Shrink it:
-    # reduce attendance allowance and OTHER_DEDUCTION together by the same amount
-    # (the most the deduction can absorb) so GROSS falls but NET is unchanged.
-    dcol = resolve(sal, "DESIGNATIONNAME", "DESIG", "DESIGNATION", "DUTYNAME", required=False)
-    low = (sal[dcol].astype(str).str.upper().str.contains(
-              r"HOUSE\s*(?:BOY|LADY|MAN|MAID|KEEP)", regex=True, na=False)
-           if dcol else pd.Series(False, index=sal.index))
-    sal["LOWSKILL_HIGH_FLAG"] = low & (sal["REVISED_GROSS"] > 50000)
-    X = (np.minimum(sal["REVISED_ATTENDANCE_ALLOWANCE"], sal["REVISED_OTHER_DEDUCTION"])
-         .clip(lower=0).where(sal["LOWSKILL_HIGH_FLAG"], 0.0))
-    sal["REVISED_ATTENDANCE_ALLOWANCE"] -= X
-    sal["REVISED_GROSS"] -= X
-    sal["REVISED_OTHER_DEDUCTION"] -= X
-    sal["REVISED_TOTAL_DED"] -= X
-    if int(sal["LOWSKILL_HIGH_FLAG"].sum()):
-        print(f"  low-skill >Rs50k de-inflated: {int(sal['LOWSKILL_HIGH_FLAG'].sum())} rows")
-
     # ---- ANCHORS ARE INVIOLABLE ---------------------------------------- #
     # REVISED_PF == ECR_PF and REVISED_ESIC == Future ESI, per employee, ALWAYS.
     # Nothing below may cap, zero, or otherwise change these two amounts. Ceiling
@@ -170,48 +156,35 @@ def reconcile(sal, ecr, fut, fmd):
     sal["ECR_PF"] = np.where(sal["IS_MAIN_PF"], sal["ECR_PF"], 0.0)   # show on anchor row only
     sal["ECR_PF_CAPPED"] = sal["REVISED_PF"]
 
-    # ---- M3/M6 day adjustment (feasible range, employee-level) --------- #
+    # ---- Rule M7: ADJ_WORKING_DAYS by FIXED-rate anchoring ------------- #
+    # Anchor days to the worker's REAL rate (FIXED_BASIC / FIXEDGROSS) so the
+    # implied full-month figure (MONTHLY_*_PROJECTION) equals his actual rate and
+    # NEVER explodes (e.g. a Rs15,000/month worker can't imply Rs1,00,000). We do
+    # NOT slash days or inflate allowances to manufacture a ceiling-crossing
+    # projection (the old faking that produced the absurdity). See SKILL.md M7.
     bd = (sal["REVISED_BASIC"] + sal["REVISED_DA"]).values
     gr = sal["REVISED_GROSS"].values
-    lo = np.ones(len(sal)); hi = np.full(len(sal), float(fmd))
+    nd0 = sal["ND_v"].round().clip(1, fmd).values
+    fb, fg = sal["FB_v"].values, sal["FG_v"].values
+    sdd = np.where(sal["SDD_v"].values > 0, sal["SDD_v"].values, float(fmd))
     ip, ie = emp_in_pf.values, emp_in_esi.values
-    lo = np.where(ip & (bd > 0), np.maximum(lo, np.ceil(bd * fmd / 15000)), lo)      # P1
-    lo = np.where(ie & (gr > 0), np.maximum(lo, np.ceil(gr * fmd / 21000)), lo)      # P3
-    hi = np.where((~ip) & (bd > 0), np.minimum(hi, np.floor(bd * fmd / 15001)), hi)  # P2
-    hi = np.where((~ie) & (gr > 0), np.minimum(hi, np.floor(gr * fmd / 21001)), hi)  # P4
-    dc = sal["ND_v"].round().clip(1, fmd).values
-    nd = np.where(lo > hi, np.minimum(fmd, np.maximum(1, lo)),
-                  np.where(dc < lo, lo, np.where(dc > hi, hi, dc)))
-    sal["ADJ_WORKING_DAYS"] = np.clip(np.round(nd), 1, fmd).astype(int)
+    raw = np.where(ip & (fb > 0), bd * sdd / np.where(fb > 0, fb, 1.0),
+          np.where(fg > 0,        gr * sdd / np.where(fg > 0, fg, 1.0), nd0))
+    adj = np.clip(np.round(raw), 1, fmd)
+    # M6: a PF row must project BD <= Rs15,000 (raise days only, never fake down)
+    adj = np.where(ip & (bd > 0), np.maximum(adj, np.minimum(fmd, np.ceil(bd * fmd / 15000))), adj)
+    sal["ADJ_WORKING_DAYS"] = np.clip(adj, 1, fmd).astype(int)
 
-    # ---- M4a: non-ESI rows whose projection can't exceed 21k at max days -> lift GROSS
-    adj = sal["ADJ_WORKING_DAYS"].values
-    proj_gr = gr * fmd / adj
-    m4a = (~ie) & (gr > 0) & (proj_gr <= 21000) & (adj >= fmd)
-    if m4a.any():
-        newg = np.ceil(21001 * adj / fmd)
-        d = (newg - sal["REVISED_GROSS"].values)
-        sal.loc[m4a, "REVISED_GROSS"] = newg[m4a]
-        sal.loc[m4a, "REVISED_ATTENDANCE_ALLOWANCE"] += d[m4a]
-        sal.loc[m4a, "REVISED_OTHER_DEDUCTION"] += d[m4a]
-        sal.loc[m4a, "REVISED_TOTAL_DED"] += d[m4a]
-
-    # ---- M4b: non-PF rows whose B+D projection can't exceed 15k at max days -> lift BASIC
-    bd2 = (sal["REVISED_BASIC"] + sal["REVISED_DA"]).values
-    proj_bd = bd2 * fmd / adj
-    m4b = (~ip) & (bd2 > 0) & (proj_bd <= 15000) & (adj >= fmd)
-    if m4b.any():
-        tgt = np.ceil(15001 * adj / fmd)
-        d = tgt - bd2
-        att = sal["REVISED_ATTENDANCE_ALLOWANCE"].values
-        room = m4b & (att >= d)
-        sal.loc[room, "REVISED_BASIC"] += d[room]
-        sal.loc[room, "REVISED_ATTENDANCE_ALLOWANCE"] -= d[room]
-        nr = m4b & (att < d)
-        sal.loc[nr, "REVISED_BASIC"] += d[nr]
-        sal.loc[nr, "REVISED_GROSS"] += d[nr]
-        sal.loc[nr, "REVISED_OTHER_DEDUCTION"] += d[nr]
-        sal.loc[nr, "REVISED_TOTAL_DED"] += d[nr]
+    # Real full-month rate from FIXED columns (independent of the faked-day trap).
+    real_gross = np.where(sdd > 0, fg * fmd / sdd, gr * fmd / np.maximum(nd0, 1))
+    real_bd = np.where(sdd > 0, fb * fmd / sdd, bd * fmd / np.maximum(nd0, 1))
+    # Flag — don't fake — register inconsistencies: real rate below the statutory
+    # ceiling but employee not covered (should be in ESI / PF per his wage).
+    sal["ANOMALY_BELOW_CEILING"] = (
+        ((~ie) & (gr > 0) & (real_gross > 0) & (real_gross <= 21000))
+        | ((~ip) & (bd > 0) & (real_bd > 0) & (real_bd <= 15000)))
+    if int(sal["ANOMALY_BELOW_CEILING"].sum()):
+        print(f"  ANOMALY_BELOW_CEILING (should be in ESI/PF): {int(sal['ANOMALY_BELOW_CEILING'].sum())} rows")
 
     # ---- M5 negative-plug cleanup -------------------------------------- #
     negA = sal["REVISED_ATTENDANCE_ALLOWANCE"] < -0.5
@@ -315,7 +288,7 @@ AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_
          "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_PAYABLE_DIFF", "RULE_APPLIED",
          "RULE_075_RELAXED", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
          "REVISED_%", "0.75% OF REVISED_GROSS", "ESI DIFF (0.75% vs REVISED_ESIC)", "ESI_%",
-         "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION", "LOWSKILL_HIGH_FLAG"]
+         "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION", "ANOMALY_BELOW_CEILING"]
 
 DROP_ON_LOAD = set(AUDIT) | {
     "ECR_PF", "EMP CODE", "ROW_COUNT", "IS_MAIN_PF", "IS_PRIMARY_ESI", "ECR_PF_CAPPED",

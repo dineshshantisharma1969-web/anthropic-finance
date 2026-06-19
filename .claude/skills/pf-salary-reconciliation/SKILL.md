@@ -92,8 +92,25 @@ OTHER_DED (`MULTI_SITE_SECONDARY_PF`). Zero-PF rows untouched (`MULTI_SITE_ZERO_
 - **E3** negative OTHER_DED → ATT_ALW: `GF += |OD|; OD=0; GROSS=B+D+GF; TOTAL_DED += |OD|`.
 - **E4** balancer: if `GROSS − TOTAL_DED ≠ NET`: `GF += NET−(GROSS−TOTAL_DED)`; recompute GROSS. Only GF moves.
 
-## Final normalization (patch)
-- **MONTHLY_GROSS_PROJECTION cap:** `target = max(1, min(FULL_MONTH, floor(REVISED_GROSS×FULL_MONTH/21001)))`; `ADJ_WORKING_DAYS = max(current, target)` (increase only).
+## Rule M7 — Day anchoring to the FIXED rate (no absurd projections)
+**Anchors are inviolable: `REVISED_PF == ECR_PF` and `REVISED_ESIC == Future ESI` per employee, ALWAYS — never capped/zeroed.** Ceiling compliance is via DAYS, never by changing PF/ESI.
+
+`ADJ_WORKING_DAYS` must be set from the worker's **real rate**, so the implied full-month figure
+(`MONTHLY_*_PROJECTION = REVISED_* × FULL_MONTH / ADJ_WORKING_DAYS`) equals his actual wage and never
+explodes. **Do NOT** slash days or inflate attendance allowance to *manufacture* a >₹21,000 / >₹15,000
+projection — that turns a real ₹15,000/month worker into an implied ₹1,00,000, which is nonsense.
+```
+PF>0 : ADJ = round((REVISED_BASIC+REVISED_DA) × SITEDIVISIONDAYS / FIXED_BASIC)
+ESI>0: ADJ = round(REVISED_GROSS × SITEDIVISIONDAYS / FIXEDGROSS)
+else : ADJ = round(REVISED_GROSS × SITEDIVISIONDAYS / FIXEDGROSS)        # use the real rate
+clamp ADJ to [1, FULL_MONTH];  M6 may only RAISE days so a PF row projects BD ≤ ₹15,000.
+```
+**Flag, don't fake — `ANOMALY_BELOW_CEILING`:** where the real full-month rate (`FIXEDGROSS×FM/SDD`)
+is ≤ ₹21,000 but the employee is **not** in ESI (or `FIXED_BASIC×FM/SDD` ≤ ₹15,000 but not in PF), the
+row is a register inconsistency (he *should* be covered). Keep the realistic projection and set the
+flag for manual review — do NOT distort days/allowances to hide it. Designation/job-title is irrelevant.
+
+## Final normalization
 - **ECR_PF cap:** `ECR_PF_OUT = min(ECR_PF_filed, REVISED_PF)`.
 
 ## Validation set (must hold)
