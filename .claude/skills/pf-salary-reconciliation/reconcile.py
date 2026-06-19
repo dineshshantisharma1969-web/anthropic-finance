@@ -296,7 +296,7 @@ DROP_ON_LOAD = set(AUDIT) | {
     "12% OF REVISED_BASIC", "REVISED_%", "%", "remark", "NOTES", "RULE_APPLIED",
     "ADJ_WORKING_DAYS", "REVISED_TOTAL_DED", "emp_in_pf", "emp_in_esi"}
 
-def write_outputs(sal, original_cols, prefix):
+def write_outputs(sal, original_cols, prefix, ecr, fut):
     final = sal.copy()
     keep = [c for c in original_cols if c != "ESIC.1"] + AUDIT
     final = final[[c for c in dict.fromkeys(keep) if c in final.columns]]
@@ -322,8 +322,20 @@ def write_outputs(sal, original_cols, prefix):
              "REVISED_OTHER_DEDUCTION", "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_v",
              "NET_PAYABLE_DIFF", "ADJ_WORKING_DAYS", "MONTHLY_BD_PROJECTION",
              "MONTHLY_GROSS_PROJECTION"] if c in sal.columns]].to_excel(xl, sheet_name="Math_Checks", index=False)
+        # leftover-employee review sheets (in ECR/Future but NOT in the salary sheet)
+        codes = set(sal["EMPCODE"].astype(str))
+        eo = ecr[~ecr["EMP CODE"].astype(str).isin(codes)].rename(columns={"EMP CODE": "EMPCODE"})
+        eo.to_excel(xl, sheet_name="ECR_Only_Employees", index=False)
+        fo = fut[~fut["EMPCODE"].astype(str).isin(codes)].rename(
+            columns={"FUTURE_ESI": "ESIC AS PER FUTURE", "FUTURE_SITECODE": "SITECODE"})
+        fo.to_excel(xl, sheet_name="Future_Only_Employees", index=False)
+        anom = sal[sal["ANOMALY_BELOW_CEILING"]][[c for c in
+            ["EMPCODE", fn, "SITECODE_C", "REVISED_GROSS", "REVISED_PF", "REVISED_ESIC",
+             "ADJ_WORKING_DAYS", "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION"]
+            if c in sal.columns]]
+        anom.to_excel(xl, sheet_name="Anomaly_Below_Ceiling", index=False)
         final.to_excel(xl, sheet_name="Reconciled_Data", index=False)
-    print(f"wrote {rep}")
+    print(f"wrote {rep}  (ECR-only {len(eo)}, Future-only {len(fo)}, anomalies {len(anom)})")
 
 
 def main():
@@ -357,7 +369,7 @@ def main():
           f"REVISED_ESIC {sal['REVISED_ESIC'].sum():,.0f} (Future {fut['FUTURE_ESI'].sum():,.0f}) | "
           f"NET {sal['REVISED_NET_PAYABLE'].sum():,.0f} (orig {sal['NET_v'].sum():,.0f})")
     ok = validate(sal, fmd, ecr, fut)
-    write_outputs(sal, original_cols, a.out_prefix)
+    write_outputs(sal, original_cols, a.out_prefix, ecr, fut)
     print("\nDONE" + ("" if ok else "  (VALIDATION FAILURES — review before filing)"))
     sys.exit(0 if ok else 2)
 
