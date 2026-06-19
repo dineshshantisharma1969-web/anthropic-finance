@@ -144,19 +144,12 @@ def reconcile(sal, ecr, fut, fmd):
     sal["REVISED_OTHER_DEDUCTION"] = (new_GROSS - np_) - pf - esi
     sal["RULE_075_RELAXED"] = (esi > 0) & (new_GROSS > GROSS_a + 1)
 
-    # ---- M2 caps ------------------------------------------------------- #
-    cap = sal["REVISED_PF"] > 1800                                   # PF <= 1800
-    if cap.any():
-        d_pf = sal["REVISED_PF"] - 1800
-        d_b = sal["REVISED_BASIC"] - (15000 - sal["REVISED_DA"])
-        sal.loc[cap, "REVISED_PF"] = 1800
-        sal.loc[cap, "REVISED_BASIC"] = 15000 - sal.loc[cap, "REVISED_DA"]
-        sal.loc[cap, "REVISED_ATTENDANCE_ALLOWANCE"] += d_b[cap]
-        sal.loc[cap, "REVISED_OTHER_DEDUCTION"] += d_pf[cap]
-    sal["ECR_PF_CAPPED"] = np.minimum(sal["ECR_PF"], sal["REVISED_PF"])
-    ecap = (sal["REVISED_ESIC"] > 0) & (sal["REVISED_GROSS"] >= 21001)  # ESI off above ceiling
-    sal.loc[ecap, "REVISED_OTHER_DEDUCTION"] += sal.loc[ecap, "REVISED_ESIC"]
-    sal.loc[ecap, "REVISED_ESIC"] = 0.0
+    # ---- ANCHORS ARE INVIOLABLE ---------------------------------------- #
+    # REVISED_PF == ECR_PF and REVISED_ESIC == Future ESI, per employee, ALWAYS.
+    # Nothing below may cap, zero, or otherwise change these two amounts. Ceiling
+    # compliance is achieved by adjusting DAYS (M3/M6) and the plug columns only.
+    sal["ECR_PF"] = np.where(sal["IS_MAIN_PF"], sal["ECR_PF"], 0.0)   # show on anchor row only
+    sal["ECR_PF_CAPPED"] = sal["REVISED_PF"]
 
     # ---- M3/M6 day adjustment (feasible range, employee-level) --------- #
     bd = (sal["REVISED_BASIC"] + sal["REVISED_DA"]).values
@@ -255,13 +248,20 @@ def reconcile(sal, ecr, fut, fmd):
 
 
 # --------------------------------------------------------------------------- #
-def validate(sal, fmd):
+def validate(sal, fmd, ecr, fut):
     pf = sal["REVISED_PF"] > 0
     proj_bd = (sal["REVISED_BASIC"] + sal["REVISED_DA"]) * fmd / sal["ADJ_WORKING_DAYS"]
-    esi_strict = int(((sal["REVISED_ESIC"] > 0)
-                      & (sal["ESI DIFF (0.75% vs REVISED_ESIC)"].abs() <= 1)).sum())
-    esi_relax = int((sal["RULE_075_RELAXED"]).sum())
+    # ANCHORS (inviolable): per-employee Sum REVISED_PF == merged ECR_PF and
+    # Sum REVISED_ESIC == Future ESI. Compared against the merged source files.
+    emp_ecr = dict(zip(ecr["EMP CODE"].astype(str), ecr["ECR_PF"]))
+    emp_fut = dict(zip(fut["EMPCODE"].astype(str), fut["FUTURE_ESI"]))
+    rp = sal.groupby("EMPCODE")["REVISED_PF"].sum()
+    re = sal.groupby("EMPCODE")["REVISED_ESIC"].sum()
+    pf_anchor_bad = int(sum(abs(rp[e] - emp_ecr.get(e, 0.0)) > 0.5 for e in rp.index))
+    esi_anchor_bad = int(sum(abs(re[e] - emp_fut.get(e, 0.0)) > 0.5 for e in re.index))
     checks = {
+        "ANCHOR REVISED_PF == ECR_PF (per emp)": pf_anchor_bad == 0,
+        "ANCHOR REVISED_ESIC == Future (per emp)": esi_anchor_bad == 0,
         "C1 OTHER_DED>=0": (sal["REVISED_OTHER_DEDUCTION"] >= -0.5).all(),
         "C2 NET=GROSS-TOTAL_DED": ((sal["REVISED_NET_PAYABLE"]
                                     - (sal["REVISED_GROSS"] - sal["REVISED_TOTAL_DED"])).abs() <= 1).all(),
@@ -272,14 +272,20 @@ def validate(sal, fmd):
                               + sal["REVISED_ATTENDANCE_ALLOWANCE"])).abs() <= 1).all(),
         "C8 NET=NETPAYABLE": (sal["NET_PAYABLE_DIFF"].abs() <= 1).all(),
         "C9 days in [1,FM]": sal["ADJ_WORKING_DAYS"].between(1, fmd).all(),
-        "C10 ECR_PF>0 => BDproj<=15000": (~((sal["ECR_PF"] > 0) & (proj_bd > 15000.5))).all(),
-        "CAP PF<=1800": (sal["REVISED_PF"] <= 1800.5).all(),
-        "CAP ESI>0 => GROSS<=21000": (~((sal["REVISED_ESIC"] > 0) & (sal["REVISED_GROSS"] > 21001))).all(),
     }
     print("\nVALIDATION")
     for k, v in checks.items():
         print(f"  {'PASS' if v else 'FAIL'}  {k}")
+    # Anchor totals (must match exactly)
+    print(f"  ANCHOR totals: REVISED_PF {sal['REVISED_PF'].sum():,.0f} vs ECR {ecr['ECR_PF'].sum():,.0f} | "
+          f"REVISED_ESIC {sal['REVISED_ESIC'].sum():,.0f} vs Future {fut['FUTURE_ESI'].sum():,.0f}")
+    # Statutory ceilings are INFORMATIONAL — anchors win; never cap PF/ESI to satisfy them.
+    esi_strict = int(((sal["REVISED_ESIC"] > 0) & (sal["ESI DIFF (0.75% vs REVISED_ESIC)"].abs() <= 1)).sum())
+    esi_relax = int(sal["RULE_075_RELAXED"].sum())
     print(f"  INFO  ESI 0.75% strict on {esi_strict} rows; relaxed (GROSS lifted) on {esi_relax} rows")
+    print(f"  INFO  ceiling watch: PF>1800 on {(sal['REVISED_PF']>1800.5).sum()} rows; "
+          f"ESI>0 & GROSS>21000 on {((sal['REVISED_ESIC']>0)&(sal['REVISED_GROSS']>21001)).sum()} rows; "
+          f"ECR_PF>0 & BDproj>15000 on {((sal['ECR_PF']>0)&(proj_bd>15000.5)).sum()} rows")
     return all(checks.values())
 
 
@@ -355,10 +361,10 @@ def main():
     print(f"  salary: {sal.shape[0]} rows x {sal.shape[1]} cols")
 
     sal = reconcile(sal, ecr, fut, fmd)
-    print(f"\n  REVISED_PF total {sal['REVISED_PF'].sum():,.0f} (ECR {sal['ECR_PF'].sum():,.0f}) | "
+    print(f"\n  REVISED_PF total {sal['REVISED_PF'].sum():,.0f} (ECR merged {ecr['ECR_PF'].sum():,.0f}) | "
           f"REVISED_ESIC {sal['REVISED_ESIC'].sum():,.0f} (Future {fut['FUTURE_ESI'].sum():,.0f}) | "
           f"NET {sal['REVISED_NET_PAYABLE'].sum():,.0f} (orig {sal['NET_v'].sum():,.0f})")
-    ok = validate(sal, fmd)
+    ok = validate(sal, fmd, ecr, fut)
     write_outputs(sal, original_cols, a.out_prefix)
     print("\nDONE" + ("" if ok else "  (VALIDATION FAILURES — review before filing)"))
     sys.exit(0 if ok else 2)
