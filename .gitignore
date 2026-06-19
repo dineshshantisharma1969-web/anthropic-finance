@@ -2,3 +2,7 @@
 # Contains sensitive employee PII (salary / ESI registers) downloaded
 # from Drive. Deliverables are uploaded back to Drive, NOT committed here.
 esi_work/
+
+# Python caches
+__pycache__/
+*.pyc
