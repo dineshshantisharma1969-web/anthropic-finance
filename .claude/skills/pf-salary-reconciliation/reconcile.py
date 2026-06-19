@@ -2,39 +2,36 @@
 """
 PF + ESI salary reconciliation pipeline (skill: pf-salary-reconciliation).
 
-Reconciles a monthly pan-India salary sheet so that, per employee,
-  Salary PF  == ECR PF        (EE summed across deduped ECR/FORMAT files)
-  Salary ESIC == Future ESIC  (col Q of the Future reference FR_sheet)
-while NET PAYABLE never changes (differences absorbed via OTHER DEDUCTION /
-REVISED_ATTENDANCE_ALLOWANCE).
+Implements the v3 strict single-pass lock-in + v4 field rules (M1-M6) from
+PF_SALARY_RECONCILIATION_SKILL_v4.md — the methodology used for the 2025-26
+monthly closes. Per employee/row the filed sheet is locked so that:
+  - REVISED_PF   == ECR_PF                          (anchor)
+  - REVISED_ESIC == ESIC as per Future              (anchor)
+  - REVISED_PF   == 12% x (REVISED_BASIC+REVISED_DA) (statutory, exact)
+  - REVISED_ESIC == 0.75% x REVISED_GROSS           (relaxed UP only when forced)
+  - REVISED_NET_PAYABLE == NETPAYABLE               (sacrosanct)
+  - attendance allowance & OTHER_DEDUCTION >= 0      (by construction)
+  - PF<=1800, ESI off >21k, BD/GROSS month-projections within ceilings (days tinker)
 
-It is COLUMN-NAME driven, not column-letter driven, so it tolerates layout drift.
-Run locally where the full salary file lives (the Drive download tool caps at 10 MB).
+Column-name driven. Run locally where the full salary file lives.
 
     python reconcile.py --salary apr26_FULL_monthly_sheet.xlsx \
         --ecr FORMAT-APRIL_2026_DELHI.xlsx FORMAT_APRIL_2026_STEAGE.xlsx FORMAT-APRIL_2026_DMART.xlsx \
-        --future "Future reference sheet_2604.xlsx" \
-        --month 2026-04 --salary-header 4 --out-prefix April26
-
-See SKILL.md for the full rule set. Validate the first month's output against the
-prior month's *_Final_Complete / *_Reconciliation_Report before filing.
+        --future "ESIC_CONSOLIDATED_APR_2026.xlsx" --month 2026-04 --out-prefix April26
 """
 from __future__ import annotations
-import argparse, calendar, math, sys
+import argparse, calendar, sys
 import numpy as np
 import pandas as pd
 
-R = lambda x, n=2: round(float(x), n)
-
 
 # --------------------------------------------------------------------------- #
-# Column resolution                                                            #
+# Helpers / loaders                                                            #
 # --------------------------------------------------------------------------- #
 def _norm(s):
     return "".join(str(s).strip().upper().split())
 
 def resolve(df, *names, required=True):
-    """Return the actual df column matching any of `names` (case/space-insensitive)."""
     lut = {_norm(c): c for c in df.columns}
     for n in names:
         if _norm(n) in lut:
@@ -50,7 +47,6 @@ def clean_code(s):
     return s.astype(str).str.strip().str.split(".").str[0]
 
 def detect_salary_header(path, maxscan=12):
-    """Find the header row by scanning the first rows for known salary headers."""
     raw = pd.read_excel(path, header=None, nrows=maxscan, dtype=object)
     want = {_norm(x) for x in ("EMPCODE", "EMP CODE", "FULLNAME", "NETPAYABLE")}
     for i in range(len(raw)):
@@ -58,10 +54,6 @@ def detect_salary_header(path, maxscan=12):
             return i
     return 0
 
-
-# --------------------------------------------------------------------------- #
-# Loaders                                                                      #
-# --------------------------------------------------------------------------- #
 def load_ecr(paths):
     """Dedup each ECR/FORMAT file by EMP CODE, then concat + sum EE per EMP CODE."""
     frames = []
@@ -70,375 +62,285 @@ def load_ecr(paths):
         hdr = next((i for i in range(min(5, len(raw)))
                     if raw.iloc[i].astype(str).str.upper().str.strip().eq("EMP CODE").any()), 0)
         df = pd.read_excel(p, header=hdr)
-        code = resolve(df, "EMP CODE", "EMPCODE")
-        ee = resolve(df, "EE", "PF WAGES EE", "EE AMOUNT", required=False) or resolve(df, "EE")
-        df = df[[code, ee]].copy()
-        df.columns = ["EMP CODE", "EE"]
-        df["EMP CODE"] = clean_code(df["EMP CODE"])
-        df["EE"] = num(df["EE"])
-        df = df[df["EMP CODE"].str.match(r"^\d+$")]           # drop TOTAL / blank rows
-        df = df.drop_duplicates(subset="EMP CODE", keep="first")  # CRITICAL per-file dedup
+        code, ee = resolve(df, "EMP CODE", "EMPCODE"), resolve(df, "EE")
+        df = df[[code, ee]].copy(); df.columns = ["EMP CODE", "EE"]
+        df["EMP CODE"] = clean_code(df["EMP CODE"]); df["EE"] = num(df["EE"])
+        df = df[df["EMP CODE"].str.match(r"^\d+$")].drop_duplicates("EMP CODE", keep="first")
         frames.append(df)
         print(f"  ECR {p}: {len(df)} unique emps, EE={df['EE'].sum():,.0f}")
-    allf = pd.concat(frames, ignore_index=True)
-    by = allf.groupby("EMP CODE", as_index=False)["EE"].sum()
+    by = pd.concat(frames, ignore_index=True).groupby("EMP CODE", as_index=False)["EE"].sum()
     print(f"  ECR merged: {len(by)} emps, total EE={by['EE'].sum():,.0f}")
     return by.rename(columns={"EE": "ECR_PF"})
 
 def load_future(path):
-    """FR_sheet: header row 3 (header=2), EMPCODE col G, ESIC employee col Q, SITECODE col B."""
     df = pd.read_excel(path, sheet_name="FR_sheet", header=2)
-    code = resolve(df, "EMPCODE", "EMP CODE")
-    esic = resolve(df, "ESIC")              # col Q employee contribution
-    site = resolve(df, "SITECODE")
     out = pd.DataFrame({
-        "EMPCODE": clean_code(df[code]),
-        "FUTURE_ESI": num(df[esic]),
-        "FUTURE_SITECODE": clean_code(df[site]),
+        "EMPCODE": clean_code(df[resolve(df, "EMPCODE", "EMP CODE")]),
+        "FUTURE_ESI": num(df[resolve(df, "ESIC")]),
+        "FUTURE_SITECODE": clean_code(df[resolve(df, "SITECODE")]),
     })
     out = out[out["EMPCODE"].str.match(r"^\d+$")]
     out = out.groupby("EMPCODE", as_index=False).agg(
-        FUTURE_ESI=("FUTURE_ESI", "sum"),
-        FUTURE_SITECODE=("FUTURE_SITECODE", "first"))
+        FUTURE_ESI=("FUTURE_ESI", "sum"), FUTURE_SITECODE=("FUTURE_SITECODE", "first"))
     print(f"  Future: {len(out)} emps, total ESIC={out['FUTURE_ESI'].sum():,.0f}")
     return out
 
 
 # --------------------------------------------------------------------------- #
-# Pipeline                                                                     #
+# v3 / v4 reconciliation                                                       #
 # --------------------------------------------------------------------------- #
-def reconcile(sal, ecr, fut, full_month):
+def reconcile(sal, ecr, fut, fmd):
     C = {k: resolve(sal, *v) for k, v in {
         "EMPCODE": ["EMPCODE", "EMP CODE"], "SITECODE": ["SITECODE"],
-        "SDD": ["SITEDIVISIONDAYS"], "ND": ["NORMALDAYS"],
-        "FB": ["FIXED_BASIC"], "FD": ["FIXED_DA"], "BASIC": ["BASIC"], "DA": ["DA"],
-        "PF": ["PF"], "ESIC": ["ESIC"], "OD": ["OTHER DEDUCTION", "OTHER_DEDUCTION"],
+        "ND": ["NORMALDAYS"], "B": ["BASIC"], "DA": ["DA"], "ESIW": ["ESI WAGES"],
         "GROSS": ["GROSS AMT", "GROSS"], "NET": ["NETPAYABLE", "NET PAYABLE"],
-        "ESIW": ["ESI WAGES"],
     }.items()}
-
     sal["EMPCODE"] = clean_code(sal[C["EMPCODE"]])
     sal["SITECODE_C"] = clean_code(sal[C["SITECODE"]])
-    sal["ROW_COUNT"] = sal["EMPCODE"].map(sal.groupby("EMPCODE").size()).fillna(1).astype(int)
-    # lookup join (not merge) so we never collide with existing salary columns
-    sal["ECR_PF"] = num(sal["EMPCODE"].map(dict(zip(ecr["EMP CODE"].astype(str), ecr["ECR_PF"]))))
-
-    # working numeric copies
-    for k in ("SDD", "ND", "FB", "FD", "BASIC", "DA", "PF", "ESIC", "OD", "GROSS", "NET", "ESIW"):
+    for k in ("ND", "B", "DA", "ESIW", "GROSS", "NET"):
         sal[k + "_v"] = num(sal[C[k]])
-    sal["ADJ_WORKING_DAYS"] = sal["ND_v"].round().clip(1, 31).astype(int)
-    sal["REVISED_BASIC"] = sal["BASIC_v"]
-    sal["REVISED_DA"] = sal["DA_v"]
-    sal["REVISED_ATTENDANCE_ALLOWANCE"] = 0.0
-    sal["REVISED_PF"] = sal["PF_v"]
-    sal["REVISED_OTHER_DEDUCTION"] = sal["OD_v"]
-    sal["REVISED_GROSS"] = sal["GROSS_v"]
-    sal["REVISED_NET_PAYABLE"] = sal["NET_v"]
-    sal["REVISED_ESIC"] = sal["ESIC_v"]
-    sal["RULE_APPLIED"] = ""
-    sal["NOTES"] = ""
-    sal["remark"] = ""
 
-    # ---- main PF row per employee --------------------------------------- #
-    main = np.zeros(len(sal), dtype=bool)
-    idx = sal.reset_index(drop=True)
-    for _, g in idx.groupby("EMPCODE"):
-        pf = g[g["PF_v"] > 0]
-        if len(pf) == 0:
-            continue
-        if len(pf) == 1:
-            main[pf.index[0]] = True
-        else:
-            ecrv = g["ECR_PF"].iloc[0]
-            exact = pf[(pf["PF_v"] - ecrv).abs() <= 1]
-            main[(exact.index[0] if len(exact) else pf["PF_v"].idxmax())] = True
-    sal = idx
-    sal["IS_MAIN_PF"] = main
-
-    # ---- PF rules ------------------------------------------------------- #
-    for i, r in sal.iterrows():
-        pf0, ecrv = r["PF_v"], r["ECR_PF"]
-        fbd = r["FB_v"] + r["FD_v"]
-        if r["ROW_COUNT"] > 1 and not r["IS_MAIN_PF"]:
-            if pf0 > 0:                                   # secondary PF row
-                sal.at[i, "REVISED_PF"] = 0.0
-                sal.at[i, "REVISED_OTHER_DEDUCTION"] = r["OD_v"] + pf0
-                sal.at[i, "RULE_APPLIED"] = "MULTI_SITE_SECONDARY_PF"
-            else:
-                sal.at[i, "RULE_APPLIED"] = "MULTI_SITE_ZERO_PF"
-            continue
-        if pf0 == 0 and ecrv == 0:
-            sal.at[i, "RULE_APPLIED"] = "NO_PF"; continue
-        if ecrv == 0:                                     # Rule 3 Not in ECR
-            sal.at[i, "REVISED_OTHER_DEDUCTION"] = r["OD_v"] + pf0
-            sal.at[i, "REVISED_PF"] = 0.0
-            sal.at[i, "REVISED_BASIC"] = 15001.0
-            sal.at[i, "RULE_APPLIED"] = "NOT_IN_ECR"; sal.at[i, "remark"] = "ok"; continue
-        if abs(ecrv - pf0) <= 1:
-            sal.at[i, "REVISED_PF"] = ecrv
-            sal.at[i, "RULE_APPLIED"] = "NO_ADJUSTMENT"; sal.at[i, "remark"] = "match as per ecr"; continue
-        if ecrv < pf0 and fbd <= 15000:                   # Rule 1 Case B
-            adj = (ecrv / (r["FB_v"] * 0.12)) * r["SDD_v"] if r["FB_v"] > 0 else r["ADJ_WORKING_DAYS"]
-            rb = (r["FB_v"] / r["SDD_v"]) * adj if r["SDD_v"] else r["BASIC_v"]
-            sal.at[i, "ADJ_WORKING_DAYS"] = int(max(1, min(31, round(adj))))
-            sal.at[i, "REVISED_BASIC"] = R(rb)
-            sal.at[i, "REVISED_GROSS"] = r["GROSS_v"] - (r["BASIC_v"] - rb)
-            sal.at[i, "REVISED_PF"] = ecrv
-            sal.at[i, "REVISED_OTHER_DEDUCTION"] = r["OD_v"] + (pf0 - ecrv)
-            sal.at[i, "RULE_APPLIED"] = "CASE_B"; sal.at[i, "remark"] = "to be check"
-        elif ecrv < pf0:                                  # Rule 2 Case A
-            sal.at[i, "REVISED_PF"] = ecrv
-            sal.at[i, "REVISED_OTHER_DEDUCTION"] = r["OD_v"] + (pf0 - ecrv)
-            sal.at[i, "RULE_APPLIED"] = "CASE_A"
-            sal.at[i, "remark"] = "Pf 1800" if abs(ecrv - 1800) < 1 else "Fix Gross >15000"
-        else:                                             # Rule 4 Cond 2
-            sal.at[i, "REVISED_PF"] = ecrv
-            sal.at[i, "REVISED_OTHER_DEDUCTION"] = r["OD_v"] - (ecrv - pf0)
-            sal.at[i, "RULE_APPLIED"] = "COND2"; sal.at[i, "remark"] = "match as per ecr"
-
-    # ---- 12% basic fix (No-Adjustment only) ----------------------------- #
-    m = sal["RULE_APPLIED"].eq("NO_ADJUSTMENT")
-    tgt = (sal["REVISED_PF"] / 0.12).round()
-    bump = m & (tgt > sal["REVISED_BASIC"])
-    d = (tgt - sal["REVISED_BASIC"]).where(bump, 0.0)
-    sal["REVISED_BASIC"] += d
-    sal["REVISED_GROSS"] += d
-    sal["REVISED_OTHER_DEDUCTION"] += d
-
-    # ---- min-wage floor (captured at this ADJ_WORKING_DAYS context) ----- #
-    sal["MW_FLOOR"] = (sal["BASIC_v"] / sal["ND_v"].replace(0, np.nan)).fillna(0) * sal["ADJ_WORKING_DAYS"]
-    lift = (sal["REVISED_PF"] > 0) & (sal["REVISED_BASIC"] < sal["MW_FLOOR"] - 0.5)
-    sal.loc[lift, "REVISED_BASIC"] = sal.loc[lift, "MW_FLOOR"]
-    sal.loc[lift, "REVISED_PF"] = (0.12 * (sal.loc[lift, "REVISED_BASIC"] + sal.loc[lift, "REVISED_DA"])).round(2)
-    sal.loc[lift, "remark"] = sal.loc[lift, "remark"] + " [MW_FLOOR_APPLIED]"
-
-    # ---- enforce REVISED_PF == 12%(B+D) --------------------------------- #
-    # Target basic = REVISED_PF / 0.12 so 12% holds exactly. Where that target
-    # is below the min-wage floor (12% would force sub-minimum basic), REDUCE
-    # ADJ_WORKING_DAYS so the floor (= daily_rate x days) drops to permit it —
-    # the per-day minimum-wage rate is preserved, only days fall. Above the
-    # floor, absorb the basic change into attendance allowance (gross fixed).
-    pfpos = sal["REVISED_PF"] > 0
-    th = (sal["REVISED_PF"] * 0.001).clip(lower=0.5)
-    gd_new = (sal["REVISED_PF"] / 0.12).round()
-    daily = (sal["BASIC_v"] / sal["ND_v"].replace(0, np.nan)).fillna(0.0)
-
-    # only below-ceiling rows (FIXED_BASIC+DA <= 15000); above-ceiling Case-A
-    # earners keep high basic with capped PF — do NOT shrink their days.
-    below = (pfpos & (gd_new < sal["MW_FLOOR"] - 0.5) & (daily > 0)
-             & ((sal["FB_v"] + sal["FD_v"]) <= 15000))
-    nd = np.floor(gd_new / daily.where(daily > 0, np.nan)).fillna(sal["ADJ_WORKING_DAYS"])
-    nd = np.minimum(nd, sal["ADJ_WORKING_DAYS"]).clip(lower=1)
-    sal.loc[below, "ADJ_WORKING_DAYS"] = nd[below].round().astype(int)
-    sal["MW_FLOOR"] = np.where(below, daily * sal["ADJ_WORKING_DAYS"], sal["MW_FLOOR"])
-    sal.loc[below, "NOTES"] = (sal.loc[below, "NOTES"].astype(str) + " DAYS_REDUCED_FOR_12PCT").str.strip()
-
-    target = gd_new.where(gd_new >= sal["MW_FLOOR"] - 0.5, sal["REVISED_BASIC"])
-    need = pfpos & ((target - sal["REVISED_BASIC"]).abs() > th)
-    delta = (target - sal["REVISED_BASIC"]).where(need, 0.0)
-    sal["REVISED_BASIC"] += delta
-    sal["REVISED_ATTENDANCE_ALLOWANCE"] -= delta            # GROSS unchanged
-
-    sal["ADJ_WORKING_DAYS"] = sal["ADJ_WORKING_DAYS"].clip(1, 31).round().astype(int)
-
-    # ---- ESI passes ----------------------------------------------------- #
+    # employee-level anchors
+    sal["ECR_PF"] = num(sal["EMPCODE"].map(dict(zip(ecr["EMP CODE"].astype(str), ecr["ECR_PF"]))))
     futc = fut["EMPCODE"].astype(str)
     sal["FUTURE_ESI"] = num(sal["EMPCODE"].map(dict(zip(futc, fut["FUTURE_ESI"]))))
-    sal["FUTURE_SITECODE"] = sal["EMPCODE"].map(dict(zip(futc, fut["FUTURE_SITECODE"])))
-    in_fut = sal["EMPCODE"].isin(set(futc))
+    sal["FUTURE_SITECODE"] = sal["EMPCODE"].map(dict(zip(futc, fut["FUTURE_SITECODE"]))).fillna("")
+    emp_in_pf = sal["ECR_PF"] > 0
+    emp_in_esi = sal["EMPCODE"].isin(set(futc))
 
-    # E1 primary-site alignment
-    primary = np.zeros(len(sal), dtype=bool)
-    for _, g in sal.groupby("EMPCODE"):
-        if not g["FUTURE_ESI"].iloc[0] and g["EMPCODE"].iloc[0] not in set(fut["EMPCODE"]):
-            continue
-        fs = g["FUTURE_SITECODE"].iloc[0]
-        match = g[g["SITECODE_C"] == fs]
-        pidx = match.index[0] if len(match) else g["ESIW_v"].idxmax()
-        primary[pidx] = True
-    sal["IS_PRIMARY_ESI"] = primary
-    orig_esic = sal["ESIC_v"].copy()
+    # M1: PF anchored on the employee's MAX-NORMALDAYS row
+    sal["REVISED_PF"] = 0.0
+    sal["IS_MAIN_PF"] = False
+    if emp_in_pf.any():
+        midx = sal[emp_in_pf].groupby("EMPCODE")["ND_v"].idxmax()
+        sal.loc[midx, "IS_MAIN_PF"] = True
+        sal.loc[midx, "REVISED_PF"] = sal.loc[midx, "ECR_PF"]
+
+    # ESI anchored on primary site row (sitecode match else max ESI wages)
     sal["REVISED_ESIC"] = 0.0
-    sal["ESIC_AS_PER_FUTURE"] = 0.0
-    sal.loc[primary, "REVISED_ESIC"] = sal.loc[primary, "FUTURE_ESI"]
-    sal.loc[primary, "ESIC_AS_PER_FUTURE"] = sal.loc[primary, "FUTURE_ESI"]
+    sal["IS_PRIMARY_ESI"] = False
+    for emp, grp in sal[emp_in_esi].groupby("EMPCODE"):
+        fs = grp["FUTURE_SITECODE"].iloc[0]
+        m = grp[grp["SITECODE_C"] == fs]
+        pidx = m.index[0] if len(m) else grp["ESIW_v"].idxmax()
+        sal.loc[pidx, "IS_PRIMARY_ESI"] = True
+        sal.loc[pidx, "REVISED_ESIC"] = grp["FUTURE_ESI"].iloc[0]
 
-    # E1b absorb ESI delta into OTHER_DEDUCTION (NET holds)
-    sal["REVISED_OTHER_DEDUCTION"] += (orig_esic - sal["REVISED_ESIC"])
+    pf, esi, np_ = sal["REVISED_PF"].values, sal["REVISED_ESIC"].values, sal["NET_v"].values
+    obasic, oda, ogross = sal["B_v"].values, sal["DA_v"].values, sal["GROSS_v"].values
 
-    fmd = full_month
-    bd = sal["REVISED_BASIC"] + sal["REVISED_DA"]
-    gc = sal["ADJ_WORKING_DAYS"].astype(float)
-    # E2 PF ceiling
-    e2 = (sal["ECR_PF"] == 0) & (gc > 0) & (bd * 31 / gc < 15000) & (bd > 0)
-    sal.loc[e2, "ADJ_WORKING_DAYS"] = np.floor(bd[e2] * 31 / 15001).clip(lower=1)
-    # E2b ESI ceiling
-    gc = sal["ADJ_WORKING_DAYS"].astype(float)
-    e2b = (sal["REVISED_ESIC"] == 0) & (gc > 0) & (sal["REVISED_GROSS"] > 0) & \
-          (sal["REVISED_GROSS"] * fmd / gc <= 21000)
-    newgc = np.floor(sal["REVISED_GROSS"] * fmd / 21001)
-    apply = e2b & (newgc > 0) & (newgc < gc)
-    sal.loc[apply, "ADJ_WORKING_DAYS"] = newgc[apply]
-    sal["ADJ_WORKING_DAYS"] = sal["ADJ_WORKING_DAYS"].clip(1, fmd).round().astype(int)
+    # ---- v3 core (per row, vectorised) --------------------------------- #
+    BD_target = np.where(pf > 0, np.round(pf / 0.12), obasic + oda)
+    GROSS_a = np.where(esi > 0, np.round(esi / 0.0075), ogross)
+    GROSS_c = np_ + pf + esi
+    new_GROSS = np.maximum.reduce([GROSS_a, BD_target, GROSS_c])
+    new_DA = np.minimum(oda, BD_target)
+    new_BASIC = BD_target - new_DA
+    sal["REVISED_BASIC"] = new_BASIC
+    sal["REVISED_DA"] = new_DA
+    sal["REVISED_GROSS"] = new_GROSS
+    sal["REVISED_ATTENDANCE_ALLOWANCE"] = new_GROSS - BD_target
+    sal["REVISED_TOTAL_DED"] = new_GROSS - np_
+    sal["REVISED_OTHER_DEDUCTION"] = (new_GROSS - np_) - pf - esi
+    sal["RULE_075_RELAXED"] = (esi > 0) & (new_GROSS > GROSS_a + 1)
 
-    # recompute REVISED_GROSS = max(GROSS, B+D, ESI/0.0075); ATT absorbs
-    revg = np.maximum.reduce([sal["REVISED_GROSS"].values, (bd).values,
-                              (sal["REVISED_ESIC"] / 0.0075).values])
-    sal["REVISED_ATTENDANCE_ALLOWANCE"] = revg - bd
-    sal["REVISED_GROSS"] = revg
+    # ---- M2 caps ------------------------------------------------------- #
+    cap = sal["REVISED_PF"] > 1800                                   # PF <= 1800
+    if cap.any():
+        d_pf = sal["REVISED_PF"] - 1800
+        d_b = sal["REVISED_BASIC"] - (15000 - sal["REVISED_DA"])
+        sal.loc[cap, "REVISED_PF"] = 1800
+        sal.loc[cap, "REVISED_BASIC"] = 15000 - sal.loc[cap, "REVISED_DA"]
+        sal.loc[cap, "REVISED_ATTENDANCE_ALLOWANCE"] += d_b[cap]
+        sal.loc[cap, "REVISED_OTHER_DEDUCTION"] += d_pf[cap]
+    sal["ECR_PF_CAPPED"] = np.minimum(sal["ECR_PF"], sal["REVISED_PF"])
+    ecap = (sal["REVISED_ESIC"] > 0) & (sal["REVISED_GROSS"] >= 21001)  # ESI off above ceiling
+    sal.loc[ecap, "REVISED_OTHER_DEDUCTION"] += sal.loc[ecap, "REVISED_ESIC"]
+    sal.loc[ecap, "REVISED_ESIC"] = 0.0
 
-    # NET balancer via OTHER_DEDUCTION (PF side): OD = GROSS - PF - ESI - NET
-    sal["REVISED_OTHER_DEDUCTION"] = (sal["REVISED_GROSS"] - sal["REVISED_PF"]
-                                      - sal["REVISED_ESIC"] - sal["NET_v"])
-    # E3 negative OTHER_DED → attendance allowance
-    neg = sal["REVISED_OTHER_DEDUCTION"] < 0
-    amt = (-sal["REVISED_OTHER_DEDUCTION"]).where(neg, 0.0)
-    sal["REVISED_ATTENDANCE_ALLOWANCE"] += amt
-    sal["REVISED_GROSS"] += amt
-    sal.loc[neg, "REVISED_OTHER_DEDUCTION"] = 0.0
+    # ---- M3/M6 day adjustment (feasible range, employee-level) --------- #
+    bd = (sal["REVISED_BASIC"] + sal["REVISED_DA"]).values
+    gr = sal["REVISED_GROSS"].values
+    lo = np.ones(len(sal)); hi = np.full(len(sal), float(fmd))
+    ip, ie = emp_in_pf.values, emp_in_esi.values
+    lo = np.where(ip & (bd > 0), np.maximum(lo, np.ceil(bd * fmd / 15000)), lo)      # P1
+    lo = np.where(ie & (gr > 0), np.maximum(lo, np.ceil(gr * fmd / 21000)), lo)      # P3
+    hi = np.where((~ip) & (bd > 0), np.minimum(hi, np.floor(bd * fmd / 15001)), hi)  # P2
+    hi = np.where((~ie) & (gr > 0), np.minimum(hi, np.floor(gr * fmd / 21001)), hi)  # P4
+    dc = sal["ND_v"].round().clip(1, fmd).values
+    nd = np.where(lo > hi, np.minimum(fmd, np.maximum(1, lo)),
+                  np.where(dc < lo, lo, np.where(dc > hi, hi, dc)))
+    sal["ADJ_WORKING_DAYS"] = np.clip(np.round(nd), 1, fmd).astype(int)
 
-    sal["REVISED_TOTAL_DED"] = sal["REVISED_PF"] + sal["REVISED_ESIC"] + sal["REVISED_OTHER_DEDUCTION"]
+    # ---- M4a: non-ESI rows whose projection can't exceed 21k at max days -> lift GROSS
+    adj = sal["ADJ_WORKING_DAYS"].values
+    proj_gr = gr * fmd / adj
+    m4a = (~ie) & (gr > 0) & (proj_gr <= 21000) & (adj >= fmd)
+    if m4a.any():
+        newg = np.ceil(21001 * adj / fmd)
+        d = (newg - sal["REVISED_GROSS"].values)
+        sal.loc[m4a, "REVISED_GROSS"] = newg[m4a]
+        sal.loc[m4a, "REVISED_ATTENDANCE_ALLOWANCE"] += d[m4a]
+        sal.loc[m4a, "REVISED_OTHER_DEDUCTION"] += d[m4a]
+        sal.loc[m4a, "REVISED_TOTAL_DED"] += d[m4a]
+
+    # ---- M4b: non-PF rows whose B+D projection can't exceed 15k at max days -> lift BASIC
+    bd2 = (sal["REVISED_BASIC"] + sal["REVISED_DA"]).values
+    proj_bd = bd2 * fmd / adj
+    m4b = (~ip) & (bd2 > 0) & (proj_bd <= 15000) & (adj >= fmd)
+    if m4b.any():
+        tgt = np.ceil(15001 * adj / fmd)
+        d = tgt - bd2
+        att = sal["REVISED_ATTENDANCE_ALLOWANCE"].values
+        room = m4b & (att >= d)
+        sal.loc[room, "REVISED_BASIC"] += d[room]
+        sal.loc[room, "REVISED_ATTENDANCE_ALLOWANCE"] -= d[room]
+        nr = m4b & (att < d)
+        sal.loc[nr, "REVISED_BASIC"] += d[nr]
+        sal.loc[nr, "REVISED_GROSS"] += d[nr]
+        sal.loc[nr, "REVISED_OTHER_DEDUCTION"] += d[nr]
+        sal.loc[nr, "REVISED_TOTAL_DED"] += d[nr]
+
+    # ---- M5 negative-plug cleanup -------------------------------------- #
+    negA = sal["REVISED_ATTENDANCE_ALLOWANCE"] < -0.5
+    if negA.any():
+        df_ = -sal["REVISED_ATTENDANCE_ALLOWANCE"]
+        sal.loc[negA, "REVISED_BASIC"] -= df_[negA]
+        sal.loc[negA, "REVISED_ATTENDANCE_ALLOWANCE"] = 0.0
+    negO = sal["REVISED_OTHER_DEDUCTION"] < -1
+    if negO.any():
+        df_ = -sal["REVISED_OTHER_DEDUCTION"]
+        sal.loc[negO, "REVISED_OTHER_DEDUCTION"] = 0.0
+        sal.loc[negO, "REVISED_ATTENDANCE_ALLOWANCE"] += df_[negO]
+        sal.loc[negO, "REVISED_GROSS"] += df_[negO]
+        sal.loc[negO, "REVISED_TOTAL_DED"] += df_[negO]
+
+    # ---- C3 final fix: BASIC so 12% x (B+D) = PF exactly (ATT absorbs) -- #
+    pfpos = sal["REVISED_PF"] > 0
+    tb = np.round(sal["REVISED_PF"] / 0.12)
+    cur = sal["REVISED_BASIC"] + sal["REVISED_DA"]
+    d = (tb - cur).where(pfpos & ((tb - cur).abs() > 0.5), 0.0)
+    sal["REVISED_BASIC"] += d
+    sal["REVISED_ATTENDANCE_ALLOWANCE"] -= d
+
+    # ---- M6: ECR_PF>0 => BD month-projection <= 15000 (raise days) ----- #
+    bd3 = (sal["REVISED_BASIC"] + sal["REVISED_DA"]).values
+    m6 = (sal["ECR_PF"].values > 0) & (bd3 > 0)
+    tgt = np.minimum(fmd, np.ceil(bd3 * fmd / 15000))
+    sal.loc[m6, "ADJ_WORKING_DAYS"] = np.maximum(sal.loc[m6, "ADJ_WORKING_DAYS"].values,
+                                                 tgt[m6]).astype(int)
+
     sal["REVISED_NET_PAYABLE"] = sal["REVISED_GROSS"] - sal["REVISED_TOTAL_DED"]
 
-    # ---- final patch passes -------------------------------------------- #
-    proj = sal["REVISED_GROSS"] * fmd / 21001
-    tgt_days = np.floor(proj).clip(1, fmd)
-    sal["ADJ_WORKING_DAYS"] = np.maximum(sal["ADJ_WORKING_DAYS"], tgt_days).clip(1, fmd).astype(int)
-    sal["ECR_PF_CAPPED"] = np.minimum(sal["ECR_PF"], sal["REVISED_PF"])
-
-    # ---- audit columns -------------------------------------------------- #
+    # ---- audit columns ------------------------------------------------- #
+    bdf = sal["REVISED_BASIC"] + sal["REVISED_DA"]
     sal["Future_ESI"] = sal["FUTURE_ESI"]
-    sal["ESI DIFFERENCE (Future-REVISED)"] = sal["Future_ESI"] - sal["REVISED_ESIC"]
+    sal["ESIC AS PER FUTURE"] = np.where(emp_in_esi, sal["FUTURE_ESI"], 0.0)
+    sal["ESI DIFFERENCE (Future-REVISED)"] = sal["ESIC AS PER FUTURE"] - sal["REVISED_ESIC"]
     sal["NET_PAYABLE_DIFF"] = sal["REVISED_NET_PAYABLE"] - sal["NET_v"]
-    denom = (sal["BASIC_v"] + sal["DA_v"]).replace(0, np.nan)
-    sal["%"] = (sal["PF_v"] / denom * 100).fillna(0).round(3)
-    sal["12% OF (REVISED_BASIC+DA)"] = (0.12 * (sal["REVISED_BASIC"] + sal["REVISED_DA"])).round(2)
+    sal["12% OF (REVISED_BASIC+DA)"] = (0.12 * bdf).round(2)
     sal["DIFF (12%_PF vs REVISED_PF)"] = (sal["12% OF (REVISED_BASIC+DA)"] - sal["REVISED_PF"]).round(2)
-    sal["REVISED_%"] = np.where(sal["REVISED_BASIC"] == 0, 0,
-                                sal["REVISED_PF"] / sal["REVISED_BASIC"].replace(0, np.nan) * 100).round(3)
-    sal["MONTHLY_BD_PROJECTION"] = (bd * fmd / sal["ADJ_WORKING_DAYS"]).round(0)
+    sal["REVISED_%"] = np.where(bdf == 0, 0, sal["REVISED_PF"] / bdf.replace(0, np.nan) * 100).round(3)
+    sal["0.75% OF REVISED_GROSS"] = (0.0075 * sal["REVISED_GROSS"]).round(2)
+    sal["ESI DIFF (0.75% vs REVISED_ESIC)"] = (sal["0.75% OF REVISED_GROSS"] - sal["REVISED_ESIC"]).round(2)
+    sal["ESI_%"] = np.where(sal["REVISED_GROSS"] == 0, 0,
+                            sal["REVISED_ESIC"] / sal["REVISED_GROSS"].replace(0, np.nan) * 100).round(4)
+    sal["MONTHLY_BD_PROJECTION"] = (bdf * fmd / sal["ADJ_WORKING_DAYS"]).round(0)
     sal["MONTHLY_GROSS_PROJECTION"] = (sal["REVISED_GROSS"] * fmd / sal["ADJ_WORKING_DAYS"]).round(0)
-    return sal, C
+    sal["RULE_APPLIED"] = np.select(
+        [~emp_in_pf & ~emp_in_esi, sal["IS_MAIN_PF"], emp_in_pf & ~sal["IS_MAIN_PF"]],
+        ["NO_PF_NO_ESI", "PF_ANCHOR", "PF_SECONDARY"], default="ESI_ONLY")
+    sal["emp_in_pf"], sal["emp_in_esi"] = emp_in_pf.values, emp_in_esi.values
+    return sal
 
 
 # --------------------------------------------------------------------------- #
-# Validation                                                                   #
-# --------------------------------------------------------------------------- #
-def validate(sal):
+def validate(sal, fmd):
     pf = sal["REVISED_PF"] > 0
-    below_ceiling = (sal["REVISED_BASIC"] + sal["REVISED_DA"]) <= 15000
-    # 12% relaxes where the min-wage floor binds (raising basic to 12%/PF would breach the
-    # floor) or PF is pinned to a low ECR filing — both are hierarchy-driven, not errors.
-    floor_bound = (sal["REVISED_PF"] / 0.12) < (sal["MW_FLOOR"] - 0.5)
-    # PF correctly filed at 12% of BASIC alone (DA excluded from the PF wage base) — these
-    # match ECR and cannot change, so the BASIC+DA audit gap is expected, not a failure.
-    da_excluded = (sal["REVISED_PF"] - 0.12 * sal["REVISED_BASIC"]).abs() <= 1
-    relax = floor_bound | da_excluded
-    c3_relaxed = int((pf & below_ceiling & floor_bound).sum())
-    c3_da = int((pf & below_ceiling & ~floor_bound & da_excluded
-                 & (sal["DIFF (12%_PF vs REVISED_PF)"].abs() > 1)).sum())
+    proj_bd = (sal["REVISED_BASIC"] + sal["REVISED_DA"]) * fmd / sal["ADJ_WORKING_DAYS"]
+    esi_strict = int(((sal["REVISED_ESIC"] > 0)
+                      & (sal["ESI DIFF (0.75% vs REVISED_ESIC)"].abs() <= 1)).sum())
+    esi_relax = int((sal["RULE_075_RELAXED"]).sum())
     checks = {
         "C1 OTHER_DED>=0": (sal["REVISED_OTHER_DEDUCTION"] >= -0.5).all(),
-        "C2 NET unchanged": (sal["NET_PAYABLE_DIFF"].abs() <= 1).all(),
-        "C3 PF=12%(B+D) below ceiling": ((sal["DIFF (12%_PF vs REVISED_PF)"].abs() <= 1)
-                                         | ~(pf & below_ceiling) | relax).all(),
+        "C2 NET=GROSS-TOTAL_DED": ((sal["REVISED_NET_PAYABLE"]
+                                    - (sal["REVISED_GROSS"] - sal["REVISED_TOTAL_DED"])).abs() <= 1).all(),
+        "C3 PF=12%(B+D)": ((sal["DIFF (12%_PF vs REVISED_PF)"].abs() <= 1) | ~pf).all(),
         "C5 ATT_ALW>=0": (sal["REVISED_ATTENDANCE_ALLOWANCE"] >= -0.5).all(),
         "C6 TOTAL_DED>=0": (sal["REVISED_TOTAL_DED"] >= -0.5).all(),
-        "C7 GROSS=B+D+ATT": ((sal["REVISED_GROSS"] -
-            (sal["REVISED_BASIC"] + sal["REVISED_DA"] + sal["REVISED_ATTENDANCE_ALLOWANCE"])).abs() <= 1).all(),
-        "C9 days in [1,31]": sal["ADJ_WORKING_DAYS"].between(1, 31).all(),
-        "C10 ECR_cap<=PF": (sal["ECR_PF_CAPPED"] <= sal["REVISED_PF"] + 0.5).all(),
-        "C-MW basic>=floor": ((sal["REVISED_BASIC"] >= sal["MW_FLOOR"] - 0.5) | ~pf).all(),
-        "C-INT days integer": (sal["ADJ_WORKING_DAYS"] == sal["ADJ_WORKING_DAYS"].round()).all(),
+        "C7 GROSS=B+D+ATT": ((sal["REVISED_GROSS"] - (sal["REVISED_BASIC"] + sal["REVISED_DA"]
+                              + sal["REVISED_ATTENDANCE_ALLOWANCE"])).abs() <= 1).all(),
+        "C8 NET=NETPAYABLE": (sal["NET_PAYABLE_DIFF"].abs() <= 1).all(),
+        "C9 days in [1,FM]": sal["ADJ_WORKING_DAYS"].between(1, fmd).all(),
+        "C10 ECR_PF>0 => BDproj<=15000": (~((sal["ECR_PF"] > 0) & (proj_bd > 15000.5))).all(),
+        "CAP PF<=1800": (sal["REVISED_PF"] <= 1800.5).all(),
+        "CAP ESI>0 => GROSS<=21000": (~((sal["REVISED_ESIC"] > 0) & (sal["REVISED_GROSS"] > 21001))).all(),
     }
     print("\nVALIDATION")
     for k, v in checks.items():
         print(f"  {'PASS' if v else 'FAIL'}  {k}")
-    if c3_relaxed:
-        print(f"  INFO  C3 relaxed on {c3_relaxed} floor-bound / ECR-pinned rows (expected)")
-    if c3_da:
-        print(f"  INFO  {c3_da} rows filed at 12% of BASIC (DA excluded from PF wages) — correct per ECR")
-    c3_fail = (pf & below_ceiling & ~relax
-               & (sal["DIFF (12%_PF vs REVISED_PF)"].abs() > 1))
-    if c3_fail.any():
-        print(f"  C3 DIAGNOSTIC: {int(c3_fail.sum())} below-ceiling rows still off > Rs1, by rule:")
-        print("    " + sal.loc[c3_fail].groupby("RULE_APPLIED").size().to_string().replace("\n", "\n    "))
-        cols = ["RULE_APPLIED", "REVISED_BASIC", "REVISED_DA", "REVISED_PF",
-                "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
-                "ADJ_WORKING_DAYS", "MW_FLOOR", "REVISED_OTHER_DEDUCTION"]
-        print(sal.loc[c3_fail, [c for c in cols if c in sal.columns]].head(6).to_string())
+    print(f"  INFO  ESI 0.75% strict on {esi_strict} rows; relaxed (GROSS lifted) on {esi_relax} rows")
     return all(checks.values())
 
 
 # --------------------------------------------------------------------------- #
-# Output                                                                        #
-# --------------------------------------------------------------------------- #
 AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_ALLOWANCE",
          "REVISED_GROSS", "ECR_PF", "REVISED_PF", "REVISED_ESIC", "Future_ESI",
-         "ESIC_AS_PER_FUTURE", "ESI DIFFERENCE (Future-REVISED)", "REVISED_OTHER_DEDUCTION",
+         "ESIC AS PER FUTURE", "ESI DIFFERENCE (Future-REVISED)", "REVISED_OTHER_DEDUCTION",
          "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_PAYABLE_DIFF", "RULE_APPLIED",
-         "NOTES", "%", "remark", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
-         "REVISED_%", "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION"]
+         "RULE_075_RELAXED", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
+         "REVISED_%", "0.75% OF REVISED_GROSS", "ESI DIFF (0.75% vs REVISED_ESIC)", "ESI_%",
+         "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION"]
 
-# Prior-run / output / working columns to strip from an incoming salary sheet so
-# re-runs are idempotent and never collide with what the pipeline produces.
 DROP_ON_LOAD = set(AUDIT) | {
-    "ECR_PF", "EMP CODE", "ROW_COUNT", "IS_MAIN_PF", "IS_PRIMARY_ESI", "MW_FLOOR",
-    "ECR_PF_CAPPED", "SITECODE_C", "FUTURE_ESI", "FUTURE_SITECODE", "EMPCODE_CLEAN",
-    "ESIC_AS_PER_FUTURE", "ESIC AS PER FUTURE", "ESI DIFFERENCE (Future-REVISED)",
-    "12% OF REVISED_BASIC", "12% OF REVISED_BASIC+DA", "ESIC.1", "RULE_APPLIED",
-    "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "REVISED_OTHER_DEDUCTION"}
+    "ECR_PF", "EMP CODE", "ROW_COUNT", "IS_MAIN_PF", "IS_PRIMARY_ESI", "ECR_PF_CAPPED",
+    "SITECODE_C", "FUTURE_ESI", "FUTURE_SITECODE", "ESIC_AS_PER_FUTURE", "ESIC.1",
+    "12% OF REVISED_BASIC", "REVISED_%", "%", "remark", "NOTES", "RULE_APPLIED",
+    "ADJ_WORKING_DAYS", "REVISED_TOTAL_DED", "emp_in_pf", "emp_in_esi"}
 
 def write_outputs(sal, original_cols, prefix):
     final = sal.copy()
-    keep = [c for c in original_cols if c != "ESIC.1"] + \
-           [c if c != "ESIC_AS_PER_FUTURE" else "ESIC_AS_PER_FUTURE" for c in AUDIT]
-    final = final[[c for c in keep if c in final.columns]]
-    final = final.rename(columns={"ESIC_AS_PER_FUTURE": "ESIC AS PER FUTURE"})
+    keep = [c for c in original_cols if c != "ESIC.1"] + AUDIT
+    final = final[[c for c in dict.fromkeys(keep) if c in final.columns]]
     fc = f"{prefix}_Final_Complete.xlsx"
     final.to_excel(fc, index=False)
     print(f"\nwrote {fc}  ({final.shape[0]} rows x {final.shape[1]} cols)")
 
     rep = f"{prefix}_Reconciliation_Report.xlsx"
+    fn = resolve(sal, "FULLNAME", required=False) or "EMPCODE"
     with pd.ExcelWriter(rep, engine="openpyxl") as xl:
-        summ = (sal.groupby("RULE_APPLIED")
-                .agg(rows=("EMPCODE", "size"),
-                     orig_pf=("PF_v", "sum"), revised_pf=("REVISED_PF", "sum"),
-                     ecr_pf=("ECR_PF", "sum")).reset_index())
+        summ = sal.groupby("RULE_APPLIED").agg(
+            rows=("EMPCODE", "size"), revised_pf=("REVISED_PF", "sum"),
+            ecr_pf=("ECR_PF", "sum"), revised_esic=("REVISED_ESIC", "sum"),
+            future_esi=("Future_ESI", "sum")).reset_index()
         summ.to_excel(xl, sheet_name="Summary", index=False)
-        pf_cols = ["EMPCODE", C0(sal, "FULLNAME"), "ROW_COUNT", "IS_MAIN_PF", "PF_v",
-                   "ECR_PF", "REVISED_PF", "REVISED_BASIC", "RULE_APPLIED", "remark"]
-        sal[[c for c in pf_cols if c in sal.columns]].to_excel(xl, sheet_name="PF_Audit", index=False)
-        esi_cols = ["EMPCODE", "SITECODE_C", "IS_PRIMARY_ESI", "ESIC_v",
-                    "REVISED_ESIC", "Future_ESI", "ESI DIFFERENCE (Future-REVISED)"]
-        sal[[c for c in esi_cols if c in sal.columns]].to_excel(xl, sheet_name="ESI_Audit", index=False)
-        math_cols = ["EMPCODE", "REVISED_GROSS", "REVISED_PF", "REVISED_ESIC",
-                     "REVISED_OTHER_DEDUCTION", "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE",
-                     "NET_v", "NET_PAYABLE_DIFF", "DIFF (12%_PF vs REVISED_PF)", "ADJ_WORKING_DAYS"]
-        sal[[c for c in math_cols if c in sal.columns]].to_excel(xl, sheet_name="Math_Checks", index=False)
+        sal[[c for c in ["EMPCODE", fn, "IS_MAIN_PF", "ECR_PF", "REVISED_PF", "REVISED_BASIC",
+             "REVISED_DA", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)", "REVISED_%"]
+             if c in sal.columns]].to_excel(xl, sheet_name="PF_Audit", index=False)
+        sal[[c for c in ["EMPCODE", "SITECODE_C", "IS_PRIMARY_ESI", "REVISED_ESIC", "Future_ESI",
+             "REVISED_GROSS", "0.75% OF REVISED_GROSS", "ESI_%", "RULE_075_RELAXED"]
+             if c in sal.columns]].to_excel(xl, sheet_name="ESI_Audit", index=False)
+        sal[[c for c in ["EMPCODE", "REVISED_GROSS", "REVISED_PF", "REVISED_ESIC",
+             "REVISED_OTHER_DEDUCTION", "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_v",
+             "NET_PAYABLE_DIFF", "ADJ_WORKING_DAYS", "MONTHLY_BD_PROJECTION",
+             "MONTHLY_GROSS_PROJECTION"] if c in sal.columns]].to_excel(xl, sheet_name="Math_Checks", index=False)
         final.to_excel(xl, sheet_name="Reconciled_Data", index=False)
     print(f"wrote {rep}")
 
-def C0(df, *n):
-    return resolve(df, *n, required=False) or n[0]
 
-
-# --------------------------------------------------------------------------- #
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--salary", required=True)
     ap.add_argument("--ecr", nargs="+", required=True)
     ap.add_argument("--future", required=True)
-    ap.add_argument("--month", required=True, help="YYYY-MM, e.g. 2026-04")
-    ap.add_argument("--salary-header", default="auto",
-                    help="header row index (0-based), or 'auto' to detect (default)")
+    ap.add_argument("--month", required=True, help="YYYY-MM")
+    ap.add_argument("--salary-header", default="auto")
     ap.add_argument("--out-prefix", required=True)
     a = ap.parse_args()
 
     y, m = map(int, a.month.split("-"))
-    full_month = calendar.monthrange(y, m)[1]
-    print(f"Month {a.month}  FULL_MONTH={full_month}")
-
+    fmd = calendar.monthrange(y, m)[1]
+    print(f"Month {a.month}  FULL_MONTH={fmd}")
     print("Loading ECR ...");    ecr = load_ecr(a.ecr)
     print("Loading Future ...");  fut = load_future(a.future)
     print("Loading salary ...")
@@ -447,15 +349,18 @@ def main():
     sal = pd.read_excel(a.salary, header=hdr)
     pre = [c for c in sal.columns if c in DROP_ON_LOAD]
     if pre:
-        print(f"  stripping {len(pre)} prior-run/output columns so the run is clean")
+        print(f"  stripping {len(pre)} prior-run/output columns")
         sal = sal.drop(columns=pre)
     original_cols = list(sal.columns)
     print(f"  salary: {sal.shape[0]} rows x {sal.shape[1]} cols")
 
-    sal, C = reconcile(sal, ecr, fut, full_month)
-    ok = validate(sal)
+    sal = reconcile(sal, ecr, fut, fmd)
+    print(f"\n  REVISED_PF total {sal['REVISED_PF'].sum():,.0f} (ECR {sal['ECR_PF'].sum():,.0f}) | "
+          f"REVISED_ESIC {sal['REVISED_ESIC'].sum():,.0f} (Future {fut['FUTURE_ESI'].sum():,.0f}) | "
+          f"NET {sal['REVISED_NET_PAYABLE'].sum():,.0f} (orig {sal['NET_v'].sum():,.0f})")
+    ok = validate(sal, fmd)
     write_outputs(sal, original_cols, a.out_prefix)
-    print("\nDONE" + ("" if ok else "  (WITH VALIDATION FAILURES — review before filing)"))
+    print("\nDONE" + ("" if ok else "  (VALIDATION FAILURES — review before filing)"))
     sys.exit(0 if ok else 2)
 
 if __name__ == "__main__":
