@@ -350,6 +350,14 @@ def validate(sal):
         print(f"  {'PASS' if v else 'FAIL'}  {k}")
     if c3_relaxed:
         print(f"  INFO  C3 relaxed on {c3_relaxed} floor-bound / ECR-pinned rows (expected)")
+    c3_fail = pf & below_ceiling & ~floor_bound & (sal["DIFF (12%_PF vs REVISED_PF)"].abs() > 1)
+    if c3_fail.any():
+        print(f"  C3 DIAGNOSTIC: {int(c3_fail.sum())} below-ceiling rows still off > Rs1, by rule:")
+        print("    " + sal.loc[c3_fail].groupby("RULE_APPLIED").size().to_string().replace("\n", "\n    "))
+        cols = ["RULE_APPLIED", "REVISED_BASIC", "REVISED_DA", "REVISED_PF",
+                "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
+                "ADJ_WORKING_DAYS", "MW_FLOOR", "REVISED_OTHER_DEDUCTION"]
+        print(sal.loc[c3_fail, [c for c in cols if c in sal.columns]].head(6).to_string())
     return all(checks.values())
 
 
