@@ -144,6 +144,25 @@ def reconcile(sal, ecr, fut, fmd):
     sal["REVISED_OTHER_DEDUCTION"] = (new_GROSS - np_) - pf - esi
     sal["RULE_075_RELAXED"] = (esi > 0) & (new_GROSS > GROSS_a + 1)
 
+    # ---- low-skill high-gross anomaly cleanup -------------------------- #
+    # House boy / house lady etc. showing GROSS > Rs50,000 is an inflated row
+    # (large attendance allowance offset by a large OTHER_DEDUCTION). Shrink it:
+    # reduce attendance allowance and OTHER_DEDUCTION together by the same amount
+    # (the most the deduction can absorb) so GROSS falls but NET is unchanged.
+    dcol = resolve(sal, "DESIGNATIONNAME", "DESIG", "DESIGNATION", "DUTYNAME", required=False)
+    low = (sal[dcol].astype(str).str.upper().str.contains(
+              r"HOUSE\s*(?:BOY|LADY|MAN|MAID|KEEP)", regex=True, na=False)
+           if dcol else pd.Series(False, index=sal.index))
+    sal["LOWSKILL_HIGH_FLAG"] = low & (sal["REVISED_GROSS"] > 50000)
+    X = (np.minimum(sal["REVISED_ATTENDANCE_ALLOWANCE"], sal["REVISED_OTHER_DEDUCTION"])
+         .clip(lower=0).where(sal["LOWSKILL_HIGH_FLAG"], 0.0))
+    sal["REVISED_ATTENDANCE_ALLOWANCE"] -= X
+    sal["REVISED_GROSS"] -= X
+    sal["REVISED_OTHER_DEDUCTION"] -= X
+    sal["REVISED_TOTAL_DED"] -= X
+    if int(sal["LOWSKILL_HIGH_FLAG"].sum()):
+        print(f"  low-skill >Rs50k de-inflated: {int(sal['LOWSKILL_HIGH_FLAG'].sum())} rows")
+
     # ---- ANCHORS ARE INVIOLABLE ---------------------------------------- #
     # REVISED_PF == ECR_PF and REVISED_ESIC == Future ESI, per employee, ALWAYS.
     # Nothing below may cap, zero, or otherwise change these two amounts. Ceiling
@@ -296,7 +315,7 @@ AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_
          "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_PAYABLE_DIFF", "RULE_APPLIED",
          "RULE_075_RELAXED", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
          "REVISED_%", "0.75% OF REVISED_GROSS", "ESI DIFF (0.75% vs REVISED_ESIC)", "ESI_%",
-         "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION"]
+         "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION", "LOWSKILL_HIGH_FLAG"]
 
 DROP_ON_LOAD = set(AUDIT) | {
     "ECR_PF", "EMP CODE", "ROW_COUNT", "IS_MAIN_PF", "IS_PRIMARY_ESI", "ECR_PF_CAPPED",
