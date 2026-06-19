@@ -69,8 +69,16 @@ OTHER_DED (`MULTI_SITE_SECONDARY_PF`). Zero-PF rows untouched (`MULTI_SITE_ZERO_
 2. **Min-Wage Floor** (`REVISED_PF>0`): `MW_FLOOR = (BASIC/NORMALDAYS) × ADJ_WORKING_DAYS`;
    if `REVISED_BASIC < MW_FLOOR − 0.5`: lift to floor, recompute `REVISED_PF = round(0.12×(REVISED_BASIC+REVISED_DA),2)`; remark `[MW_FLOOR_APPLIED]`. Floor lifts, never lowers.
 3. **Enforce REVISED_PF = 12%(REVISED_BASIC+DA)** for `REVISED_PF>0` outside ±0.1%:
-   set `REVISED_BASIC = round(REVISED_PF/0.12)`, absorb delta in REVISED_ATTENDANCE_ALLOWANCE
-   (GROSS/NET unchanged). Skip `REVISED_PF==0` (preserves Not-in-ECR rows).
+   target `BASIC = round(REVISED_PF/0.12)`.
+   - If target ≥ min-wage floor: set REVISED_BASIC = target, absorb delta in
+     REVISED_ATTENDANCE_ALLOWANCE (GROSS/NET unchanged).
+   - **If target < min-wage floor AND row is below ceiling (FIXED_BASIC+DA ≤ 15000):
+     REDUCE `ADJ_WORKING_DAYS = floor(target / daily_rate)`** so the floor drops to
+     permit basic = target (per-day minimum-wage rate preserved, only days fall) — e.g.
+     PF pinned to ECR ₹900 with basic stuck at the ₹8000 floor → reduce days so basic = ₹7,500
+     and 12% lands exactly ₹900. Note `DAYS_REDUCED_FOR_12PCT`.
+   - Above-ceiling Case-A earners keep high basic with capped PF (12% relaxes by design).
+   - Skip `REVISED_PF==0` (preserves Not-in-ECR rows).
 4. **Integer days:** `ADJ_WORKING_DAYS = clip(1,31).astype(int)`.
 
 ## ESI passes (on the PF-reconciled book; April FULL_MONTH=30)

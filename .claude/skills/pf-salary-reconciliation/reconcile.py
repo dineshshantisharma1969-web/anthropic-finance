@@ -204,14 +204,30 @@ def reconcile(sal, ecr, fut, full_month):
     sal.loc[lift, "REVISED_PF"] = (0.12 * (sal.loc[lift, "REVISED_BASIC"] + sal.loc[lift, "REVISED_DA"])).round(2)
     sal.loc[lift, "remark"] = sal.loc[lift, "remark"] + " [MW_FLOOR_APPLIED]"
 
-    # ---- enforce REVISED_PF == 12%(B+D) via attendance allowance -------- #
-    # Min-wage floor (hierarchy #2) outranks the 12% rule (#3): never lower
-    # REVISED_BASIC below the floor (skips above-ceiling Case-A rows).
+    # ---- enforce REVISED_PF == 12%(B+D) --------------------------------- #
+    # Target basic = REVISED_PF / 0.12 so 12% holds exactly. Where that target
+    # is below the min-wage floor (12% would force sub-minimum basic), REDUCE
+    # ADJ_WORKING_DAYS so the floor (= daily_rate x days) drops to permit it —
+    # the per-day minimum-wage rate is preserved, only days fall. Above the
+    # floor, absorb the basic change into attendance allowance (gross fixed).
     pfpos = sal["REVISED_PF"] > 0
     th = (sal["REVISED_PF"] * 0.001).clip(lower=0.5)
     gd_new = (sal["REVISED_PF"] / 0.12).round()
-    need = pfpos & ((gd_new - sal["REVISED_BASIC"]).abs() > th) & (gd_new >= sal["MW_FLOOR"] - 0.5)
-    delta = (gd_new - sal["REVISED_BASIC"]).where(need, 0.0)
+    daily = (sal["BASIC_v"] / sal["ND_v"].replace(0, np.nan)).fillna(0.0)
+
+    # only below-ceiling rows (FIXED_BASIC+DA <= 15000); above-ceiling Case-A
+    # earners keep high basic with capped PF — do NOT shrink their days.
+    below = (pfpos & (gd_new < sal["MW_FLOOR"] - 0.5) & (daily > 0)
+             & ((sal["FB_v"] + sal["FD_v"]) <= 15000))
+    nd = np.floor(gd_new / daily.where(daily > 0, np.nan)).fillna(sal["ADJ_WORKING_DAYS"])
+    nd = np.minimum(nd, sal["ADJ_WORKING_DAYS"]).clip(lower=1)
+    sal.loc[below, "ADJ_WORKING_DAYS"] = nd[below].round().astype(int)
+    sal["MW_FLOOR"] = np.where(below, daily * sal["ADJ_WORKING_DAYS"], sal["MW_FLOOR"])
+    sal.loc[below, "NOTES"] = (sal.loc[below, "NOTES"].astype(str) + " DAYS_REDUCED_FOR_12PCT").str.strip()
+
+    target = gd_new.where(gd_new >= sal["MW_FLOOR"] - 0.5, sal["REVISED_BASIC"])
+    need = pfpos & ((target - sal["REVISED_BASIC"]).abs() > th)
+    delta = (target - sal["REVISED_BASIC"]).where(need, 0.0)
     sal["REVISED_BASIC"] += delta
     sal["REVISED_ATTENDANCE_ALLOWANCE"] -= delta            # GROSS unchanged
 
