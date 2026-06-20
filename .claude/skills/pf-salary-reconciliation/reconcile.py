@@ -86,6 +86,14 @@ def load_future(path):
     return out
 
 
+# Deduction line-items (source cols DQ..EL) except PF, ESIC and OTHER DEDUCTION —
+# shown as REVISED_<item> after 'ESIC AS PER FUTURE' so the deduction stack is transparent.
+LINE_ITEMS = ["PT", "LWF", "UNIFORM", "ADVANCE", "TDS", "EMPLOYEE WELFARE FUND",
+              "FOOD DEDUCTION", "MOBILE DEDUCTION", "PROFESSIONAL FEES", "INSURANCE DEDUCTION",
+              "FINE", "ACCOMODATION", "INSURANCE", "FLEXI DED", "FOOD DEDUCTIONS",
+              "CONVEYANCE ALL DED", "LAUNDRY CHARGES", "MEAL DEDUCTION", "REFYNE ADVANCE"]
+
+
 # --------------------------------------------------------------------------- #
 # v3 / v4 reconciliation                                                       #
 # --------------------------------------------------------------------------- #
@@ -104,6 +112,14 @@ def reconcile(sal, ecr, fut, fmd):
                      ("SDD", ["SITEDIVISIONDAYS"])):
         col = resolve(sal, *names, required=False)
         sal[k + "_v"] = num(sal[col]) if col else pd.Series(0.0, index=sal.index)
+    # Deduction line-items (filed) + OTHER DEDUCTION -> target_OD (the value the user wants
+    # REVISED_OTHER_DEDUCTION to take: Sum(line-items)+OTHER DEDUCTION, never negative).
+    item_vals = {li: (num(sal[resolve(sal, li)]) if resolve(sal, li, required=False)
+                      else pd.Series(0.0, index=sal.index)) for li in LINE_ITEMS}
+    sum19 = sum(item_vals.values())
+    origOD = num(sal[resolve(sal, "OTHER DEDUCTION")]) if resolve(sal, "OTHER DEDUCTION", required=False) \
+        else pd.Series(0.0, index=sal.index)
+    target_OD = (sum19 + origOD).clip(lower=0.0).values
 
     # employee-level anchors
     sal["ECR_PF"] = num(sal["EMPCODE"].map(dict(zip(ecr["EMP CODE"].astype(str), ecr["ECR_PF"]))))
@@ -137,7 +153,7 @@ def reconcile(sal, ecr, fut, fmd):
     # ---- v3 core (per row, vectorised) --------------------------------- #
     BD_target = np.where(pf > 0, np.round(pf / 0.12), obasic + oda)
     GROSS_a = np.where(esi > 0, np.round(esi / 0.0075), ogross)
-    GROSS_c = np_ + pf + esi
+    GROSS_c = np_ + pf + esi + target_OD       # gross floor covers the real deductions too
     new_GROSS = np.maximum.reduce([GROSS_a, BD_target, GROSS_c])
     new_DA = np.minimum(oda, BD_target)
     new_BASIC = BD_target - new_DA
@@ -261,6 +277,15 @@ def reconcile(sal, ecr, fut, fmd):
     sal["ACTION_NEEDED"] = np.where(flagged, "Y", "N")
     sal["ACTION_REASON"] = reason
     sal["EXCESS_SALARY"] = excess
+
+    # ---- Revised deduction breakdown (placed after 'ESIC AS PER FUTURE' via AUDIT) ---- #
+    # REVISED_OTHER_DEDUCTION = Sum(line-items)+OTHER DEDUCTION (>=0); the gross floor above
+    # makes it tie out: REVISED_PF+REVISED_ESIC+REVISED_OTHER_DEDUCTION == REVISED_TOTAL_DED.
+    for li in LINE_ITEMS:
+        sal["REVISED_" + li] = item_vals[li].values
+    tie = np.abs(sal["REVISED_OTHER_DEDUCTION"].values - (sum19 + origOD).values) <= 1.0
+    sal["DEDUCTION_TIE_OUT"] = np.where(tie, "Y", "N")
+
     sal["RULE_APPLIED"] = np.select(
         [~emp_in_pf & ~emp_in_esi, sal["IS_MAIN_PF"], emp_in_pf & ~sal["IS_MAIN_PF"]],
         ["NO_PF_NO_ESI", "PF_ANCHOR", "PF_SECONDARY"], default="ESI_ONLY")
@@ -293,10 +318,16 @@ def validate(sal, fmd, ecr, fut):
                               + sal["REVISED_ATTENDANCE_ALLOWANCE"])).abs() <= 1).all(),
         "C8 NET=NETPAYABLE": (sal["NET_PAYABLE_DIFF"].abs() <= 1).all(),
         "C9 days in [1,FM]": sal["ADJ_WORKING_DAYS"].between(1, fmd).all(),
+        "C-DED PF+ESI+OTHER_DED=TOTAL_DED": ((sal["REVISED_TOTAL_DED"]
+            - (sal["REVISED_PF"] + sal["REVISED_ESIC"] + sal["REVISED_OTHER_DEDUCTION"])).abs() <= 1).all(),
     }
     print("\nVALIDATION")
     for k, v in checks.items():
         print(f"  {'PASS' if v else 'FAIL'}  {k}")
+    if "DEDUCTION_TIE_OUT" in sal.columns:
+        ny = int((sal["DEDUCTION_TIE_OUT"] == "Y").sum())
+        print(f"  INFO  deduction breakdown ties out on {ny} rows; "
+              f"{len(sal)-ny} flagged N (PF/ESI-anchor plug above listed line-items)")
     # Anchor totals (must match exactly)
     print(f"  ANCHOR totals: REVISED_PF {sal['REVISED_PF'].sum():,.0f} vs ECR {ecr['ECR_PF'].sum():,.0f} | "
           f"REVISED_ESIC {sal['REVISED_ESIC'].sum():,.0f} vs Future {fut['FUTURE_ESI'].sum():,.0f}")
@@ -313,7 +344,8 @@ def validate(sal, fmd, ecr, fut):
 # --------------------------------------------------------------------------- #
 AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_ALLOWANCE",
          "REVISED_GROSS", "ECR_PF", "REVISED_PF", "REVISED_ESIC", "Future_ESI",
-         "ESIC AS PER FUTURE", "ESI DIFFERENCE (Future-REVISED)", "REVISED_OTHER_DEDUCTION",
+         "ESIC AS PER FUTURE", *["REVISED_" + li for li in LINE_ITEMS], "DEDUCTION_TIE_OUT",
+         "ESI DIFFERENCE (Future-REVISED)", "REVISED_OTHER_DEDUCTION",
          "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_PAYABLE_DIFF", "RULE_APPLIED",
          "RULE_075_RELAXED", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
          "REVISED_%", "0.75% OF REVISED_GROSS", "ESI DIFF (0.75% vs REVISED_ESIC)", "ESI_%",

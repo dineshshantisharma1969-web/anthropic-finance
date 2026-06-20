@@ -127,6 +127,26 @@ companion script `verify_excess.py` (in this skill folder):
 `python verify_excess.py <Final_Complete.xlsx> --month YYYY-MM --out-prefix <Mon>` →
 `*_with_Excess.xlsx` + `*_Action_List.xlsx` (Verification_Report + Action_List sorted by EXCESS_SALARY).
 
+## Revised deduction breakdown (block after `ESIC AS PER FUTURE`)
+The source sheet lists deductions at cols DQ–EL. Carry the **19 line-items** (PT, LWF, UNIFORM, ADVANCE,
+TDS, EMPLOYEE WELFARE FUND, FOOD DEDUCTION, MOBILE DEDUCTION, PROFESSIONAL FEES, INSURANCE DEDUCTION,
+FINE, ACCOMODATION, INSURANCE, FLEXI DED, FOOD DEDUCTIONS, CONVEYANCE ALL DED, LAUNDRY CHARGES, MEAL
+DEDUCTION, REFYNE ADVANCE) into the output as `REVISED_<item>` (= filed values), placed **immediately
+after `ESIC AS PER FUTURE`** (excludes PF, ESIC, OTHER DEDUCTION — those already have REVISED_ columns).
+**User rule:** `REVISED_OTHER_DEDUCTION = Σ(19 line-items) + OTHER DEDUCTION` (clip ≥0 — never negative).
+To honour it AND keep NET / PF=ECR / ESI=Future / ATT≥0, lift the gross floor to cover the deductions:
+```
+target_OD = max(0, Σ(19 line-items) + OTHER DEDUCTION)
+GROSS_c   = NET + REVISED_PF + REVISED_ESIC + target_OD      # was NET+PF+ESI
+new_GROSS = max(ESI/0.0075, PF/0.12, GROSS_c)
+```
+Then `REVISED_OTHER_DEDUCTION = REVISED_TOTAL_DED − REVISED_PF − REVISED_ESIC` (≥ target_OD ≥ 0). It ties
+out (`REVISED_PF+REVISED_ESIC+REVISED_OTHER_DEDUCTION = REVISED_TOTAL_DED`, and the 19 items + OTHER
+DEDUCTION reconstruct it) **except** where the PF-basic or ESI floor forces gross higher — those rows
+carry a plug above the listed items and are marked `DEDUCTION_TIE_OUT='N'` (still ≥0). `C-DED` checks the
+identity. NB: this raises REVISED_GROSS toward the worker's *true earned* gross on rows with large ADVANCE
+recoveries (the old minimized gross understated them); EXCESS_SALARY on those rows reflects the real gross.
+
 ## Final normalization
 - **ECR_PF cap:** `ECR_PF_OUT = min(ECR_PF_filed, REVISED_PF)`.
 
@@ -134,15 +154,16 @@ companion script `verify_excess.py` (in this skill folder):
 C1 OTHER_DED ≥ 0 · C2 |REVISED_NET − NET| ≤ 1 · C3 |REVISED_PF − 12%(B+D)| ≤ 1 on PF>0 ·
 C4 ESI=0.75%×GROSS (informational; relaxes when ESI=Future conflicts) · C5 ATT_ALW ≥ 0 ·
 C6 TOTAL_DED ≥ 0 · C7 |GROSS−(B+D+ATT)| ≤ 1 · C9 ADJ_WORKING_DAYS ∈ [1,31] ·
-C10 ECR_PF_capped ≤ REVISED_PF · C-MW REVISED_BASIC ≥ MW_FLOOR on PF>0 · C-INT days integer.
+C10 ECR_PF_capped ≤ REVISED_PF · C-MW REVISED_BASIC ≥ MW_FLOOR on PF>0 · C-INT days integer ·
+C-DED |REVISED_PF+REVISED_ESIC+REVISED_OTHER_DEDUCTION − REVISED_TOTAL_DED| ≤ 1.
 Per-employee: Σ REVISED_PF = ECR_PF (₹0 gap); Σ REVISED_ESIC ≈ Future total (gap = Future-only employees).
 
 ## Outputs (two deliverables, mirror prior months)
 1. **`<Mon>26_Reconciliation_Report.xlsx`** — Summary, PF_Audit, ESI_Audit, Math_Checks, Reconciled_Data.
-2. **`<Mon>26_Final_Complete.xlsx`** — original salary columns + **24 appended audit columns**
-   (drop duplicate `ESIC.1`):
+2. **`<Mon>26_Final_Complete.xlsx`** — original salary columns + appended audit block (drop duplicate `ESIC.1`):
    `ADJ_WORKING_DAYS, REVISED_BASIC, REVISED_DA, REVISED_ATTENDANCE_ALLOWANCE, REVISED_GROSS,
-   ECR_PF, REVISED_PF, REVISED_ESIC, Future_ESI, ESIC AS PER FUTURE, ESI DIFFERENCE (Future-REVISED),
+   ECR_PF, REVISED_PF, REVISED_ESIC, Future_ESI, ESIC AS PER FUTURE,
+   REVISED_<19 deduction line-items>, DEDUCTION_TIE_OUT, ESI DIFFERENCE (Future-REVISED),
    REVISED_OTHER_DEDUCTION, REVISED_TOTAL_DED, REVISED_NET_PAYABLE, NET_PAYABLE_DIFF, RULE_APPLIED,
    NOTES, %, remark, 12% OF (REVISED_BASIC+DA), DIFF (12%_PF vs REVISED_PF), REVISED_%,
    MONTHLY_BD_PROJECTION, MONTHLY_GROSS_PROJECTION, ANOMALY_BELOW_CEILING, REAL_FULL_MONTH_GROSS,

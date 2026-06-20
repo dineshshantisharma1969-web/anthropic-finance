@@ -23,6 +23,12 @@ import pandas as pd
 
 TOL = 1000.0  # rupee threshold above which an implied excess is worth flagging
 
+# Deduction line-items (source cols DQ..EL) except PF, ESIC, OTHER DEDUCTION.
+LINE_ITEMS = ["PT", "LWF", "UNIFORM", "ADVANCE", "TDS", "EMPLOYEE WELFARE FUND",
+              "FOOD DEDUCTION", "MOBILE DEDUCTION", "PROFESSIONAL FEES", "INSURANCE DEDUCTION",
+              "FINE", "ACCOMODATION", "INSURANCE", "FLEXI DED", "FOOD DEDUCTIONS",
+              "CONVEYANCE ALL DED", "LAUNDRY CHARGES", "MEAL DEDUCTION", "REFYNE ADVANCE"]
+
 
 def _norm(s):
     return "".join(str(s).strip().upper().split())
@@ -81,6 +87,7 @@ def verify(df):
     chk("C5 ATT_ALW >= 0",                                  ratt < -0.5)
     chk("C6 TOTAL_DED >= 0",                                rtd < -0.5)
     chk("C9 ADJ_WORKING_DAYS in [1,31]",                    ~adj.between(1, 31))
+    chk("C-DED PF+ESI+OTHER_DED = TOTAL_DED",               (rtd - (rpf + resi + rod)).abs() > 1)
 
     ok = all(r[1] for r in rows)
     # totals (informational)
@@ -90,6 +97,60 @@ def verify(df):
         "REVISED_NET": rnet.sum(), "NETPAYABLE(orig)": onet.sum(),
     }
     return ok, rows, tot
+
+
+def rebuild_deductions(df, fmd):
+    """Break the OTHER-DEDUCTION lump back into the real line-items and make it tie out.
+
+    REVISED_OTHER_DEDUCTION = Sum(19 line-items) + OTHER DEDUCTION  (>=0 by construction),
+    with the gross floor lifted to cover them, so NET, PF=ECR, ESI=Future all hold and
+    attendance allowance stays >=0. Inserts the 19 REVISED_<item> columns + DEDUCTION_TIE_OUT
+    right after 'ESIC AS PER FUTURE'. Idempotent (drops prior-run copies first).
+    """
+    derived = (["DEDUCTION_TIE_OUT", "REAL_FULL_MONTH_GROSS", "OVERPAID_VS_RATE",
+                "ACTION_NEEDED", "ACTION_REASON", "EXCESS_SALARY"]
+               + ["REVISED_" + li for li in LINE_ITEMS])
+    df = df.drop(columns=[c for c in derived if c in df.columns])
+
+    revPF = num(df, "REVISED_PF"); revESI = num(df, "REVISED_ESIC")
+    BD = num(df, "REVISED_BASIC") + num(df, "REVISED_DA")
+    NET = num(df, "NETPAYABLE", "NET PAYABLE")
+    item_vals = {li: (num(df, li) if resolve(df, li, required=False) else pd.Series(0.0, index=df.index))
+                 for li in LINE_ITEMS}
+    sum19 = sum(item_vals.values())
+    origOD = num(df, "OTHER DEDUCTION", required=False)
+    target_OD = (sum19 + origOD).clip(lower=0.0)
+
+    GROSS_a = np.where(revESI.values > 0, revESI.values / 0.0075, 0.0)
+    new_GROSS = np.maximum.reduce([BD.values, GROSS_a, (NET + revPF + revESI + target_OD).values])
+    new_TD = new_GROSS - NET.values
+    new_OD = new_TD - revPF.values - revESI.values
+    df["REVISED_GROSS"] = new_GROSS
+    df["REVISED_TOTAL_DED"] = new_TD
+    df["REVISED_OTHER_DEDUCTION"] = new_OD
+    df["REVISED_ATTENDANCE_ALLOWANCE"] = new_GROSS - BD.values
+    df["REVISED_NET_PAYABLE"] = new_GROSS - new_TD
+    df["RULE_075_RELAXED"] = (revESI.values > 0) & (0.0075 * new_GROSS > revESI.values + 1)
+
+    adj = num(df, "ADJ_WORKING_DAYS").replace(0, np.nan).values
+    for c, val in (("MONTHLY_GROSS_PROJECTION", np.round(new_GROSS * fmd / adj)),
+                   ("MONTHLY_BD_PROJECTION", np.round(BD.values * fmd / adj)),
+                   ("0.75% OF REVISED_GROSS", np.round(0.0075 * new_GROSS, 2)),
+                   ("NET_PAYABLE_DIFF", df["REVISED_NET_PAYABLE"].values - NET.values),
+                   ("ESI_%", np.where(new_GROSS == 0, 0.0,
+                             np.round(revESI.values / np.where(new_GROSS == 0, np.nan, new_GROSS) * 100, 4)))):
+        if c in df.columns:
+            df[c] = val
+    if "ESI DIFF (0.75% vs REVISED_ESIC)" in df.columns:
+        df["ESI DIFF (0.75% vs REVISED_ESIC)"] = np.round(0.0075 * new_GROSS - revESI.values, 2)
+
+    tie = np.abs(new_OD - (sum19 + origOD).values) <= 1.0   # unclipped: credit rows floored to 0 -> N
+    block = pd.DataFrame({"REVISED_" + li: item_vals[li] for li in LINE_ITEMS}, index=df.index)
+    block["DEDUCTION_TIE_OUT"] = np.where(tie, "Y", "N")
+    anchor = resolve(df, "ESIC AS PER FUTURE")
+    pos = list(df.columns).index(anchor) + 1
+    df = pd.concat([df.iloc[:, :pos], block, df.iloc[:, pos:]], axis=1)
+    return df, int((~tie).sum())
 
 
 def add_excess(df, fmd):
@@ -144,6 +205,12 @@ def main():
     print(f"Reading {a.infile}")
     df = pd.read_excel(a.infile)
     print(f"  {df.shape[0]} rows x {df.shape[1]} cols   FULL_MONTH={fmd}")
+
+    print("\n=== DEDUCTION BREAKDOWN (REVISED_OTHER_DEDUCTION = Sum(line-items)+OTHER DED) ===")
+    df, n_untied = rebuild_deductions(df, fmd)
+    print(f"  inserted {len(LINE_ITEMS)} REVISED_<line-item> cols + DEDUCTION_TIE_OUT after 'ESIC AS PER FUTURE'")
+    print(f"  DEDUCTION_TIE_OUT: Y on {len(df)-n_untied} rows, N on {n_untied} "
+          f"(PF/ESI-anchor plug above the listed deductions)")
 
     print("\n=== VERIFICATION (re-derived from the file) ===")
     ok, rows, tot = verify(df)
