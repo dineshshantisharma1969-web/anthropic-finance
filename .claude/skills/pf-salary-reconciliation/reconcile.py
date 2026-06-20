@@ -259,6 +259,19 @@ def reconcile(sal, ecr, fut, fmd):
     real_fm = np.where(has_rate, np.round(fg_ * fmd / sdd_fm), np.nan)
     rate_days = np.where(has_rate, fg_ * sal["ND_v"].values / sdd_fm, np.nan)
     sal["REAL_FULL_MONTH_GROSS"] = real_fm
+
+    # ---- ESI on the ESI-eligible wage + reduced projected gross (non-destructive) ---- #
+    # REVISED_GROSS_NEW strips the only ESI-ineligible allowance (WASHING ALLOWANCE); ESIC_NEW =
+    # 0.75% of it (the 0.75% rule is unchanged; REVISED_ESIC stays = Future). PROJECTED_GROSS_NEW
+    # caps the projection at the worker's real full-month rate so the attendance plug / low-ADJ
+    # inflation can't explode it. Actual REVISED_GROSS / attendance / NET are NOT changed.
+    washc = resolve(sal, "WASHING ALLOWANCE", required=False)
+    wash = num(sal[washc]).values if washc else 0.0
+    gnew = np.maximum(0.0, sal["REVISED_GROSS"].values - wash)
+    sal["REVISED_GROSS_NEW"] = gnew
+    sal["ESIC_NEW"] = np.round(0.0075 * gnew, 2)
+    proj_new = gnew * fmd / sal["ADJ_WORKING_DAYS"].values
+    sal["PROJECTED_GROSS_NEW"] = np.round(np.where(has_rate, np.minimum(proj_new, real_fm), proj_new))
     sal["OVERPAID_VS_RATE"] = np.where(
         has_rate, np.maximum(0.0, np.round(sal["REVISED_GROSS"].values - rate_days)), np.nan)
     excess = np.where(
@@ -349,6 +362,7 @@ AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_
          "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_PAYABLE_DIFF", "RULE_APPLIED",
          "RULE_075_RELAXED", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
          "REVISED_%", "0.75% OF REVISED_GROSS", "ESI DIFF (0.75% vs REVISED_ESIC)", "ESI_%",
+         "REVISED_GROSS_NEW", "ESIC_NEW", "PROJECTED_GROSS_NEW",
          "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION", "ANOMALY_BELOW_CEILING",
          "REAL_FULL_MONTH_GROSS", "OVERPAID_VS_RATE", "ACTION_NEEDED", "ACTION_REASON",
          "EXCESS_SALARY"]

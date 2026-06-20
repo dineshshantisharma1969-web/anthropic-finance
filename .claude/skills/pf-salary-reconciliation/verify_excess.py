@@ -108,7 +108,8 @@ def rebuild_deductions(df, fmd):
     right after 'ESIC AS PER FUTURE'. Idempotent (drops prior-run copies first).
     """
     derived = (["DEDUCTION_TIE_OUT", "REAL_FULL_MONTH_GROSS", "OVERPAID_VS_RATE",
-                "ACTION_NEEDED", "ACTION_REASON", "EXCESS_SALARY"]
+                "ACTION_NEEDED", "ACTION_REASON", "EXCESS_SALARY",
+                "REVISED_GROSS_NEW", "ESIC_NEW", "PROJECTED_GROSS_NEW"]
                + ["REVISED_" + li for li in LINE_ITEMS])
     df = df.drop(columns=[c for c in derived if c in df.columns])
 
@@ -150,6 +151,20 @@ def rebuild_deductions(df, fmd):
     anchor = resolve(df, "ESIC AS PER FUTURE")
     pos = list(df.columns).index(anchor) + 1
     df = pd.concat([df.iloc[:, :pos], block, df.iloc[:, pos:]], axis=1)
+
+    # ESI on the ESI-eligible wage + reduced projected gross (non-destructive; after 'ESI_%').
+    fg = num(df, "FIXEDGROSS", "FIXED_GROSS"); sdd = num(df, "SITEDIVISIONDAYS")
+    sdd_ = np.where(sdd.values > 0, sdd.values, float(fmd)); has_rate = (fg.values > 0)
+    real_fm = np.where(has_rate, np.round(fg.values * fmd / sdd_), np.nan)
+    wash = num(df, "WASHING ALLOWANCE").values if resolve(df, "WASHING ALLOWANCE", required=False) else 0.0
+    gnew = np.maximum(0.0, num(df, "REVISED_GROSS").values - wash)
+    adj = num(df, "ADJ_WORKING_DAYS").replace(0, np.nan).values
+    proj_new = gnew * fmd / adj
+    esiblk = pd.DataFrame({"REVISED_GROSS_NEW": gnew, "ESIC_NEW": np.round(0.0075 * gnew, 2),
+                           "PROJECTED_GROSS_NEW": np.round(np.where(has_rate, np.minimum(proj_new, real_fm), proj_new))},
+                          index=df.index)
+    p2 = list(df.columns).index(resolve(df, "ESI_%")) + 1 if resolve(df, "ESI_%", required=False) else len(df.columns)
+    df = pd.concat([df.iloc[:, :p2], esiblk, df.iloc[:, p2:]], axis=1)
     return df, int((~tie).sum())
 
 

@@ -147,6 +147,18 @@ carry a plug above the listed items and are marked `DEDUCTION_TIE_OUT='N'` (stil
 identity. NB: this raises REVISED_GROSS toward the worker's *true earned* gross on rows with large ADVANCE
 recoveries (the old minimized gross understated them); EXCESS_SALARY on those rows reflects the real gross.
 
+## ESI on the eligible wage + reduced projection (new columns, non-destructive)
+Three columns after `ESI_%` (actual REVISED_GROSS / attendance / deductions / NET are NOT changed):
+- `REVISED_GROSS_NEW = max(0, REVISED_GROSS − WASHING ALLOWANCE)` — the ESI-eligible wage (washing
+  allowance is the one ESI-ineligible component stripped).
+- `ESIC_NEW = round(0.0075 × REVISED_GROSS_NEW, 2)` — the **0.75% rule is unchanged**; this is what ESI
+  *would* be on the eligible wage. **`REVISED_ESIC` / `ESIC AS PER FUTURE` stay = Future (anchor intact).**
+  Where `ESIC_NEW > 0` but `REVISED_ESIC = 0`, the worker is ESI-eligible (wage ≤ ₹21k) yet Future shows
+  none → register inconsistency to chase.
+- `PROJECTED_GROSS_NEW = min(REVISED_GROSS_NEW × FULL_MONTH / ADJ_WORKING_DAYS, REAL_FULL_MONTH_GROSS)` —
+  the reduced projected gross, capped at the worker's real full-month rate so the attendance-plug / low-ADJ
+  inflation can't explode it (e.g. MAHAVIR 177,255 → 16,020).
+
 ## Final normalization
 - **ECR_PF cap:** `ECR_PF_OUT = min(ECR_PF_filed, REVISED_PF)`.
 
@@ -166,6 +178,7 @@ Per-employee: Σ REVISED_PF = ECR_PF (₹0 gap); Σ REVISED_ESIC ≈ Future tota
    REVISED_<19 deduction line-items>, DEDUCTION_TIE_OUT, ESI DIFFERENCE (Future-REVISED),
    REVISED_OTHER_DEDUCTION, REVISED_TOTAL_DED, REVISED_NET_PAYABLE, NET_PAYABLE_DIFF, RULE_APPLIED,
    NOTES, %, remark, 12% OF (REVISED_BASIC+DA), DIFF (12%_PF vs REVISED_PF), REVISED_%,
+   REVISED_GROSS_NEW, ESIC_NEW, PROJECTED_GROSS_NEW,
    MONTHLY_BD_PROJECTION, MONTHLY_GROSS_PROJECTION, ANOMALY_BELOW_CEILING, REAL_FULL_MONTH_GROSS,
    OVERPAID_VS_RATE, ACTION_NEEDED, ACTION_REASON, EXCESS_SALARY` (EXCESS_SALARY is the final column).
    Audit columns `12% OF …`, `DIFF …`, `REVISED_%` are written as **live Excel formulas**.
