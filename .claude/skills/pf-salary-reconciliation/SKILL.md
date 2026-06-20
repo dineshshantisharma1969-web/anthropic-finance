@@ -149,8 +149,8 @@ recoveries (the old minimized gross understated them); EXCESS_SALARY on those ro
 
 ## ESI on the eligible wage + reduced projection (new columns, non-destructive)
 Three columns after `ESI_%` (actual REVISED_GROSS / attendance / deductions / NET are NOT changed):
-- `REVISED_GROSS_NEW = max(0, REVISED_GROSS − WASHING ALLOWANCE)` — the ESI-eligible wage (washing
-  allowance is the one ESI-ineligible component stripped).
+- `REVISED_GROSS_NEW = max(0, ESI WAGES − WASHING ALLOWANCE)` — the ESI-eligible wage for the days
+  actually worked (ESI WAGES = daily rate × days worked; washing is the one ESI-ineligible component stripped).
 - `ESIC_NEW = round(0.0075 × REVISED_GROSS_NEW, 2)` — the **0.75% rule is unchanged**; this is what ESI
   *would* be on the eligible wage. **`REVISED_ESIC` / `ESIC AS PER FUTURE` stay = Future (anchor intact).**
   Where `ESIC_NEW > 0` but `REVISED_ESIC = 0`, the worker is ESI-eligible (wage ≤ ₹21k) yet Future shows

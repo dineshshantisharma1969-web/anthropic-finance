@@ -157,7 +157,7 @@ def rebuild_deductions(df, fmd):
     sdd_ = np.where(sdd.values > 0, sdd.values, float(fmd)); has_rate = (fg.values > 0)
     real_fm = np.where(has_rate, np.round(fg.values * fmd / sdd_), np.nan)
     wash = num(df, "WASHING ALLOWANCE").values if resolve(df, "WASHING ALLOWANCE", required=False) else 0.0
-    gnew = np.maximum(0.0, num(df, "REVISED_GROSS").values - wash)
+    gnew = np.maximum(0.0, num(df, "ESI WAGES").values - wash)   # wage for days worked (rate x days)
     adj = num(df, "ADJ_WORKING_DAYS").replace(0, np.nan).values
     proj_new = gnew * fmd / adj
     esiblk = pd.DataFrame({"REVISED_GROSS_NEW": gnew, "ESIC_NEW": np.round(0.0075 * gnew, 2),

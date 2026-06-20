@@ -261,13 +261,13 @@ def reconcile(sal, ecr, fut, fmd):
     sal["REAL_FULL_MONTH_GROSS"] = real_fm
 
     # ---- ESI on the ESI-eligible wage + reduced projected gross (non-destructive) ---- #
-    # REVISED_GROSS_NEW strips the only ESI-ineligible allowance (WASHING ALLOWANCE); ESIC_NEW =
-    # 0.75% of it (the 0.75% rule is unchanged; REVISED_ESIC stays = Future). PROJECTED_GROSS_NEW
-    # caps the projection at the worker's real full-month rate so the attendance plug / low-ADJ
-    # inflation can't explode it. Actual REVISED_GROSS / attendance / NET are NOT changed.
+    # REVISED_GROSS_NEW = ESI WAGES (the wage for days actually worked = daily rate x days) minus the
+    # only ESI-ineligible allowance (WASHING). ESIC_NEW = 0.75% of it (0.75% rule unchanged; REVISED_ESIC
+    # stays = Future). PROJECTED_GROSS_NEW caps the projection at the worker's real full-month rate so the
+    # attendance plug / low-ADJ inflation can't explode it. Actual REVISED_GROSS / attendance / NET unchanged.
     washc = resolve(sal, "WASHING ALLOWANCE", required=False)
     wash = num(sal[washc]).values if washc else 0.0
-    gnew = np.maximum(0.0, sal["REVISED_GROSS"].values - wash)
+    gnew = np.maximum(0.0, sal["ESIW_v"].values - wash)
     sal["REVISED_GROSS_NEW"] = gnew
     sal["ESIC_NEW"] = np.round(0.0075 * gnew, 2)
     proj_new = gnew * fmd / sal["ADJ_WORKING_DAYS"].values
