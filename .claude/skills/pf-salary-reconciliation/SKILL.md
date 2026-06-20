@@ -158,6 +158,9 @@ Three columns after `ESI_%` (actual REVISED_GROSS / attendance / deductions / NE
 - `PROJECTED_GROSS_NEW = min(REVISED_GROSS_NEW × FULL_MONTH / ADJ_WORKING_DAYS, REAL_FULL_MONTH_GROSS)` —
   the reduced projected gross, capped at the worker's real full-month rate so the attendance-plug / low-ADJ
   inflation can't explode it (e.g. MAHAVIR 177,255 → 16,020).
+All three are written as **live Excel formulas** (`write_esi_formulas`): `REVISED_GROSS_NEW = MAX(0, ESI WAGES
+− WASHING ALLOWANCE)`, `ESIC_NEW = ROUND(0.0075×REVISED_GROSS_NEW,2)`, `PROJECTED_GROSS_NEW = ROUND(MIN(…),0)`
+— so editing the tools (days / ESI WAGES / washing) recomputes them in-sheet.
 
 ## Final normalization
 - **ECR_PF cap:** `ECR_PF_OUT = min(ECR_PF_filed, REVISED_PF)`.

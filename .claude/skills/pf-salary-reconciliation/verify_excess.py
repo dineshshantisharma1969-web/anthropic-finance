@@ -207,6 +207,34 @@ def add_excess(df, fmd):
     return df, int(flagged.sum())
 
 
+def write_esi_formulas(path, fmd):
+    """Rewrite REVISED_GROSS_NEW / ESIC_NEW / PROJECTED_GROSS_NEW as LIVE Excel formulas, so they
+    recompute when the user moves the tools (days / ESI WAGES / washing). Column-letter driven."""
+    import openpyxl
+    from openpyxl.utils import get_column_letter
+    wb = openpyxl.load_workbook(path)
+    ws = wb[wb.sheetnames[0]]
+    hdr = {str(c.value).strip(): get_column_letter(i + 1) for i, c in enumerate(ws[1])}
+    def L(*names):
+        for n in names:
+            for h, col in hdr.items():
+                if "".join(h.upper().split()) == "".join(n.upper().split()):
+                    return col
+        return None
+    gN, eN, pN = L("REVISED_GROSS_NEW"), L("ESIC_NEW"), L("PROJECTED_GROSS_NEW")
+    ew, wa = L("ESI WAGES"), L("WASHING ALLOWANCE")
+    adj, rfm = L("ADJ_WORKING_DAYS"), L("REAL_FULL_MONTH_GROSS")
+    if not (gN and eN and pN and ew and adj and rfm):
+        wb.close(); return
+    wexpr = (lambda r: f"-{wa}{r}") if wa else (lambda r: "")
+    for r in range(2, ws.max_row + 1):
+        ws[f"{gN}{r}"] = f"=MAX(0,{ew}{r}{wexpr(r)})"
+        ws[f"{eN}{r}"] = f"=ROUND(0.0075*{gN}{r},2)"
+        ws[f"{pN}{r}"] = (f"=ROUND(IF(ISNUMBER({rfm}{r}),"
+                          f"MIN({gN}{r}*{fmd}/{adj}{r},{rfm}{r}),{gN}{r}*{fmd}/{adj}{r}),0)")
+    wb.save(path); wb.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("infile")
@@ -249,7 +277,8 @@ def main():
     # ---- outputs ----
     full = f"{a.outdir}/{a.out_prefix}_Final_Complete_with_Excess.xlsx"
     df.to_excel(full, index=False)
-    print(f"\nwrote {full}  ({df.shape[0]} x {df.shape[1]})")
+    write_esi_formulas(full, fmd)   # REVISED_GROSS_NEW / ESIC_NEW / PROJECTED_GROSS_NEW as live formulas
+    print(f"\nwrote {full}  ({df.shape[0]} x {df.shape[1]})  [ESI columns are live Excel formulas]")
 
     EMP = resolve(df, "EMPCODE", "EMP CODE"); FN = resolve(df, "FULLNAME", required=False)
     slim = [c for c in [EMP, FN, "SITECODE", "DESIGNATIONNAME", "NORMALDAYS",

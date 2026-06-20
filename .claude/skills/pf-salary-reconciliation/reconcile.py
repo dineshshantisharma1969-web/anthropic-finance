@@ -373,13 +373,41 @@ DROP_ON_LOAD = set(AUDIT) | {
     "12% OF REVISED_BASIC", "REVISED_%", "%", "remark", "NOTES", "RULE_APPLIED",
     "ADJ_WORKING_DAYS", "REVISED_TOTAL_DED", "emp_in_pf", "emp_in_esi"}
 
-def write_outputs(sal, original_cols, prefix, ecr, fut):
+def write_esi_formulas(path, fmd):
+    """Rewrite REVISED_GROSS_NEW / ESIC_NEW / PROJECTED_GROSS_NEW as LIVE Excel formulas so they
+    recompute when the user moves the tools (days / ESI WAGES / washing). Column-letter driven."""
+    import openpyxl
+    from openpyxl.utils import get_column_letter
+    wb = openpyxl.load_workbook(path)
+    ws = wb[wb.sheetnames[0]]
+    hdr = {str(c.value).strip(): get_column_letter(i + 1) for i, c in enumerate(ws[1])}
+    def L(*names):
+        for n in names:
+            for h, col in hdr.items():
+                if "".join(h.upper().split()) == "".join(n.upper().split()):
+                    return col
+        return None
+    gN, eN, pN = L("REVISED_GROSS_NEW"), L("ESIC_NEW"), L("PROJECTED_GROSS_NEW")
+    ew, wa, adj, rfm = L("ESI WAGES"), L("WASHING ALLOWANCE"), L("ADJ_WORKING_DAYS"), L("REAL_FULL_MONTH_GROSS")
+    if not (gN and eN and pN and ew and adj and rfm):
+        wb.close(); return
+    we = (lambda r: f"-{wa}{r}") if wa else (lambda r: "")
+    for r in range(2, ws.max_row + 1):
+        ws[f"{gN}{r}"] = f"=MAX(0,{ew}{r}{we(r)})"
+        ws[f"{eN}{r}"] = f"=ROUND(0.0075*{gN}{r},2)"
+        ws[f"{pN}{r}"] = (f"=ROUND(IF(ISNUMBER({rfm}{r}),"
+                          f"MIN({gN}{r}*{fmd}/{adj}{r},{rfm}{r}),{gN}{r}*{fmd}/{adj}{r}),0)")
+    wb.save(path); wb.close()
+
+
+def write_outputs(sal, original_cols, prefix, ecr, fut, fmd):
     final = sal.copy()
     keep = [c for c in original_cols if c != "ESIC.1"] + AUDIT
     final = final[[c for c in dict.fromkeys(keep) if c in final.columns]]
     fc = f"{prefix}_Final_Complete.xlsx"
     final.to_excel(fc, index=False)
-    print(f"\nwrote {fc}  ({final.shape[0]} rows x {final.shape[1]} cols)")
+    write_esi_formulas(fc, fmd)   # ESI columns as live Excel formulas
+    print(f"\nwrote {fc}  ({final.shape[0]} rows x {final.shape[1]} cols)  [ESI cols are live formulas]")
 
     rep = f"{prefix}_Reconciliation_Report.xlsx"
     fn = resolve(sal, "FULLNAME", required=False) or "EMPCODE"
@@ -446,7 +474,7 @@ def main():
           f"REVISED_ESIC {sal['REVISED_ESIC'].sum():,.0f} (Future {fut['FUTURE_ESI'].sum():,.0f}) | "
           f"NET {sal['REVISED_NET_PAYABLE'].sum():,.0f} (orig {sal['NET_v'].sum():,.0f})")
     ok = validate(sal, fmd, ecr, fut)
-    write_outputs(sal, original_cols, a.out_prefix, ecr, fut)
+    write_outputs(sal, original_cols, a.out_prefix, ecr, fut, fmd)
     print("\nDONE" + ("" if ok else "  (VALIDATION FAILURES — review before filing)"))
     sys.exit(0 if ok else 2)
 
