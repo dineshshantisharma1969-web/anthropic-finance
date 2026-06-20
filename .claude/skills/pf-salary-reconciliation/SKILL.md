@@ -110,6 +110,23 @@ is ≤ ₹21,000 but the employee is **not** in ESI (or `FIXED_BASIC×FM/SDD` �
 row is a register inconsistency (he *should* be covered). Keep the realistic projection and set the
 flag for manual review — do NOT distort days/allowances to hide it. Designation/job-title is irrelevant.
 
+## Excess salary (action column — last column of Final_Complete)
+Surfaces, per worker, how far the **implied full-month pay** overshoots his **legitimate FIXED rate**,
+so the user can see where to act. Computed in the audit block (FULL_MONTH from the month;
+`sdd = SITEDIVISIONDAYS if >0 else FULL_MONTH`):
+- `REAL_FULL_MONTH_GROSS = round(FIXEDGROSS × FULL_MONTH / sdd)` — legit full-month gross at his rate.
+- `OVERPAID_VS_RATE = max(0, round(REVISED_GROSS − FIXEDGROSS × NORMALDAYS / sdd))` — believable rupees
+  paid this month above his fixed rate (robust to bad day-counts; context column).
+- `EXCESS_SALARY = max(0, round(MONTHLY_GROSS_PROJECTION − REAL_FULL_MONTH_GROSS))` — **headline, LAST column**.
+  ≥0; blank where no FIXEDGROSS. Honest workers ≈ ₹0; manipulated/absurd rows light up.
+- `ACTION_NEEDED = Y` when `EXCESS_SALARY > ₹1,000`; `ACTION_REASON` explains the driver:
+  `NO_FIXED_RATE` · `LOW ATTENDANCE DAYS` (NORMALDAYS ≤ 3 → projection inflated by ×(FM/days)) ·
+  `ESI-EXEMPT but real rate ≤ ₹21,000` (the M7 anomaly) · `PAID ABOVE FIXED RATE` · `IMPLIED ≫ rate`.
+Standalone re-verify + augment of an existing `*_Final_Complete.xlsx` (no raw inputs needed) via the
+companion script `verify_excess.py` (in this skill folder):
+`python verify_excess.py <Final_Complete.xlsx> --month YYYY-MM --out-prefix <Mon>` →
+`*_with_Excess.xlsx` + `*_Action_List.xlsx` (Verification_Report + Action_List sorted by EXCESS_SALARY).
+
 ## Final normalization
 - **ECR_PF cap:** `ECR_PF_OUT = min(ECR_PF_filed, REVISED_PF)`.
 
@@ -128,7 +145,8 @@ Per-employee: Σ REVISED_PF = ECR_PF (₹0 gap); Σ REVISED_ESIC ≈ Future tota
    ECR_PF, REVISED_PF, REVISED_ESIC, Future_ESI, ESIC AS PER FUTURE, ESI DIFFERENCE (Future-REVISED),
    REVISED_OTHER_DEDUCTION, REVISED_TOTAL_DED, REVISED_NET_PAYABLE, NET_PAYABLE_DIFF, RULE_APPLIED,
    NOTES, %, remark, 12% OF (REVISED_BASIC+DA), DIFF (12%_PF vs REVISED_PF), REVISED_%,
-   MONTHLY_BD_PROJECTION, MONTHLY_GROSS_PROJECTION`.
+   MONTHLY_BD_PROJECTION, MONTHLY_GROSS_PROJECTION, ANOMALY_BELOW_CEILING, REAL_FULL_MONTH_GROSS,
+   OVERPAID_VS_RATE, ACTION_NEEDED, ACTION_REASON, EXCESS_SALARY` (EXCESS_SALARY is the final column).
    Audit columns `12% OF …`, `DIFF …`, `REVISED_%` are written as **live Excel formulas**.
 
 ## Usage

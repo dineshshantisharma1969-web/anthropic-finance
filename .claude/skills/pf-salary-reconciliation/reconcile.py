@@ -232,6 +232,35 @@ def reconcile(sal, ecr, fut, fmd):
                             sal["REVISED_ESIC"] / sal["REVISED_GROSS"].replace(0, np.nan) * 100).round(4)
     sal["MONTHLY_BD_PROJECTION"] = (bdf * fmd / sal["ADJ_WORKING_DAYS"]).round(0)
     sal["MONTHLY_GROSS_PROJECTION"] = (sal["REVISED_GROSS"] * fmd / sal["ADJ_WORKING_DAYS"]).round(0)
+
+    # ---- Rule M7 excess-salary action columns (EXCESS_SALARY is the LAST column) ---- #
+    # Surfaces workers whose implied full-month pay exceeds their legitimate FIXED rate,
+    # so the user sees where to act. REAL_FULL_MONTH_GROSS = the worker's real rate scaled
+    # to a full month; EXCESS_SALARY = how much the implied projection overshoots it.
+    sdd_fm = np.where(sal["SDD_v"].values > 0, sal["SDD_v"].values, float(fmd))
+    fg_ = sal["FG_v"].values
+    has_rate = fg_ > 0
+    real_fm = np.where(has_rate, np.round(fg_ * fmd / sdd_fm), np.nan)
+    rate_days = np.where(has_rate, fg_ * sal["ND_v"].values / sdd_fm, np.nan)
+    sal["REAL_FULL_MONTH_GROSS"] = real_fm
+    sal["OVERPAID_VS_RATE"] = np.where(
+        has_rate, np.maximum(0.0, np.round(sal["REVISED_GROSS"].values - rate_days)), np.nan)
+    excess = np.where(
+        has_rate, np.maximum(0.0, np.round(sal["MONTHLY_GROSS_PROJECTION"].values - real_fm)), np.nan)
+    flagged = has_rate & (excess > 1000)
+    low_days = sal["ND_v"].values <= 3
+    anom = sal["ANOMALY_BELOW_CEILING"].values
+    reason = np.full(len(sal), "", dtype=object)
+    reason[~has_rate] = "NO_FIXED_RATE (cannot assess)"
+    reason[flagged & low_days] = "LOW ATTENDANCE DAYS - verify attendance (few days vs gross)"
+    sel = flagged & ~low_days & anom
+    reason[sel] = "ESI-EXEMPT but real full-month rate <= Rs.21,000 - should be in ESI"
+    sel = flagged & ~low_days & ~anom & (np.nan_to_num(sal["OVERPAID_VS_RATE"].values) > 1000)
+    reason[sel] = "PAID ABOVE FIXED RATE this month"
+    reason[flagged & (reason == "")] = "IMPLIED FULL-MONTH >> fixed rate - review"
+    sal["ACTION_NEEDED"] = np.where(flagged, "Y", "N")
+    sal["ACTION_REASON"] = reason
+    sal["EXCESS_SALARY"] = excess
     sal["RULE_APPLIED"] = np.select(
         [~emp_in_pf & ~emp_in_esi, sal["IS_MAIN_PF"], emp_in_pf & ~sal["IS_MAIN_PF"]],
         ["NO_PF_NO_ESI", "PF_ANCHOR", "PF_SECONDARY"], default="ESI_ONLY")
@@ -288,7 +317,9 @@ AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_
          "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_PAYABLE_DIFF", "RULE_APPLIED",
          "RULE_075_RELAXED", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
          "REVISED_%", "0.75% OF REVISED_GROSS", "ESI DIFF (0.75% vs REVISED_ESIC)", "ESI_%",
-         "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION", "ANOMALY_BELOW_CEILING"]
+         "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION", "ANOMALY_BELOW_CEILING",
+         "REAL_FULL_MONTH_GROSS", "OVERPAID_VS_RATE", "ACTION_NEEDED", "ACTION_REASON",
+         "EXCESS_SALARY"]
 
 DROP_ON_LOAD = set(AUDIT) | {
     "ECR_PF", "EMP CODE", "ROW_COUNT", "IS_MAIN_PF", "IS_PRIMARY_ESI", "ECR_PF_CAPPED",
