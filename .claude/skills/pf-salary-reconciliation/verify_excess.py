@@ -109,7 +109,7 @@ def rebuild_deductions(df, fmd):
     """
     derived = (["DEDUCTION_TIE_OUT", "REAL_FULL_MONTH_GROSS", "OVERPAID_VS_RATE",
                 "ACTION_NEEDED", "ACTION_REASON", "EXCESS_SALARY",
-                "REVISED_GROSS_NEW", "ESIC_NEW", "PROJECTED_GROSS_NEW"]
+                "REVISED_GROSS_NEW", "ESIC_NEW", "ESIC_NEW_vs_FUTURE", "PROJECTED_GROSS_NEW"]
                + ["REVISED_" + li for li in LINE_ITEMS])
     df = df.drop(columns=[c for c in derived if c in df.columns])
 
@@ -161,6 +161,7 @@ def rebuild_deductions(df, fmd):
     adj = num(df, "ADJ_WORKING_DAYS").replace(0, np.nan).values
     proj_new = gnew * fmd / adj
     esiblk = pd.DataFrame({"REVISED_GROSS_NEW": gnew, "ESIC_NEW": np.round(0.0075 * gnew, 2),
+                           "ESIC_NEW_vs_FUTURE": np.round(0.0075 * gnew - num(df, "ESIC AS PER FUTURE").values, 2),
                            "PROJECTED_GROSS_NEW": np.round(np.where(has_rate, np.minimum(proj_new, real_fm), proj_new))},
                           index=df.index)
     p2 = list(df.columns).index(resolve(df, "ESI_%")) + 1 if resolve(df, "ESI_%", required=False) else len(df.columns)
@@ -222,6 +223,7 @@ def write_esi_formulas(path, fmd):
                     return col
         return None
     gN, eN, pN = L("REVISED_GROSS_NEW"), L("ESIC_NEW"), L("PROJECTED_GROSS_NEW")
+    gap, fcol = L("ESIC_NEW_vs_FUTURE"), L("ESIC AS PER FUTURE")
     ew, wa = L("ESI WAGES"), L("WASHING ALLOWANCE")
     adj, rfm = L("ADJ_WORKING_DAYS"), L("REAL_FULL_MONTH_GROSS")
     if not (gN and eN and pN and ew and adj and rfm):
@@ -232,6 +234,8 @@ def write_esi_formulas(path, fmd):
         ws[f"{eN}{r}"] = f"=ROUND(0.0075*{gN}{r},2)"
         ws[f"{pN}{r}"] = (f"=ROUND(IF(ISNUMBER({rfm}{r}),"
                           f"MIN({gN}{r}*{fmd}/{adj}{r},{rfm}{r}),{gN}{r}*{fmd}/{adj}{r}),0)")
+        if gap and fcol:
+            ws[f"{gap}{r}"] = f"=ROUND({eN}{r}-{fcol}{r},2)"
     wb.save(path); wb.close()
 
 

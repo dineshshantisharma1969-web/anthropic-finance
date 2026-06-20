@@ -270,6 +270,8 @@ def reconcile(sal, ecr, fut, fmd):
     gnew = np.maximum(0.0, sal["ESIW_v"].values - wash)
     sal["REVISED_GROSS_NEW"] = gnew
     sal["ESIC_NEW"] = np.round(0.0075 * gnew, 2)
+    # gap vs the anchored Future ESI: 0 = consistent; >0 = ESI missing (worker looks ESI-eligible)
+    sal["ESIC_NEW_vs_FUTURE"] = np.round(sal["ESIC_NEW"].values - sal["ESIC AS PER FUTURE"].values, 2)
     proj_new = gnew * fmd / sal["ADJ_WORKING_DAYS"].values
     sal["PROJECTED_GROSS_NEW"] = np.round(np.where(has_rate, np.minimum(proj_new, real_fm), proj_new))
     sal["OVERPAID_VS_RATE"] = np.where(
@@ -362,7 +364,7 @@ AUDIT = ["ADJ_WORKING_DAYS", "REVISED_BASIC", "REVISED_DA", "REVISED_ATTENDANCE_
          "REVISED_TOTAL_DED", "REVISED_NET_PAYABLE", "NET_PAYABLE_DIFF", "RULE_APPLIED",
          "RULE_075_RELAXED", "12% OF (REVISED_BASIC+DA)", "DIFF (12%_PF vs REVISED_PF)",
          "REVISED_%", "0.75% OF REVISED_GROSS", "ESI DIFF (0.75% vs REVISED_ESIC)", "ESI_%",
-         "REVISED_GROSS_NEW", "ESIC_NEW", "PROJECTED_GROSS_NEW",
+         "REVISED_GROSS_NEW", "ESIC_NEW", "ESIC_NEW_vs_FUTURE", "PROJECTED_GROSS_NEW",
          "MONTHLY_BD_PROJECTION", "MONTHLY_GROSS_PROJECTION", "ANOMALY_BELOW_CEILING",
          "REAL_FULL_MONTH_GROSS", "OVERPAID_VS_RATE", "ACTION_NEEDED", "ACTION_REASON",
          "EXCESS_SALARY"]
@@ -388,6 +390,7 @@ def write_esi_formulas(path, fmd):
                     return col
         return None
     gN, eN, pN = L("REVISED_GROSS_NEW"), L("ESIC_NEW"), L("PROJECTED_GROSS_NEW")
+    gap, fcol = L("ESIC_NEW_vs_FUTURE"), L("ESIC AS PER FUTURE")
     ew, wa, adj, rfm = L("ESI WAGES"), L("WASHING ALLOWANCE"), L("ADJ_WORKING_DAYS"), L("REAL_FULL_MONTH_GROSS")
     if not (gN and eN and pN and ew and adj and rfm):
         wb.close(); return
@@ -397,6 +400,8 @@ def write_esi_formulas(path, fmd):
         ws[f"{eN}{r}"] = f"=ROUND(0.0075*{gN}{r},2)"
         ws[f"{pN}{r}"] = (f"=ROUND(IF(ISNUMBER({rfm}{r}),"
                           f"MIN({gN}{r}*{fmd}/{adj}{r},{rfm}{r}),{gN}{r}*{fmd}/{adj}{r}),0)")
+        if gap and fcol:
+            ws[f"{gap}{r}"] = f"=ROUND({eN}{r}-{fcol}{r},2)"
     wb.save(path); wb.close()
 
 
