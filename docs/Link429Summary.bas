@@ -1,29 +1,28 @@
 Attribute VB_Name = "Link429Summary"
 '======================================================================
-' Link429Summary - makes every figure in the GROSS429 "Monthly Summary"
-' a LIVE, CLICKABLE formula that pulls straight from the monthly
-' *_WITH_FORMULAE.xlsx files (429 / before-cut basis). Columns are found
-' BY NAME each month (positions can vary). Each value is VERIFIED to match
-' your current figure before it links - if it doesn't, that cell is left
-' as-is and reported (so nothing gets silently corrupted).
+' Link429Summary - makes every figure in the GROSS429 summary a LIVE,
+' CLICKABLE formula that pulls straight from the monthly
+' *_WITH_FORMULAE.xlsx files (429 / before-cut basis).
 '
-' SETUP: save a COPY of the GROSS429 summary as .xlsm IN THE SAME FOLDER as
-'        the 12 monthly files, then run. If Excel asks to "Update Links" on
+' v2: AUTO-FINDS the summary sheet (no longer needs a tab literally named
+'     "Monthly Summary"). It uses, in order:
+'        1) a sheet named "Monthly Summary", else
+'        2) the sheet that has "April" in column A (rows 1-20), else
+'        3) the ActiveSheet.
+'     So it runs on the 3-tab .xlsx AND on a single-sheet (CSV-derived)
+'     workbook, as long as the layout is Month=col A, April in row 5.
+'
+' Columns are found BY NAME each month (positions can vary). Each value is
+' VERIFIED to match your current figure before it links - if it doesn't,
+' that cell is left as-is and reported (nothing gets silently corrupted).
+'
+' SETUP: save a COPY of the summary as .xlsm IN THE SAME FOLDER as the 12
+'        monthly files, then run. If Excel asks to "Update Links" on
 '        reopening, click Update / Enable Content.
-'
-' Mapping (summary col -> monthly header):
-'   C  Revised Gross        <- REVISED_GROSS        (GG)
-'   D  PF                    <- REVISED_PF           (GJ)
-'   E  ESI                   <- ESIC.1               (GK)
-'   F..Y deductions          <- the *.1 columns
-'   AA Other Deduction(Res)  <- OTHER_DEDUCTION      (HI)
-'   AC Revised Net Payable   <- REVISED_NET_PAYABLE  (HK)
-'   B  Employee Rows         <- count of EMPCODE
 '======================================================================
 Option Explicit
 
 Public Sub Link429Summary()
-    Const SUMSHEET As String = "Monthly Summary"
     Dim months As Variant
     months = Array("April", "May", "June", "July", "August", "September", _
                    "October", "November", "December", "January", "February", "March")
@@ -36,7 +35,13 @@ Public Sub Link429Summary()
         "22|CONVEYANCEALLDED1", "23|LAUNDRYCHARGES1", "24|MEALDEDUCTION1", "25|REFYNEADVANCE1", _
         "27|OTHER_DEDUCTION", "29|REVISED_NET_PAYABLE")
 
-    Dim sumSh As Worksheet: Set sumSh = ThisWorkbook.Sheets(SUMSHEET)
+    Dim sumSh As Worksheet: Set sumSh = FindSummarySheet()
+    If sumSh Is Nothing Then
+        MsgBox "Could not find the summary sheet. Open the GROSS429 summary " & _
+               "(the one with 'April' down column A) and run this again.", vbExclamation
+        Exit Sub
+    End If
+
     Dim folder As String: folder = ThisWorkbook.Path & Application.PathSeparator
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
@@ -46,7 +51,7 @@ Public Sub Link429Summary()
     For i = 0 To UBound(months)
         rowS = 5 + i
         fn = Dir(folder & months(i) & "*WITH_FORMULAE.xlsx")
-        If fn = "" Then report = report & months(i) & ": FILE NOT FOUND" & vbCrLf: GoTo NextMonth
+        If fn = "" Then report = report & months(i) & ": FILE NOT FOUND in this folder" & vbCrLf: GoTo NextMonth
 
         Set wb = Workbooks.Open(folder & fn, ReadOnly:=True, UpdateLinks:=False)
         best = 0: Set ws = Nothing
@@ -113,8 +118,26 @@ NextMonth:
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
     If Len(report) = 0 Then report = "All months linked & verified successfully (429 basis)."
-    MsgBox "GROSS429 summary linked to monthly sheets." & vbCrLf & vbCrLf & report, vbInformation
+    MsgBox "GROSS429 summary linked to monthly sheets." & vbCrLf & _
+           "Summary sheet used: '" & sumSh.Name & "'" & vbCrLf & vbCrLf & report, vbInformation
 End Sub
+
+' Returns the summary sheet: by name, else by "April" in col A, else ActiveSheet.
+Private Function FindSummarySheet() As Worksheet
+    Dim sh As Worksheet, r As Long
+    On Error Resume Next
+    Set FindSummarySheet = ThisWorkbook.Sheets("Monthly Summary")
+    On Error GoTo 0
+    If Not FindSummarySheet Is Nothing Then Exit Function
+    For Each sh In ThisWorkbook.Worksheets
+        For r = 1 To 20
+            If Trim(UCase(CStr(sh.Cells(r, 1).Value))) = "APRIL" Then
+                Set FindSummarySheet = sh: Exit Function
+            End If
+        Next r
+    Next sh
+    If TypeName(ThisWorkbook.ActiveSheet) = "Worksheet" Then Set FindSummarySheet = ThisWorkbook.ActiveSheet
+End Function
 
 Private Function NormU(v As Variant) As String
     Dim s As String: s = UCase(CStr(v))
