@@ -1,24 +1,24 @@
 Attribute VB_Name = "Link429Summary"
 '======================================================================
-' Link429Summary - makes every figure in the GROSS429 summary a LIVE,
-' CLICKABLE formula that pulls straight from the monthly
-' *_WITH_FORMULAE.xlsx files (429 / before-cut basis).
+' Link429Summary  (v3 - sheet auto-detect by matching known gross)
 '
-' v2: AUTO-FINDS the summary sheet (no longer needs a tab literally named
-'     "Monthly Summary"). It uses, in order:
-'        1) a sheet named "Monthly Summary", else
-'        2) the sheet that has "April" in column A (rows 1-20), else
-'        3) the ActiveSheet.
-'     So it runs on the 3-tab .xlsx AND on a single-sheet (CSV-derived)
-'     workbook, as long as the layout is Month=col A, April in row 5.
+' Makes every figure in the GROSS429 summary a LIVE, CLICKABLE formula
+' pulling from the monthly *_WITH_FORMULAE.xlsx files.
 '
-' Columns are found BY NAME each month (positions can vary). Each value is
-' VERIFIED to match your current figure before it links - if it doesn't,
-' that cell is left as-is and reported (nothing gets silently corrupted).
+' WHY v3: monthly files contain SEVERAL sheets. v2 picked the biggest
+' sheet, which over-counts (REVISED_GROSS repeats per sub-row -> ~5x).
+' v3 instead scans EVERY sheet and uses the one whose REVISED_GROSS column
+' SUM matches the month's known-correct gross already in your summary.
+' From that confirmed sheet it then links each field BY HEADER NAME,
+' verifying every value before it links (mismatch = left as-is + reported).
 '
-' SETUP: save a COPY of the summary as .xlsm IN THE SAME FOLDER as the 12
-'        monthly files, then run. If Excel asks to "Update Links" on
-'        reopening, click Update / Enable Content.
+' Also: AUTO-FINDS the summary sheet (no need for a tab named exactly
+' "Monthly Summary"); uses a sheet named that, else the sheet with "April"
+' in column A, else the ActiveSheet.
+'
+' SETUP: save a COPY of the summary as .xlsm IN THE SAME FOLDER as ALL 12
+'        monthly files (make sure June_WITH_FORMULAE.xlsx is really there),
+'        then run. If Excel asks to "Update Links", click Update/Enable.
 '======================================================================
 Option Explicit
 
@@ -37,92 +37,133 @@ Public Sub Link429Summary()
 
     Dim sumSh As Worksheet: Set sumSh = FindSummarySheet()
     If sumSh Is Nothing Then
-        MsgBox "Could not find the summary sheet. Open the GROSS429 summary " & _
-               "(the one with 'April' down column A) and run this again.", vbExclamation
+        MsgBox "Could not find the summary sheet (the one with 'April' down column A). Open it and run again.", vbExclamation
         Exit Sub
     End If
 
     Dim folder As String: folder = ThisWorkbook.Path & Application.PathSeparator
+    Dim oldCalc As XlCalculation: oldCalc = Application.Calculation
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
-    Dim report As String
+    Application.Calculation = xlCalculationManual
+    Dim report As String, linkedCount As Long
 
-    Dim i As Long, rowS As Long, fn As String, wb As Workbook, ws As Worksheet, s As Worksheet, best As Long
+    Dim i As Long, rowS As Long, fn As String, wb As Workbook
     For i = 0 To UBound(months)
         rowS = 5 + i
         fn = Dir(folder & months(i) & "*WITH_FORMULAE.xlsx")
         If fn = "" Then report = report & months(i) & ": FILE NOT FOUND in this folder" & vbCrLf: GoTo NextMonth
 
+        Dim grossCur As Double: grossCur = ValD(sumSh.Cells(rowS, 3))
         Set wb = Workbooks.Open(folder & fn, ReadOnly:=True, UpdateLinks:=False)
-        best = 0: Set ws = Nothing
+
+        ' ---- pick the sheet whose REVISED_GROSS sum matches grossCur ----
+        Dim ws As Worksheet, useWs As Worksheet, useHr As Long, useLast As Long
+        Dim s As Worksheet, hr As Long, gcol As Long, lastR As Long, gsum As Double
+        Dim tol As Double: tol = Application.Max(100, grossCur * 0.0005)   ' ~0.05%
+        Dim diag As String
+        Set useWs = Nothing
         For Each s In wb.Worksheets
-            If s.UsedRange.Rows.Count > best Then best = s.UsedRange.Rows.Count: Set ws = s
+            hr = HeaderRowOf(s, "REVISED_GROSS")
+            If hr > 0 Then
+                gcol = ColOfHeader(s, hr, "REVISED_GROSS")
+                If gcol > 0 Then
+                    lastR = s.Cells(s.Rows.Count, gcol).End(xlUp).Row
+                    gsum = Application.WorksheetFunction.Sum(s.Range(s.Cells(hr + 1, gcol), s.Cells(lastR, gcol)))
+                    diag = diag & "   [" & s.Name & "] gross=" & Format(gsum, "#,##0") & vbCrLf
+                    If Abs(gsum - grossCur) <= tol Then
+                        Set useWs = s: useHr = hr: useLast = lastR: Exit For
+                    End If
+                End If
+            End If
         Next s
 
-        Dim hr As Long, c As Long, maxC As Long, rscan As Long
-        maxC = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
-        hr = 0
-        For rscan = 1 To 15
-            For c = 1 To maxC
-                If NormU(ws.Cells(rscan, c).Value) = "REVISED_GROSS" Then hr = rscan: Exit For
-            Next c
-            If hr > 0 Then Exit For
-        Next rscan
-        If hr = 0 Then hr = 1
+        If useWs Is Nothing Then
+            report = report & months(i) & ": no sheet's REVISED_GROSS = " & Format(grossCur, "#,##0") & _
+                     " (left as-is). Sheets found:" & vbCrLf & diag
+            wb.Close False: GoTo NextMonth
+        End If
 
+        ' ---- build header dictionary on the confirmed sheet ----
         Dim dict As Object: Set dict = CreateObject("Scripting.Dictionary")
-        Dim t As String
+        Dim c As Long, maxC As Long, t As String
+        maxC = useWs.UsedRange.Column + useWs.UsedRange.Columns.Count - 1
         For c = 1 To maxC
-            t = NormU(ws.Cells(hr, c).Value)
+            t = NormU(useWs.Cells(useHr, c).Value)
             If Len(t) > 0 Then If Not dict.Exists(t) Then dict.Add t, c
         Next c
 
-        Dim gcol As Long, lastR As Long
-        gcol = 0: If dict.Exists("REVISED_GROSS") Then gcol = dict("REVISED_GROSS")
-        If gcol = 0 Then report = report & months(i) & ": REVISED_GROSS not found - skipped" & vbCrLf: wb.Close False: GoTo NextMonth
-        lastR = ws.Cells(ws.Rows.Count, gcol).End(xlUp).Row
-
-        Dim shName As String: shName = ws.Name
-        Dim base As String: base = "'" & folder & "[" & fn & "]" & shName & "'!"
+        Dim base As String: base = "'" & folder & "[" & fn & "]" & useWs.Name & "'!"
 
         ' employee rows
         If dict.Exists("EMPCODE") Then
             sumSh.Cells(rowS, 2).Value = Application.WorksheetFunction.CountA( _
-                ws.Range(ws.Cells(hr + 1, dict("EMPCODE")), ws.Cells(lastR, dict("EMPCODE"))))
+                useWs.Range(useWs.Cells(useHr + 1, dict("EMPCODE")), useWs.Cells(useLast, dict("EMPCODE"))))
         End If
 
+        ' ---- link each field (verify value first) ----
         Dim p As Variant, parts() As String, scol As Long, nm As String
-        Dim mc As Long, L As String, msum As Double, cur As Double, miss As String, mism As String
+        Dim mc As Long, L As String, msum As Double, cur As Double, ftol As Double
+        Dim miss As String, mism As String
         For Each p In map
             parts = Split(CStr(p), "|")
             scol = CLng(parts(0)): nm = parts(1)
             If Not dict.Exists(nm) Then miss = miss & nm & " ": GoTo NextField
             mc = dict(nm): L = ColLetter(mc)
-            msum = Application.WorksheetFunction.Sum(ws.Range(ws.Cells(hr + 1, mc), ws.Cells(lastR, mc)))
-            cur = ValD(sumSh.Cells(rowS, scol).Value)
-            If Abs(msum - cur) <= 2 Then
-                sumSh.Cells(rowS, scol).Formula = "=SUM(" & base & "$" & L & "$" & (hr + 1) & ":$" & L & "$" & lastR & ")"
+            msum = Application.WorksheetFunction.Sum(useWs.Range(useWs.Cells(useHr + 1, mc), useWs.Cells(useLast, mc)))
+            cur = ValD(sumSh.Cells(rowS, scol))
+            ftol = Application.Max(50, Abs(cur) * 0.001)
+            If Abs(msum - cur) <= ftol Then
+                sumSh.Cells(rowS, scol).Formula = "=SUM(" & base & "$" & L & "$" & (useHr + 1) & ":$" & L & "$" & useLast & ")"
                 sumSh.Cells(rowS, scol).NumberFormat = "#,##0"
+                linkedCount = linkedCount + 1
             Else
                 mism = mism & nm & "(file " & Format(msum, "#,##0") & " vs sheet " & Format(cur, "#,##0") & ") "
             End If
 NextField:
         Next p
-        If Len(miss) > 0 Then report = report & months(i) & ": NOT FOUND -> " & miss & vbCrLf
-        If Len(mism) > 0 Then report = report & months(i) & ": MISMATCH (left as-is) -> " & mism & vbCrLf
+        report = report & months(i) & ": sheet '" & useWs.Name & "' OK." & vbCrLf
+        If Len(miss) > 0 Then report = report & "    not found -> " & miss & vbCrLf
+        If Len(mism) > 0 Then report = report & "    value differs (left as-is) -> " & mism & vbCrLf
 
         wb.Close SaveChanges:=False
 NextMonth:
     Next i
 
+    Application.Calculation = oldCalc
+    Application.Calculate
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
-    If Len(report) = 0 Then report = "All months linked & verified successfully (429 basis)."
-    MsgBox "GROSS429 summary linked to monthly sheets." & vbCrLf & _
-           "Summary sheet used: '" & sumSh.Name & "'" & vbCrLf & vbCrLf & report, vbInformation
+    MsgBox "GROSS429 linking finished. Cells linked: " & linkedCount & vbCrLf & _
+           "Summary sheet: '" & sumSh.Name & "'" & vbCrLf & vbCrLf & report, vbInformation
 End Sub
 
-' Returns the summary sheet: by name, else by "April" in col A, else ActiveSheet.
+' ---- helpers --------------------------------------------------------
+' first row (1..20) on sheet sh that contains the given normalized header
+Private Function HeaderRowOf(sh As Worksheet, ByVal want As String) As Long
+    Dim r As Long, c As Long, maxC As Long
+    On Error Resume Next
+    maxC = sh.UsedRange.Column + sh.UsedRange.Columns.Count - 1
+    On Error GoTo 0
+    If maxC < 1 Or maxC > 2000 Then maxC = 260
+    For r = 1 To 20
+        For c = 1 To maxC
+            If NormU(sh.Cells(r, c).Value) = want Then HeaderRowOf = r: Exit Function
+        Next c
+    Next r
+    HeaderRowOf = 0
+End Function
+
+Private Function ColOfHeader(sh As Worksheet, ByVal hr As Long, ByVal want As String) As Long
+    Dim c As Long, maxC As Long
+    maxC = sh.UsedRange.Column + sh.UsedRange.Columns.Count - 1
+    If maxC < 1 Or maxC > 2000 Then maxC = 260
+    For c = 1 To maxC
+        If NormU(sh.Cells(hr, c).Value) = want Then ColOfHeader = c: Exit Function
+    Next c
+    ColOfHeader = 0
+End Function
+
 Private Function FindSummarySheet() As Worksheet
     Dim sh As Worksheet, r As Long
     On Error Resume Next
@@ -142,7 +183,7 @@ End Function
 Private Function NormU(v As Variant) As String
     Dim s As String: s = UCase(CStr(v))
     Dim ch As Variant
-    For Each ch In Array(" ", ".", "(", ")", "-", "/", vbLf, vbCr)   ' note: underscore KEPT
+    For Each ch In Array(" ", ".", "(", ")", "-", "/", vbLf, vbCr)   ' underscore KEPT
         s = Replace(s, CStr(ch), "")
     Next ch
     NormU = s
