@@ -1,29 +1,31 @@
 Attribute VB_Name = "Link429Summary"
 '======================================================================
-' Link429Summary  (v4 - fingerprint: match each figure by VALUE)
+' Link429Summary  (v5 - auto-match FILES to months by gross, then link)
 '
-' The header named "REVISED_GROSS" in the monthly files does NOT equal the
-' summary's gross (April is ~5x duplicated; others differ). So v4 stops
-' trusting header names for the link target. For each month it:
-'   1) opens the file, finds the data sheet + header row,
-'   2) computes the SUM of EVERY column once,
-'   3) for each figure already in your summary, finds the column whose
-'      total MATCHES that figure, and links to it.
-' Because your summary numbers are correct, this locates the real source
-' column on its own - whatever it is named. Anything it can't reproduce is
-' reported (so April's duplicated file is flagged, not silently mislinked).
+' Use this when your monthly files total ~429 cr (the basis the summary is
+' on). It does NOT rely on file names. For every .xlsx/.xlsm in the folder
+' (except this summary) it:
+'   1) opens it, picks the data sheet, sums every column,
+'   2) finds the column whose total matches ONE of the 12 monthly gross
+'      figures in your summary -> that tells it WHICH MONTH the file is,
+'   3) then links each figure in that month's row to the column whose
+'      total matches it (fingerprint by value, so header names don't matter).
 '
-' Auto-finds the summary sheet (tab "Monthly Summary", else "April" in col A,
-' else ActiveSheet). Save a COPY as .xlsm in the SAME FOLDER as all 12
-' monthly *_WITH_FORMULAE.xlsx files (rename any " - Copy"), then run.
+' Anything it can't match is reported, nothing wrong is ever written.
+'
+' SETUP: put a COPY of this summary (.xlsm) IN THE 429-cr FOLDER with the 12
+'        monthly files, then run. Click Update Links / Enable Content if asked.
 '======================================================================
 Option Explicit
 
 Public Sub Link429Summary()
-    Dim months As Variant
-    months = Array("April", "May", "June", "July", "August", "September", _
-                   "October", "November", "December", "January", "February", "March")
-    ' summaryCol | label (used only for the report)
+    Dim sumSh As Worksheet: Set sumSh = FindSummarySheet()
+    If sumSh Is Nothing Then
+        MsgBox "Open the summary (the sheet with 'April' down column A) and run again.", vbExclamation
+        Exit Sub
+    End If
+
+    ' summaryCol | label
     Dim map As Variant
     map = Array("3|Revised Gross", "4|PF", "5|ESI", "6|PT", "7|LWF", "8|TDS", _
         "9|Emp Welfare Fund", "10|Advance", "11|Uniform", "12|Other Ded (entered)", _
@@ -31,64 +33,82 @@ Public Sub Link429Summary()
         "17|Insurance Ded", "18|Insurance", "19|Fine", "20|Accomodation", "21|Flexi Ded", _
         "22|Conveyance Ded", "23|Laundry", "24|Meal Ded", "25|Refyne Adv", _
         "27|Other Ded (residual)", "29|Net Payable")
+    Dim monthName As Variant
+    monthName = Array("April", "May", "June", "July", "August", "September", _
+                      "October", "November", "December", "January", "February", "March")
 
-    Dim sumSh As Worksheet: Set sumSh = FindSummarySheet()
-    If sumSh Is Nothing Then
-        MsgBox "Could not find the summary sheet (the one with 'April' down column A).", vbExclamation
-        Exit Sub
-    End If
+    ' month gross targets from the summary (rows 5..16, col C)
+    Dim G(0 To 11) As Double, taken(0 To 11) As Boolean, i As Long
+    For i = 0 To 11: G(i) = ValD(sumSh.Cells(5 + i, 3)): Next i
 
     Dim folder As String: folder = ThisWorkbook.Path & Application.PathSeparator
     Dim oldCalc As XlCalculation: oldCalc = Application.Calculation
     Application.ScreenUpdating = False
     Application.DisplayAlerts = False
     Application.Calculation = xlCalculationManual
+
     Dim report As String, grandLinked As Long
+    Dim fn As String, files() As String, nF As Long: ReDim files(1 To 500): nF = 0
+    fn = Dir(folder & "*.xls*")
+    Do While fn <> ""
+        If Left$(fn, 2) <> "~$" And LCase(fn) <> LCase(ThisWorkbook.Name) Then
+            nF = nF + 1: files(nF) = fn
+        End If
+        fn = Dir
+    Loop
 
-    Dim i As Long, rowS As Long, fn As String, wb As Workbook
-    For i = 0 To UBound(months)
-        rowS = 5 + i
-        fn = Dir(folder & months(i) & "*WITH_FORMULAE.xlsx")
-        If fn = "" Then report = report & months(i) & ": FILE NOT FOUND" & vbCrLf: GoTo NextMonth
+    Dim k As Long, wb As Workbook
+    For k = 1 To nF
+        Set wb = Workbooks.Open(folder & files(k), ReadOnly:=True, UpdateLinks:=False)
 
-        Set wb = Workbooks.Open(folder & fn, ReadOnly:=True, UpdateLinks:=False)
-
-        ' biggest sheet = data sheet
         Dim ws As Worksheet, s As Worksheet, best As Long
         best = 0: Set ws = Nothing
         For Each s In wb.Worksheets
             If s.UsedRange.Rows.Count > best Then best = s.UsedRange.Rows.Count: Set ws = s
         Next s
 
-        Dim hr As Long, lastR As Long, maxC As Long
+        Dim hr As Long, lastR As Long, maxC As Long, c As Long
         maxC = ws.UsedRange.Column + ws.UsedRange.Columns.Count - 1
         If maxC < 1 Or maxC > 1000 Then maxC = 260
         lastR = ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
-        hr = HeaderRowOf(ws, maxC)              ' row holding EMPCODE / REVISED*
+        hr = HeaderRowOf(ws, maxC)
 
-        ' cache every column's data-sum once
         Dim csum() As Double: ReDim csum(1 To maxC)
-        Dim c As Long
         For c = 1 To maxC
             csum(c) = Application.WorksheetFunction.Sum(ws.Range(ws.Cells(hr + 1, c), ws.Cells(lastR, c)))
         Next c
 
-        Dim base As String: base = "'" & folder & "[" & fn & "]" & ws.Name & "'!"
+        ' which month? find the unused month whose gross a column reproduces best
+        Dim m As Long, bestM As Long, bestErr As Double, rel As Double
+        bestM = -1: bestErr = 1E+99
+        For m = 0 To 11
+            If Not taken(m) And G(m) > 1 Then
+                For c = 1 To maxC
+                    If G(m) <> 0 Then rel = Abs(csum(c) - G(m)) / G(m) Else rel = 1
+                    If rel <= 0.01 And rel < bestErr Then bestErr = rel: bestM = m
+                Next c
+            End If
+        Next m
 
-        ' employee rows (count EMPCODE col if found by name)
+        If bestM < 0 Then
+            report = report & files(k) & ": no month matched (gross not found) - skipped" & vbCrLf
+            wb.Close False: GoTo NextFile
+        End If
+        taken(bestM) = True
+        Dim rowS As Long: rowS = 5 + bestM
+        Dim base As String: base = "'" & folder & "[" & files(k) & "]" & ws.Name & "'!"
+
         Dim ecCol As Long: ecCol = ColByName(ws, hr, maxC, "EMPCODE")
         If ecCol > 0 Then sumSh.Cells(rowS, 2).Value = _
             Application.WorksheetFunction.CountA(ws.Range(ws.Cells(hr + 1, ecCol), ws.Cells(lastR, ecCol)))
 
-        ' link each figure by matching its value to a column total
         Dim p As Variant, parts() As String, scol As Long, lbl As String
-        Dim cur As Double, tol As Double, found As Long, monthLinked As Long
-        Dim hits As String, misses As String
+        Dim cur As Double, tol As Double, found As Long, monthLinked As Long, misses As String
         For Each p In map
             parts = Split(CStr(p), "|")
             scol = CLng(parts(0)): lbl = parts(1)
             cur = ValD(sumSh.Cells(rowS, scol))
-            If Abs(cur) < 1 Then GoTo NextField        ' skip zero/blank (ambiguous)
+            If Abs(cur) < 1 Then GoTo NextField
             tol = Application.Max(50, Abs(cur) * 0.001)
             found = 0
             For c = 1 To maxC
@@ -97,7 +117,6 @@ Public Sub Link429Summary()
             If found > 0 Then
                 sumSh.Cells(rowS, scol).Formula = "=SUM(" & base & "$" & ColLetter(found) & "$" & (hr + 1) & ":$" & ColLetter(found) & "$" & lastR & ")"
                 sumSh.Cells(rowS, scol).NumberFormat = "#,##0"
-                hits = hits & lbl & "=" & ColLetter(found) & " "
                 monthLinked = monthLinked + 1: grandLinked = grandLinked + 1
             Else
                 misses = misses & lbl & " "
@@ -105,19 +124,24 @@ Public Sub Link429Summary()
 NextField:
         Next p
 
-        report = report & months(i) & ": linked " & monthLinked & "/25  (sheet '" & ws.Name & "', " & (lastR - hr) & " rows)" & vbCrLf
-        If Len(hits) > 0 Then report = report & "    cols: " & hits & vbCrLf
-        If Len(misses) > 0 Then report = report & "    NOT found in file: " & misses & vbCrLf
-
+        report = report & monthName(bestM) & " = " & files(k) & "  -> linked " & monthLinked & "/25" & vbCrLf
+        If Len(misses) > 0 Then report = report & "      not matched: " & misses & vbCrLf
         wb.Close SaveChanges:=False
-NextMonth:
-    Next i
+NextFile:
+    Next k
+
+    ' months never matched to any file
+    Dim leftover As String
+    For m = 0 To 11
+        If Not taken(m) Then leftover = leftover & monthName(m) & " "
+    Next m
+    If Len(leftover) > 0 Then report = report & "NO FILE matched these months: " & leftover & vbCrLf
 
     Application.Calculation = oldCalc
     Application.Calculate
     Application.DisplayAlerts = True
     Application.ScreenUpdating = True
-    MsgBox "Fingerprint linking finished. Total cells linked: " & grandLinked & vbCrLf & _
+    MsgBox "Done. Total cells linked: " & grandLinked & vbCrLf & _
            "Summary sheet: '" & sumSh.Name & "'" & vbCrLf & vbCrLf & report, vbInformation
 End Sub
 
@@ -127,7 +151,7 @@ Private Function HeaderRowOf(ws As Worksheet, ByVal maxC As Long) As Long
     For r = 1 To 20
         For c = 1 To maxC
             t = NormU(ws.Cells(r, c).Value)
-            If t = "EMPCODE" Or t = "REVISED_GROSS" Or t = "REVISEDGROSS" Then HeaderRowOf = r: Exit Function
+            If t = "EMPCODE" Or t = "REVISED_GROSS" Or t = "REVISEDGROSS" Or t = "GROSSAMT" Then HeaderRowOf = r: Exit Function
         Next c
     Next r
     HeaderRowOf = 1
