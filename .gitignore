@@ -1,0 +1,4 @@
+# Claude Code session-local files (per-session, not meant for version control)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json
