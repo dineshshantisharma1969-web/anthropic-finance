@@ -121,11 +121,47 @@ Excluded rows are **not** appended to Daily Transactions, but are flagged
 ### Other tabs
 | Tab | Purpose |
 |-----|---------|
-| *(first tab)* "ISPL Bank Statement Tracker" | main data (15 cols) — the data tab. **Referenced by NAME**, not gid (a CSV-imported sheet's first tab is not gid 0). |
-| Dashboard | ✅ built — daily + cumulative figures (see below), rebuilt daily by the dashboard workflow |
+| Monthly data tab — `"<Mon> <yyyy>"` (e.g. `"Jul 2026"`) | main data (15 cols). **One tab per calendar month** so every month starts afresh. **Referenced by NAME**, computed in IST at run time. |
+| Dashboard | ✅ built — daily + cumulative figures (see below) for the **current month only**, rebuilt daily by the dashboard workflow |
 
 > Originally-envisioned Monthly Summary / Run Log / Config tabs can be added later; the
 > live figures the user asked for are delivered by the **Dashboard** tab.
+
+---
+
+## Monthly reset (fresh start each month)
+
+From **July 2026** onward each calendar month is kept **separate** and **starts afresh**:
+
+- **Data** — the loop writes into a **per-month tab** named `"<Mon> <yyyy>"` (e.g. `"Jul 2026"`,
+  `"Aug 2026"`). The `Ensure Month Tab` node creates that tab on the 1st of the month (the
+  "already exists" error is ignored on later days), and `Append To Tracker` upserts into it.
+  Both the loop and the dashboard compute the tab name as
+  `{{ $now.setZone('Asia/Kolkata').toFormat('LLL yyyy') }}`, so the rollover is automatic —
+  no edit needed each month.
+- **Dashboard** — the refresh reads **only the current month's tab**, so the daily rows and the
+  running cumulative both reset to **₹0 on the 1st**. The single `Dashboard` tab (with its charts
+  and KPI scorecards) is reused every month; only its data (`A:G`) is rebuilt, so nothing needs
+  re-styling at rollover.
+
+### One-time July 2026 cutover (do once, on/before 2026-07-01)
+1. **Clear June out of the active tracker** — per the user's instruction, delete June's rows.
+   Either delete the old first tab `"ISPL Bank Statement Tracker"` or clear its data rows
+   (keep nothing from June in the live sheet). *(June is not archived.)*
+2. **Create the `"Jul 2026"` data tab** with the 15-column header row (A–O):
+   `Date · Value Date · Bank Account · Narration · Party Name · Mode · Reference No · Type ·
+   Debit · Credit · Balance · Auto Tag · Inter-Bank Excluded? · Source Email Date · Processed On`.
+   *(If you skip this, the loop's `Ensure Month Tab` node creates the tab automatically on the
+   first July run; `appendOrUpdate` then writes the header row on first append.)*
+3. **Re-deploy** the two updated workflows in n8n from `scripts/`:
+   `ispl_bank_statement_loop.workflow.ts` and `ispl_bank_dashboard_refresh.workflow.ts`.
+4. **Leave the `Dashboard` tab in place** — do **not** delete it. On the first July refresh it
+   rebuilds from July data only (cumulative starts at ₹0); the charts/scorecards keep working.
+5. **First July run** appends July transactions into `"Jul 2026"`; the Dashboard then shows only
+   July figures. June numbers (₹2.04cr receipts etc.) no longer appear, as requested.
+
+> The same automatic behaviour repeats every month after July — a fresh `"<Mon> <yyyy>"` tab and a
+> reset dashboard — with no manual steps beyond the one-time deploy above.
 
 ## Dashboard
 
@@ -145,9 +181,12 @@ All figures **exclude inter-bank transfers** (`Inter-Bank Excluded? = NO` only).
 
 Maintained by n8n workflow **ISPL Bank Dashboard Refresh** (`QrtxpYLVuedOPU0e`,
 source `scripts/ispl_bank_dashboard_refresh.workflow.ts`): daily 09:15 it
-**clears + rebuilds** the Dashboard tab from Daily Transactions (Schedule → Clear
-Dashboard → Read Daily Transactions → Build Daily + Cumulative (Code) → Write Dashboard).
-First run on 2026-06-16 populated it:
+**clears + rebuilds** the Dashboard tab from the **current month's data tab** (Schedule → Clear
+Dashboard → Read current month tab → Build Daily + Cumulative (Code) → Write Dashboard). Because
+it reads only the current month, the cumulative **resets to ₹0 on the 1st of each month**.
+
+The June 2026 first run on 2026-06-16 populated it as below; from **July 2026** the Dashboard shows
+**July figures only** (the June table is retained here for reference, not in the live sheet):
 
 | Date | Daily Receipts | Daily Payments | Cumulative Net |
 |------|---------------:|---------------:|---------------:|
@@ -222,6 +261,7 @@ one durable mechanism:
 | Date (IST) | Status | Rows added | Notes |
 |------------|--------|-----------|-------|
 | 2026-06-16 | Processed (Drive fallback) | 124 (118 external + 6 inter-bank flagged) | Email had no attachment ("HDFC SITE NOT WORKING"); files taken from Drive folder. ICICI + DBS only; Pegasus skipped. Receipts ₹2,04,69,012.94, Payments ₹22,32,812.00 (excl. inter-bank). 6 inter-bank excluded: ICICI FUND120626B ₹1.5cr & FUND130626 ₹44,728 & INFT own-name ₹5,61,725.26; DBS Kotak own-name ₹8,51,328.86 & 2× DBS→SBI ₹3.5cr/₹50L. |
+| 2026-06-30 | Monthly-reset config | — | Switched the loop + dashboard to **per-month tabs** so July starts afresh (see "Monthly reset" above). From 2026-07-01 data lands in tab `"Jul 2026"` and the Dashboard cumulative resets to ₹0. June to be cleared from the live sheet per instruction. Requires re-deploying both workflows in n8n. |
 
 ### Review flags for 2026-06-16
 - **63 ICICI "CMS/<id>/<9-digit>" debits** are tagged `CMS Settlement / Review Required` — the

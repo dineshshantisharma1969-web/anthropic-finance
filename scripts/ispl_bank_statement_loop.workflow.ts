@@ -3,6 +3,11 @@ import { workflow, node, trigger, splitInBatches, nextBatch, expr, newCredential
 const FOLDER_ID = '129fqVeuWpUgwiSRNFkomywsLvUIsoVan';
 const SHEET_ID = '1P76gniXRPX01Hhaizga1xxd-TjBT2-jMfHM_KGRtpRc';
 
+// Each calendar month gets its own data tab so every month starts afresh.
+// e.g. "Jul 2026", "Aug 2026". Evaluated in IST at run time, so on the 1st of a
+// new month the loop automatically targets (and creates) the new month's tab.
+const MONTH_TAB = "{{ $now.setZone('Asia/Kolkata').toFormat('LLL yyyy') }}";
+
 const scheduleTrigger = trigger({
   type: 'n8n-nodes-base.scheduleTrigger',
   version: 1.3,
@@ -143,6 +148,27 @@ const parseTxns = node({
   output: [{ 'Date': '2026-06-13', 'Bank Account': 'ICICI 039951000005', 'Reference No': 'S94023670', 'Type': 'RECEIPT', 'Credit': 13986.7, 'Auto Tag': 'Client Receipt', 'Inter-Bank Excluded?': 'NO' }]
 });
 
+// Create this month's data tab if it does not exist yet. Runs every day; on any day
+// after the 1st the tab already exists, so the "already exists" error is swallowed
+// (onError: continueRegularOutput) and the flow proceeds straight to the append.
+const ensureMonthTab = node({
+  type: 'n8n-nodes-base.googleSheets',
+  version: 4.7,
+  config: {
+    name: 'Ensure Month Tab',
+    onError: 'continueRegularOutput',
+    parameters: {
+      resource: 'sheet',
+      operation: 'create',
+      documentId: { __rl: true, mode: 'id', value: SHEET_ID },
+      title: expr(MONTH_TAB),
+      options: {}
+    },
+    credentials: { googleSheetsOAuth2Api: newCredential('Google Sheets account', 'MzcFHNlXKDc9lIZ0') }
+  },
+  output: [{}]
+});
+
 const appendSheet = node({
   type: 'n8n-nodes-base.googleSheets',
   version: 4.7,
@@ -152,7 +178,7 @@ const appendSheet = node({
       resource: 'sheet',
       operation: 'appendOrUpdate',
       documentId: { __rl: true, mode: 'id', value: SHEET_ID },
-      sheetName: { __rl: true, mode: 'name', value: 'ISPL Bank Statement Tracker' },
+      sheetName: { __rl: true, mode: 'name', value: expr(MONTH_TAB) },
       columns: {
         mappingMode: 'autoMapInputData',
         value: {},
@@ -183,13 +209,14 @@ const appendSheet = node({
 });
 
 const note = sticky(
-  '## ISPL Bank Statement Loop\nDaily 09:00 (instance TZ). Reads today\'s xlsx from the DAILY BANK STATEMENTS Drive folder, keeps ICICI & DBS (Pegasus skipped), parses + classifies, flags inter-bank transfers, then upserts into the ISPL Bank Statement Tracker by Reference No.',
+  '## ISPL Bank Statement Loop\nDaily 09:00 (instance TZ). Reads today\'s xlsx from the DAILY BANK STATEMENTS Drive folder, keeps ICICI & DBS (Pegasus skipped), parses + classifies, flags inter-bank transfers, then upserts into the **current month\'s tab** (e.g. "Jul 2026") by Reference No.\n\n"Ensure Month Tab" creates that tab on the 1st of each month so every month starts afresh; on later days the "already exists" error is ignored.',
   [scheduleTrigger, appendSheet],
   { color: 4 }
 );
 
 export default workflow('ispl-bank-statement-loop', 'ISPL Bank Statement Loop')
   .add(scheduleTrigger)
+  .to(ensureMonthTab)
   .to(searchFiles)
   .to(keepBankFile)
   .to(loopFiles

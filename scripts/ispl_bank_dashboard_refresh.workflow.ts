@@ -1,17 +1,24 @@
-import { workflow, node, trigger, newCredential, sticky } from '@n8n/workflow-sdk';
+import { workflow, node, trigger, expr, newCredential, sticky } from '@n8n/workflow-sdk';
 
 // Deployed as n8n workflow QrtxpYLVuedOPU0e ("ISPL Bank Dashboard Refresh").
 // Runs daily 09:15 (after the main loop). Clears + rebuilds the "Dashboard" tab of the
 // ISPL Bank Statement Tracker with daily receipts/payments and running cumulative totals
 // (excluding inter-bank transfers), plus a TOTAL row.
 //
+// MONTHLY RESET: the dashboard reads ONLY the current month's data tab (e.g. "Jul 2026"),
+// so on the 1st of each month the daily rows and the running cumulative both start afresh
+// from zero. The single "Dashboard" tab (and its charts / KPI scorecards) is reused every
+// month — only its data (A:G) is rebuilt — so nothing needs re-styling at month rollover.
+//
 // NOTE: the "Dashboard" tab must exist once before first run. It was created via the
 // Google Sheets node (sheet:create) during setup; thereafter this workflow only
-// clears + appends. The data tab is referenced by NAME ("ISPL Bank Statement Tracker")
-// because a CSV-imported sheet's first tab is not gid 0.
+// clears + appends. The month data tab is referenced by NAME (e.g. "Jul 2026").
 
 const SHEET_ID = '1P76gniXRPX01Hhaizga1xxd-TjBT2-jMfHM_KGRtpRc';
 const SHEETS_CRED = () => newCredential('Google Sheets account', 'MzcFHNlXKDc9lIZ0');
+
+// Current month's data tab, evaluated in IST at run time — matches the loop's MONTH_TAB.
+const MONTH_TAB = "{{ $now.setZone('Asia/Kolkata').toFormat('LLL yyyy') }}";
 
 const scheduleTrigger = trigger({
   type: 'n8n-nodes-base.scheduleTrigger',
@@ -50,7 +57,7 @@ const readTx = node({
       resource: 'sheet',
       operation: 'read',
       documentId: { __rl: true, mode: 'id', value: SHEET_ID },
-      sheetName: { __rl: true, mode: 'name', value: 'ISPL Bank Statement Tracker' },
+      sheetName: { __rl: true, mode: 'name', value: expr(MONTH_TAB) },
       options: { returnAllMatches: 'returnAllMatches' }
     },
     credentials: { googleSheetsOAuth2Api: SHEETS_CRED() }
@@ -112,7 +119,7 @@ const writeDash = node({
 });
 
 const note = sticky(
-  '## ISPL Bank Dashboard Refresh\nDaily 09:15. Clears the Dashboard tab, reads Daily Transactions, aggregates daily receipts/payments + running cumulative (excluding inter-bank), and rewrites the Dashboard tab with a TOTAL row.',
+  '## ISPL Bank Dashboard Refresh\nDaily 09:15. Clears the Dashboard tab (A:G only — KPI cells in J survive), reads the **current month\'s data tab** (e.g. "Jul 2026"), aggregates daily receipts/payments + running cumulative (excluding inter-bank), and rewrites the Dashboard with a TOTAL row.\n\nBecause it reads only the current month, the cumulative resets to 0 on the 1st of each month — July starts afresh.',
   [scheduleTrigger, writeDash],
   { color: 5 }
 );
