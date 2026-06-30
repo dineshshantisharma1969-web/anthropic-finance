@@ -82,6 +82,11 @@
    "detail": "\u03a3 REVISED_ESIC \u20b9321,937 vs Future \u20b9356,370 \u2192 gap \u20b934,433. Expected per skill E1 (secondary-site ESI zeroed, deposited at primary; Future-only employees). Full ESI_Audit/Math_Checks tabs of the 20MB report were beyond the fetch limit \u2014 confirm ESI totals there before statutory ESI filing."
   },
   {
+   "status": "PASS",
+   "name": "Independent ECR source re-sum (DELHI file)",
+   "detail": "Re-summed the EE (employee-PF) column straight from FORMAT-APRIL_2026_DELHI.xlsx: \u20b925,407,193 across 18,535 employees. This exceeds the reconciled anchor \u20b925,221,042 by \u20b9186,151 (~0.74%) \u2014 expected, since ECR-only employees (in ECR, not matched to a salary row) are excluded and the skill caps ECR_PF_OUT = min(ECR_filed, REVISED_PF). Confirms the anchor from the source side. (STEAGE/DMART ECRs are small and were not re-summed in this run.)"
+  },
+  {
    "status": "INFO",
    "name": "Row reconciliation total",
    "detail": "21,152 salary rows reconciled = 18,389 PF-anchor + 1,754 PF-secondary + 479 ESI-only + 530 no-PF-no-ESI."

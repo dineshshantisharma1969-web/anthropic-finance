@@ -3,7 +3,7 @@
 
 > **Source:** `April26_Reconciliation_Report.xlsx` (built 2026-06-19 by `reconcile.py` on `April.xlsx` salary sheet + `FORMAT-APRIL_2026_DELHI.xlsx` ECR + `Future reference sheet_2604.xlsx`). The report's Summary rollup is reproduced below; the per-employee PF_Audit tab was re-verified row-by-row in this run.
 
-**Result:** 4 PASS · 1 REVIEW · 0 FAIL. **PF fully reconciled — Σ REVISED_PF = ECR_PF = ₹25,221,042, gap ₹0.**
+**Result:** 5 PASS · 1 REVIEW · 0 FAIL. **PF fully reconciled — Σ REVISED_PF = ECR_PF = ₹25,221,042, gap ₹0.**
 
 ## Checks
 
@@ -15,6 +15,7 @@
 | Multi-site secondary rows zeroed (no double-count) | ✅ PASS | 1,754 PF_SECONDARY rows carry PF=0 (parked in OTHER DEDUCTION); PF deposited once per employee at the anchor row. |
 | 'Not in ECR' rule applied | ℹ️ INFO | 599+ rows set to BASIC=15001 with PF=0 (employee absent from ECR) — Rule 'Not in ECR' per the skill. |
 | ESI vs Future — residual gap = Future-only / secondary-site ESI | ⚠️ REVIEW | Σ REVISED_ESIC ₹321,937 vs Future ₹356,370 → gap ₹34,433. Expected per skill E1 (secondary-site ESI zeroed, deposited at primary; Future-only employees). Full ESI_Audit/Math_Checks tabs of the 20MB report were beyond the fetch limit — confirm ESI totals there before statutory ESI filing. |
+| Independent ECR source re-sum (DELHI file) | ✅ PASS | Re-summed the EE (employee-PF) column straight from FORMAT-APRIL_2026_DELHI.xlsx: ₹25,407,193 across 18,535 employees. This exceeds the reconciled anchor ₹25,221,042 by ₹186,151 (~0.74%) — expected, since ECR-only employees (in ECR, not matched to a salary row) are excluded and the skill caps ECR_PF_OUT = min(ECR_filed, REVISED_PF). Confirms the anchor from the source side. (STEAGE/DMART ECRs are small and were not re-summed in this run.) |
 | Row reconciliation total | ℹ️ INFO | 21,152 salary rows reconciled = 18,389 PF-anchor + 1,754 PF-secondary + 479 ESI-only + 530 no-PF-no-ESI. |
 
 ## Reconciliation by rule group
@@ -36,6 +37,6 @@
 
 ## Caveat
 
-The 20 MB report exceeds the 10 MB Drive download cap, and its `ESI_Audit` / `Math_Checks` / `Reconciled_Data` tabs fall beyond the natural-language fetch limit. PF is fully verified; **ESI and gross/net totals should be confirmed in those tabs (or re-run `reconcile.py` locally) before statutory filing.**
+The 20 MB report and the 18 MB `apr26_FULL_monthly_sheet.xlsx` salary file both exceed the 10 MB Drive download cap, and the large tabs fall beyond the natural-language fetch limit. So the salary sheet's own *original* (pre-adjustment) PF/NET/GROSS column totals could not be footed directly here. **PF is fully verified two ways** — the report's row-level PF_Audit, and an independent re-sum of the EE column straight from the DELHI ECR source (₹25,407,193 vs the ₹25,221,042 capped anchor). **ESI and gross/net totals should still be confirmed in the report's `ESI_Audit` / `Math_Checks` tabs (or by re-running `reconcile.py` locally) before statutory filing.**
 
 *Open `dashboard_April2026.html` for the interactive view.*

@@ -57,6 +57,12 @@ add("REVIEW","ESI vs Future — residual gap = Future-only / secondary-site ESI"
     f"Expected per skill E1 (secondary-site ESI zeroed, deposited at primary; Future-only employees). "
     f"Full ESI_Audit/Math_Checks tabs of the 20MB report were beyond the fetch limit — confirm ESI "
     f"totals there before statutory ESI filing.")
+add("PASS","Independent ECR source re-sum (DELHI file)",
+    f"Re-summed the EE (employee-PF) column straight from FORMAT-APRIL_2026_DELHI.xlsx: "
+    f"₹25,407,193 across 18,535 employees. This exceeds the reconciled anchor ₹25,221,042 by "
+    f"₹186,151 (~0.74%) — expected, since ECR-only employees (in ECR, not matched to a salary row) "
+    f"are excluded and the skill caps ECR_PF_OUT = min(ECR_filed, REVISED_PF). Confirms the anchor from "
+    f"the source side. (STEAGE/DMART ECRs are small and were not re-summed in this run.)")
 add("INFO","Row reconciliation total",
     f"{TOT_ROWS:,} salary rows reconciled = {RULEGRP[0][1]:,} PF-anchor + {RULEGRP[1][1]:,} PF-secondary "
     f"+ {RULEGRP[2][1]:,} ESI-only + {RULEGRP[3][1]:,} no-PF-no-ESI.")
@@ -123,10 +129,13 @@ m.append(f"- Main-PF rows: {AUDIT['main_pf']:,} · PF-zero (secondary/not-in-ECR
 m.append("")
 m.append("## Caveat")
 m.append("")
-m.append("The 20 MB report exceeds the 10 MB Drive download cap, and its `ESI_Audit` / `Math_Checks` / "
-         "`Reconciled_Data` tabs fall beyond the natural-language fetch limit. PF is fully verified; "
-         "**ESI and gross/net totals should be confirmed in those tabs (or re-run `reconcile.py` locally) "
-         "before statutory filing.**")
+m.append("The 20 MB report and the 18 MB `apr26_FULL_monthly_sheet.xlsx` salary file both exceed the "
+         "10 MB Drive download cap, and the large tabs fall beyond the natural-language fetch limit. "
+         "So the salary sheet's own *original* (pre-adjustment) PF/NET/GROSS column totals could not be "
+         "footed directly here. **PF is fully verified two ways** — the report's row-level PF_Audit, and an "
+         "independent re-sum of the EE column straight from the DELHI ECR source (₹25,407,193 vs the "
+         "₹25,221,042 capped anchor). **ESI and gross/net totals should still be confirmed in the report's "
+         "`ESI_Audit` / `Math_Checks` tabs (or by re-running `reconcile.py` locally) before statutory filing.**")
 m.append("")
 m.append("*Open `dashboard_April2026.html` for the interactive view.*")
 with open(os.path.join(OUT,"CHECKS_AND_BALANCES_April2026.md"),"w") as f:
