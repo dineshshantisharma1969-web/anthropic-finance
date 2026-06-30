@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PF / ESI Reconciliation — FY2025-26 (M13 FINAL)</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--ink:#e6edf3;--mut:#8b949e;
+--line:#2d333b;--ok:#3fb950;--rev:#d29922;--fail:#f85149;--acc:#58a6ff;--acc2:#bc8cff}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+background:var(--bg);color:var(--ink)}
+header{padding:22px 26px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#161b22,#1c2230)}
+h1{margin:0;font-size:20px}
+.sub{color:var(--mut);margin-top:4px;font-size:13px}
+.wrap{padding:22px 26px;max-width:1280px;margin:0 auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi .lbl{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.kpi .val{font-size:22px;font-weight:700;margin-top:6px}
+.kpi .note{color:var(--mut);font-size:11px;margin-top:3px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:22px}
+.card h2{margin:0 0 14px;font-size:15px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.controls button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px}
+.controls button.on{background:var(--acc);color:#06101f;border-color:var(--acc);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--mut);font-weight:600;position:sticky;top:0;background:var(--panel)}
+tr.total td{font-weight:700;border-top:2px solid var(--line)}
+.scroll{overflow-x:auto}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.p-PASS{background:rgba(63,185,80,.16);color:var(--ok)}
+.p-REVIEW{background:rgba(210,153,34,.16);color:var(--rev)}
+.p-FAIL{background:rgba(248,81,73,.16);color:var(--fail)}
+.p-INFO{background:rgba(88,166,255,.16);color:var(--acc)}
+.chk{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.chk:last-child{border:0}
+.chk .body{flex:1}
+.chk .nm{font-weight:600}
+.chk .dt{color:var(--mut);font-size:12.5px;margin-top:3px}
+.legend{color:var(--mut);font-size:12px;margin-top:10px}
+.bars text,.line text{fill:var(--mut);font-size:10px}
+.foot{color:var(--mut);font-size:12px;margin-top:8px}
+.tag{font-size:11px;color:var(--mut)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header>
+<h1>PF / ESI Salary Reconciliation — Live Dashboard</h1>
+<div class="sub">ISPL (Impressions Services) · FY2025-26 · M13 FINAL · validated against the
+<code>pf-salary-reconciliation</code> skill</div>
+</header>
+<div class="wrap">
+ <div class="kpis" id="kpis"></div>
+
+ <div class="card">
+  <h2>Checks &amp; Balances <span class="tag" id="chkcount"></span></h2>
+  <div id="checks"></div>
+  <div class="legend">Golden rules hold (NET unchanged · Σ PF = ECR · Σ ESI = Future). REVIEW items are
+   cross-build / cross-source reconciliation notes — not errors in the reconciled book.</div>
+ </div>
+
+ <div class="card">
+  <h2>Month-wise trend</h2>
+  <div class="controls" id="metricBtns"></div>
+  <div id="chart"></div>
+  <div class="foot" id="chartFoot"></div>
+ </div>
+
+ <div class="grid2">
+  <div class="card">
+   <h2>PF reconciliation bridge</h2>
+   <div id="bridge"></div>
+  </div>
+  <div class="card">
+   <h2>M13 rule mix (whole year)</h2>
+   <div id="rulemix"></div>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>Consolidated month-wise summary (₹)</h2>
+  <div class="scroll"><table id="sumtbl"></table></div>
+ </div>
+
+ <div class="card">
+  <h2>M13 rule-application statistics</h2>
+  <div class="scroll"><table id="ruletbl"></table></div>
+ </div>
+</div>
+
+<script id="data" type="application/json">{"months": ["Apr-25", "May-25", "Jun-25", "Jul-25", "Aug-25", "Sep-25", "Oct-25", "Nov-25", "Dec-25", "Jan-26", "Feb-26", "Mar-26"], "cols": ["Earned_Basic_DA", "Other_Allowances", "Total_Earned_Gross", "PF_booked", "ESI", "PT", "Other_Deductions", "Total_Deduction", "Net_Payable"], "summary": {"Apr-25": [210043740, 53423443, 263467183, 24173582, 1489009, 631048, 7483658, 33777297, 229689886], "May-25": [209829942, 54053636, 263883578, 24610756, 1505739, 668332, 4996518, 31781344, 232102234], "Jun-25": [209550065, 55672396, 265222461, 24904423, 1518775, 657648, 5202922, 32283768, 232938693], "Jul-25": [216450960, 57832758, 274283718, 25695497, 1569237, 681438, 5242616, 33188788, 241094930], "Aug-25": [211723679, 58249306, 269972986, 25208736, 1540847, 680314, 5373555, 32803452, 237169533], "Sep-25": [215604615, 59856339, 275460954, 25684018, 1574933, 691456, 7020570, 34970977, 240489977], "Oct-25": [201092730, 73570730, 274663460, 24362599, 1544260, 702917, 5787816, 32397592, 242265868], "Nov-25": [211826625, 59928929, 271755554, 25168592, 1536582, 687847, 4672355, 32065376, 239690178], "Dec-25": [226034081, 64620891, 290654972, 26592067, 1611674, 723248, 4824198, 33751187, 256903785], "Jan-26": [228650533, 64623148, 293273681, 26840187, 1625762, 715246, 4603570, 33784765, 259488916], "Feb-26": [226809311, 65702072, 292511383, 26750772, 1616147, 865325, 5671449, 34903693, 257607690], "Mar-26": [231077269, 66925374, 298002643, 27081131, 1646232, 728379, 5016645, 34472387, 263530256]}, "total": [2598693550, 734459022, 3333152573, 307072360, 18779197, 8433198, 65895872, 400180626, 2932971946], "m13_rule_cols": ["Active_Employees", "RuleA_12pct_BDA", "RuleB_day_adj", "RuleB_lift_to_att", "RuleB_lift_to_OD", "NET_drift", "GROSS_up_OD_route", "Exceptions"], "m13_rules": {"Apr-25": [18794, 2355, 111, 3, 0, 0, 0, 0], "May-25": [18774, 2443, 197, 0, 0, 0, 0, 0], "Jun-25": [18754, 2547, 1143, 0, 0, 0, 0, 0], "Jul-25": [18905, 2577, 974, 3, 0, 0, 0, 0], "Aug-25": [18626, 2520, 1103, 3, 0, 0, 0, 0], "Sep-25": [18830, 2671, 1055, 1, 0, 0, 0, 1], "Oct-25": [18699, 2606, 211, 0, 1, 0, 1, 0], "Nov-25": [18986, 2928, 211, 636, 0, 0, 0, 0], "Dec-25": [19460, 3192, 217, 664, 3, 0, 3, 0], "Jan-26": [19624, 3286, 841, 341, 0, 0, 0, 0], "Feb-26": [19649, 3349, 770, 311, 2, 0, 2, 1], "Mar-26": [20279, 3378, 848, 406, 0, 0, 0, 0]}, "anchors": {"pan_pf": 290652769, "backoffice_pf": 16419591, "booked_pf": 307072360, "tally_epf": 296746845, "future_esi": 18693848, "pt": 8433198, "net": 2932971946, "m13cl_gross": 4652522768, "m13cl_net": 3194063202, "bonus": 27773882, "leave": 44261081}, "checks": [{"id": "FOOT-1", "name": "Net Payable = Total Earned Gross \u2212 Total Deduction (every month)", "status": "PASS", "detail": "All 12 months foot to the rupee."}, {"id": "FOOT-2", "name": "Total Deduction = PF + ESI + PT + Other Deductions (every month)", "status": "PASS", "detail": "All 12 months foot to the rupee."}, {"id": "FOOT-3", "name": "\u03a3(12 months) reconciles to the published TOTAL row", "status": "PASS", "detail": "All 9 columns tie out."}, {"id": "GOLD-PF", "name": "Golden Rule 1 \u2014 \u03a3 REVISED_PF = ECR_PF (per-employee, \u20b90 gap)", "status": "PASS", "detail": "M13 FINAL asserts 0 drift on all 12 months. Reconciled PAN PF = \u20b9290,652,769 is the ECR-filed anchor."}, {"id": "GOLD-NET", "name": "Golden Rule 3 \u2014 NET PAYABLE unchanged (REVISED_NET = NETPAYABLE)", "status": "PASS", "detail": "M13 FINAL: NET drift ALL ZERO (row & total) across all 12 months + M13."}, {"id": "GOLD-ESI", "name": "Golden Rule 2 \u2014 \u03a3 REVISED_ESIC = Future-sheet ESIC", "status": "PASS", "detail": "M13 FINAL: 0 drift. Future-basis ESI anchor = \u20b918,693,848."}, {"id": "XCHK-NET", "name": "Cross-check: Net total across summary builds", "status": "REVIEW", "detail": "Monthly = Pivot = \u20b92,932,971,946 (agree). M13_SUMMARY build = \u20b92,931,995,085 \u2192 short by \u20b9976,861, isolated to October (\u20b9241,289,007 vs authoritative \u20b9242,265,868). M13_SUMMARY appears to have used a pre-final October build; use the pivot/monthly figure."}, {"id": "XCHK-PF", "name": "Cross-check: reconciled PAN PF across summary builds", "status": "REVIEW", "detail": "Pivot (ECR anchor) = \u20b9290,652,769. M13_SUMMARY = \u20b9290,651,911 \u2192 short by \u20b9858, isolated to June (\u20b923,278,054 vs \u20b923,278,912). Treat the pivot/ECR figure as authoritative."}, {"id": "BRIDGE-PF", "name": "PF reconciliation bridge (booked \u2192 reconciled \u2192 Tally)", "status": "INFO", "detail": "Booked PF incl back-office \u20b9307,072,360 = Reconciled PAN PF \u20b9290,652,769 + Back-office PF \u20b916,419,591. Tally EPF payable ledger = \u20b9296,746,845."}, {"id": "BRIDGE-PF-FOOT", "name": "Bridge foots: Reconciled PAN PF + Back-office PF = Booked PF", "status": "PASS", "detail": "290,652,769 + 16,419,591 = 307,072,360 vs booked 307,072,360."}, {"id": "XCHK-ESI", "name": "Cross-check: ESI basis (Future vs M13_SUMMARY)", "status": "REVIEW", "detail": "Future-basis (anchor) = \u20b918,693,848; M13_SUMMARY pre-merge basis = \u20b918,466,035 (\u0394 \u20b9227,813). The Future-basis figure is the statutory anchor."}, {"id": "XCHK-M13CL", "name": "Cross-check: M13+CL/Bonus merged Net vs Tally Salary Payable", "status": "REVIEW", "detail": "M13+CL merged REVISED_NET = \u20b93,194,063,202 vs Tally 'SALARY PAYABLE-2025-26' = \u20b93,194,048,568 \u2192 \u0394 \u20b914,634 (\u22480.0005%). Immaterial; reconciles within rounding of the bonus/leave merge."}, {"id": "M13-EXC", "name": "M13 exceptions (DA alone exceeds ECR_PF/0.12 \u2014 exact 12% cannot hold)", "status": "INFO", "detail": "2 exception rows total (Sep 1, Feb 1) \u2014 basic clamped, listed in PF_M13_Exceptions_Review.xlsx. All other rows satisfy REVISED_PF = 12%(BASIC+DA)."}, {"id": "ANOM-JF", "name": "Anomaly flag \u2014 Jan/Feb gross \u2248 2\u00d7 run", "status": "REVIEW", "detail": "Source note: Jan-26 & Feb-26 gross ~2\u00d7 other months on same headcount \u2014 possible double/bonus run in those source files. Net Payable still ties; verify before statutory filing."}]}</script>
+<script>
+const D=JSON.parse(document.getElementById('data').textContent);
+const cr=n=>'₹'+(n/1e7).toFixed(2)+' Cr';
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const A=D.anchors;
+
+// KPIs
+const kpis=[
+ ['Net Payable (anchor)',cr(A.net),'sacrosanct · unchanged'],
+ ['Reconciled PAN PF',cr(A.pan_pf),'= ECR filed (₹0 gap)'],
+ ['Future-basis ESI',cr(A.future_esi),'statutory anchor'],
+ ['Booked PF',cr(A.booked_pf),'PAN + back-office'],
+ ['M13+CL Merged Gross',cr(A.m13cl_gross),'incl OT / holidays'],
+ ['Merged Net Payable',cr(A.m13cl_net),'M13 + CL / bonus'],
+];
+document.getElementById('kpis').innerHTML=kpis.map(k=>
+ `<div class="kpi"><div class="lbl">${k[0]}</div><div class="val">${k[1]}</div><div class="note">${k[2]}</div></div>`).join('');
+
+// Checks
+const order={FAIL:0,REVIEW:1,PASS:2,INFO:3};
+const chk=[...D.checks].sort((a,b)=>order[a.status]-order[b.status]);
+const cnt={PASS:0,REVIEW:0,FAIL:0,INFO:0};chk.forEach(c=>cnt[c.status]++);
+document.getElementById('chkcount').textContent=
+ `${cnt.PASS} PASS · ${cnt.REVIEW} REVIEW · ${cnt.FAIL} FAIL`;
+document.getElementById('checks').innerHTML=chk.map(c=>
+ `<div class="chk"><span class="pill p-${c.status}">${c.status}</span>
+  <div class="body"><div class="nm">${c.name}</div><div class="dt">${c.detail}</div></div></div>`).join('');
+
+// Summary table
+const sc=['Month',...D.cols];
+let t='<thead><tr>'+sc.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')+'</tr></thead><tbody>';
+D.months.forEach(m=>{t+='<tr><td>'+m+'</td>'+D.summary[m].map(v=>'<td>'+v.toLocaleString('en-IN')+'</td>').join('')+'</tr>';});
+t+='<tr class="total"><td>TOTAL</td>'+D.total.map(v=>'<td>'+v.toLocaleString('en-IN')+'</td>').join('')+'</tr></tbody>';
+document.getElementById('sumtbl').innerHTML=t;
+
+// Rule table
+const rc=['Month',...D.m13_rule_cols];
+let rt='<thead><tr>'+rc.map(c=>`<th>${c.replace(/_/g,' ')}</th>`).join('')+'</tr></thead><tbody>';
+const rtot=D.m13_rule_cols.map((_,i)=>D.months.reduce((s,m)=>s+D.m13_rules[m][i],0));
+D.months.forEach(m=>{rt+='<tr><td>'+m+'</td>'+D.m13_rules[m].map(v=>'<td>'+v.toLocaleString('en-IN')+'</td>').join('')+'</tr>';});
+rt+='<tr class="total"><td>TOTAL</td>'+rtot.map(v=>'<td>'+v.toLocaleString('en-IN')+'</td>').join('')+'</tr></tbody>';
+document.getElementById('ruletbl').innerHTML=rt;
+
+// Bridge
+const bridge=[
+ ['Reconciled PAN PF (= ECR)',A.pan_pf,'var(--ok)'],
+ ['+ Back-office PF',A.backoffice_pf,'var(--acc)'],
+ ['= Booked PF',A.booked_pf,'var(--acc2)'],
+ ['Tally EPF payable',A.tally_epf,'var(--rev)'],
+];
+const bmax=Math.max(...bridge.map(b=>b[1]));
+document.getElementById('bridge').innerHTML=bridge.map(b=>
+ `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px">
+   <span>${b[0]}</span><span>${inr(b[1])}</span></div>
+   <div style="height:9px;background:var(--panel2);border-radius:6px;overflow:hidden;margin-top:4px">
+   <div style="height:100%;width:${(b[1]/bmax*100).toFixed(1)}%;background:${b[2]}"></div></div></div>`).join('');
+
+// Rule mix donut-ish stacked bar
+const mix=[['Rule A 12%(B+DA)',rtot[1],'var(--acc)'],['Rule B day-adj',rtot[2],'var(--ok)'],
+ ['B → attendance',rtot[3],'var(--acc2)'],['B → OtherDed',rtot[4],'var(--rev)'],
+ ['Exceptions',rtot[7],'var(--fail)']];
+const msum=mix.reduce((s,x)=>s+x[1],0);
+document.getElementById('rulemix').innerHTML=
+ '<div style="display:flex;height:26px;border-radius:6px;overflow:hidden;margin-bottom:12px">'+
+ mix.map(x=>`<div title="${x[0]}: ${x[1].toLocaleString('en-IN')}" style="width:${(x[1]/msum*100).toFixed(2)}%;background:${x[2]}"></div>`).join('')+'</div>'+
+ mix.map(x=>`<div style="display:flex;justify-content:space-between;font-size:12.5px;margin:5px 0">
+   <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${x[2]};margin-right:7px"></span>${x[0]}</span>
+   <span>${x[1].toLocaleString('en-IN')} <span class="tag">(${(x[1]/msum*100).toFixed(1)}%)</span></span></div>`).join('');
+
+// Trend chart (SVG, switchable metric)
+const METRICS=[['Net_Payable','Net Payable'],['PF_booked','PF (booked)'],['ESI','ESI'],
+ ['Total_Earned_Gross','Earned Gross'],['Total_Deduction','Total Deduction'],['PT','PT']];
+let cur='Net_Payable';
+const btns=document.getElementById('metricBtns');
+btns.innerHTML=METRICS.map(m=>`<button data-k="${m[0]}" class="${m[0]==cur?'on':''}">${m[1]}</button>`).join('');
+btns.onclick=e=>{if(e.target.dataset.k){cur=e.target.dataset.k;
+ [...btns.children].forEach(b=>b.classList.toggle('on',b.dataset.k==cur));draw();}};
+function draw(){
+ const idx=D.cols.indexOf(cur);
+ const vals=D.months.map(m=>D.summary[m][idx]);
+ const W=1180,H=320,pl=70,pr=20,pt=20,pb=40,iw=W-pl-pr,ih=H-pt-pb;
+ const mx=Math.max(...vals),mn=Math.min(...vals)*0.96;
+ const x=i=>pl+iw*i/(vals.length-1), y=v=>pt+ih*(1-(v-mn)/(mx-mn));
+ const bw=iw/vals.length*0.6;
+ let g=`<svg class="line" viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">`;
+ for(let k=0;k<=4;k++){const v=mn+(mx-mn)*k/4,yy=pt+ih*(1-k/4);
+  g+=`<line x1="${pl}" y1="${yy}" x2="${W-pr}" y2="${yy}" stroke="#2d333b"/>`;
+  g+=`<text x="${pl-8}" y="${yy+3}" text-anchor="end">${(v/1e7).toFixed(1)}Cr</text>`;}
+ vals.forEach((v,i)=>{g+=`<rect x="${x(i)-bw/2}" y="${y(v)}" width="${bw}" height="${pt+ih-y(v)}" fill="#1f6feb" opacity=".55" rx="2"/>`;});
+ let pts=vals.map((v,i)=>`${x(i)},${y(v)}`).join(' ');
+ g+=`<polyline points="${pts}" fill="none" stroke="#58a6ff" stroke-width="2.5"/>`;
+ vals.forEach((v,i)=>{g+=`<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="#58a6ff"/>`;
+  g+=`<text x="${x(i)}" y="${H-pb+22}" text-anchor="middle">${D.months[i]}</text>`;});
+ g+='</svg>';
+ document.getElementById('chart').innerHTML=g;
+ const tot=vals.reduce((a,b)=>a+b,0),avg=tot/vals.length;
+ document.getElementById('chartFoot').textContent=
+  `Total ${inr(tot)} · Avg/month ${inr(avg)} · Min ${inr(Math.min(...vals))} · Max ${inr(Math.max(...vals))}`;
+}
+draw();
+</script>
+</body></html>
