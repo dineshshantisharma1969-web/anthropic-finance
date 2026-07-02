@@ -18,7 +18,7 @@ const SHEET_ID = '1P76gniXRPX01Hhaizga1xxd-TjBT2-jMfHM_KGRtpRc';
 const SHEETS_CRED = () => newCredential('Google Sheets account', 'MzcFHNlXKDc9lIZ0');
 
 // Current month's data tab, evaluated in IST at run time — matches the loop's MONTH_TAB.
-const MONTH_TAB = "{{ $now.setZone('Asia/Kolkata').toFormat('LLL yyyy') }}";
+const MONTH_TAB = "{{ $now.setZone('Asia/Kolkata').toFormat('LLLL yyyy') }}";
 
 const scheduleTrigger = trigger({
   type: 'n8n-nodes-base.scheduleTrigger',
@@ -77,7 +77,7 @@ const buildDash = node({
         "const items=$input.all();\n" +
         "const byDate={};\n" +
         "function r2(x){return Math.round(x*100)/100;}\n" +
-        "for(const it of items){ const j=it.json; if(String(j['Inter-Bank Excluded?']||'')==='YES') continue; const d=j['Date']||''; if(!d||d==='TOTAL') continue; const rc=parseFloat(String(j['Credit']!=null?j['Credit']:'0').replace(/,/g,''))||0; const pay=parseFloat(String(j['Debit']!=null?j['Debit']:'0').replace(/,/g,''))||0; if(!byDate[d]) byDate[d]={r:0,p:0}; byDate[d].r+=rc; byDate[d].p+=pay; }\n" +
+        "for(const it of items){ const j=it.json; if(String(j['Inter-Bank Excluded?']||'')==='YES') continue; const d=j['Date']||''; if(!d||d==='TOTAL') continue; const nu=String(j['Narration']||'').toUpperCase(); if(nu.indexOf('LOAN PAYMENT REVERSAL')>-1||nu.indexOf('DD CANCLN')>-1) continue; const rc=parseFloat(String(j['Credit']!=null?j['Credit']:'0').replace(/,/g,''))||0; const pay=parseFloat(String(j['Debit']!=null?j['Debit']:'0').replace(/,/g,''))||0; if(!byDate[d]) byDate[d]={r:0,p:0}; byDate[d].r+=rc; byDate[d].p+=pay; }\n" +
         "const dates=Object.keys(byDate).sort();\n" +
         "let cr=0,cp=0; const out=[];\n" +
         "for(const d of dates){ const r=byDate[d].r,p=byDate[d].p; cr+=r; cp+=p; out.push({json:{'Date':d,'Daily Receipts':r2(r),'Daily Payments':r2(p),'Daily Net':r2(r-p),'Cumulative Receipts':r2(cr),'Cumulative Payments':r2(cp),'Cumulative Net':r2(cr-cp)}}); }\n" +

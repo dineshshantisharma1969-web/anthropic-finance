@@ -262,6 +262,15 @@ one durable mechanism:
 |------------|--------|-----------|-------|
 | 2026-06-16 | Processed (Drive fallback) | 124 (118 external + 6 inter-bank flagged) | Email had no attachment ("HDFC SITE NOT WORKING"); files taken from Drive folder. ICICI + DBS only; Pegasus skipped. Receipts ₹2,04,69,012.94, Payments ₹22,32,812.00 (excl. inter-bank). 6 inter-bank excluded: ICICI FUND120626B ₹1.5cr & FUND130626 ₹44,728 & INFT own-name ₹5,61,725.26; DBS Kotak own-name ₹8,51,328.86 & 2× DBS→SBI ₹3.5cr/₹50L. |
 | 2026-06-30 | Monthly-reset config | — | Switched the loop + dashboard to **per-month tabs** so July starts afresh (see "Monthly reset" above). From 2026-07-01 data lands in tab `"Jul 2026"` and the Dashboard cumulative resets to ₹0. June to be cleared from the live sheet per instruction. Requires re-deploying both workflows in n8n. |
+| 2026-07-02 | Fixes deployed | — | Four fixes after the first live month-rollover — see **"Fixes (2026-07-02)"** below. |
+
+### Fixes (2026-07-02)
+1. **Month tab name is the FULL month** — `toFormat('LLLL yyyy')` → `"July 2026"`, `"August 2026"` (not the abbreviated `"Jul 2026"`; the live tab was created with the full name, so the abbreviation caused a "sheet not found").
+2. **Bank detection by header cell, not account number.** A statement can cite *another* bank's account number inside a transfer narration (the HDFC file cites ICICI's `039951000005`, and ICICI cites HDFC's), so the old `flat.includes(<number>)` test misdetected and dropped whole files (HDFC → misread as ICICI → 0 rows). Now detected by the unique header cell, in order: ICICI `Tran. Id`/`S.N.` → KOTAK `Sl. No.`/`Dr / Cr` → HDFC `Transaction Date` → DBS. (ICICI/HDFC/KOTAK all have a `Transaction Date` column, hence the strict order.)
+3. **`Move To Processed` runs AFTER the append** (flow: Download → Extract → Parse → Append → Move, `executeOnce`, errors tolerated). Previously the file was moved to the *Processed* folder *before* import, so a failed run relocated statements without ever saving their rows. Now a file only leaves the folder once its data is written; on failure it stays for the next run.
+4. **Loan-reversal / DD-cancellation exclusion** in the Dashboard and both client-receipts workflows: rows whose narration contains `LOAN PAYMENT REVERSAL` or `DD CANCLN` are bank credits, not client money, and are excluded from receipts (they had inflated the headline by ~₹10 cr).
+
+New companion workflow **ISPL Client Receipts (Monthly)** (`eMfGJ6cGzOt4VLaj`, source `scripts/ispl_client_receipts_monthly.workflow.ts`): daily 09:50, rebuilds the **Client Receipts** tab — receipts aggregated by client for the current month (same exclusions), ranked, with a TOTAL row.
 
 ### Review flags for 2026-06-16
 - **63 ICICI "CMS/<id>/<9-digit>" debits** are tagged `CMS Settlement / Review Required` — the

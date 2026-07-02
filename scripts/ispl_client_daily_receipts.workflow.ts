@@ -37,7 +37,7 @@ const readTx = node({
       resource: 'sheet',
       operation: 'read',
       documentId: { __rl: true, mode: 'id', value: SHEET_ID },
-      sheetName: { __rl: true, mode: 'name', value: 'ISPL Bank Statement Tracker' },
+      sheetName: { __rl: true, mode: 'name', value: expr("{{ $now.setZone('Asia/Kolkata').toFormat('LLLL yyyy') }}") },
       options: { returnAllMatches: 'returnAllMatches' }
     },
     credentials: { googleSheetsOAuth2Api: newCredential('Google Sheets account', 'MzcFHNlXKDc9lIZ0') }
@@ -58,7 +58,8 @@ const build = node({
         "const meta = $('Get Spreadsheet Metadata').first().json;\n" +
         "const existing = new Set((meta.sheets||[]).map(s=>s.properties.title));\n" +
         "const byDate = {};\n" +
-        "for(const t of txns){ if(String(t['Type'])!=='RECEIPT') continue; if(String(t['Inter-Bank Excluded?'])==='YES') continue; const d=t['Date']; if(!d) continue; let client=String(t['Party Name']||'').trim(); if(!client) client='(Unidentified)'; const amt=parseFloat(String(t['Credit']!=null?t['Credit']:'0').replace(/,/g,''))||0; if(amt<=0) continue; byDate[d]=byDate[d]||{}; byDate[d][client]=byDate[d][client]||{total:0,count:0}; byDate[d][client].total+=amt; byDate[d][client].count+=1; }\n" +
+        "function clientOf(t){ const p=t['Party Name']; const narr=String(t['Narration']||''); const U=narr.toUpperCase(); if(p!=null&&String(p).trim()!==''&&String(p).trim().toLowerCase()!=='nan') return String(p).trim(); if(U.indexOf('EZY/')===0||U.indexOf('ICICIPOS')>-1) return 'POS Settlement (card)'; if(U.indexOf('CMS/')===0) return 'CMS Collection (coded, unnamed)'; const m=narr.match(/(?:NEFT|RTGS|IMPS)[-\\s]\\S+[-\\s]([^-]+?)[-\\s]/); return m?m[1].trim().slice(0,60):'(Unidentified)'; }\n" +
+        "for(const t of txns){ if(String(t['Type'])!=='RECEIPT') continue; if(String(t['Inter-Bank Excluded?'])==='YES') continue; const d=t['Date']; if(!d) continue; const U=String(t['Narration']||'').toUpperCase(); if(U.indexOf('LOAN PAYMENT REVERSAL')>-1||U.indexOf('DD CANCLN')>-1) continue; const amt=parseFloat(String(t['Credit']!=null?t['Credit']:'0').replace(/,/g,''))||0; if(amt<=0) continue; const client=clientOf(t); byDate[d]=byDate[d]||{}; byDate[d][client]=byDate[d][client]||{total:0,count:0}; byDate[d][client].total+=amt; byDate[d][client].count+=1; }\n" +
         "const dates=Object.keys(byDate).sort();\n" +
         "const addRequests=[]; const clearRanges=[]; const valueData=[];\n" +
         "function r2(x){return Math.round(x*100)/100;}\n" +

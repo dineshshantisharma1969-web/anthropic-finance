@@ -6,7 +6,7 @@ const SHEET_ID = '1P76gniXRPX01Hhaizga1xxd-TjBT2-jMfHM_KGRtpRc';
 // Each calendar month gets its own data tab so every month starts afresh.
 // e.g. "Jul 2026", "Aug 2026". Evaluated in IST at run time, so on the 1st of a
 // new month the loop automatically targets (and creates) the new month's tab.
-const MONTH_TAB = "{{ $now.setZone('Asia/Kolkata').toFormat('LLL yyyy') }}";
+const MONTH_TAB = "{{ $now.setZone('Asia/Kolkata').toFormat('LLLL yyyy') }}";
 
 const scheduleTrigger = trigger({
   type: 'n8n-nodes-base.scheduleTrigger',
@@ -107,11 +107,15 @@ const parseTxns = node({
         "const rows = items.map(it => (Array.isArray(it.json.row) ? it.json.row : Object.values(it.json)).map(v => (v === null || v === undefined) ? '' : v));\n" +
         "const flat = rows.map(r => r.join(' | ')).join(String.fromCharCode(10));\n" +
         "const U = flat.toUpperCase();\n" +
+        // Detect bank by EXACT header CELL, not by account number (a statement can cite another
+        // bank's account in a narration — HDFC cites ICICI's & vice-versa — which fooled the old
+        // number match). Order matters: ICICI/HDFC/KOTAK all carry a 'Transaction Date' column.
+        "function cq(v){return rows.some(function(r){return r.some(function(c){return String(c).trim()===v;});});}\n" +
         "let bank='UNKNOWN';\n" +
-        "if (flat.includes('858200061542')) bank='DBS 858200061542';\n" +
-        "else if (flat.includes('039951000005')) bank='ICICI 039951000005';\n" +
-        "else if (U.includes('KOTAK MAHINDRA')) bank='KOTAK (KKBK0000195)';\n" +
-        "else if (flat.includes('57500000129944') || U.includes('TRANSACTION BRANCH')) bank='HDFC 57500000129944';\n" +
+        "if (cq('Tran. Id')||cq('S.N.')) bank='ICICI 039951000005';\n" +
+        "else if (cq('Sl. No.')||cq('Dr / Cr')) bank='KOTAK (KKBK0000195)';\n" +
+        "else if (cq('Transaction Date')) bank='HDFC 57500000129944';\n" +
+        "else if (cq('Date')||flat.includes('858200061542')) bank='DBS 858200061542';\n" +
         "const today = $now.setZone('Asia/Kolkata').toFormat('yyyy-LL-dd');\n" +
         "const months = {jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};\n" +
         "function pad(n){return String(n).padStart(2,'0');}\n" +
