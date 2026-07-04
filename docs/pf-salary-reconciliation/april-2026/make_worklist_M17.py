@@ -78,15 +78,24 @@ def main(src, dst):
     out = Workbook()
 
     # -- Tab 2: RECOVERY_REVIEW ----------------------------------------------
-    # Rule M18 (day-basis correction): FIXEDGROSS is expressed at the
-    # SITEDIVISIONDAYS divisor (1 = per-day rate, else 26/27/28/30/31 = monthly
-    # at that divisor). Expected pay = FIXEDGROSS / SITEDIVISIONDAYS x NORMALDAYS.
-    # EXCESS_TO_REVIEW = clamp(GROSS - EXPECTED, 0, GROSS). Rows the day-basis
-    # clears (excess <= 0) are dropped from the tab and counted in SUMMARY.
-    rec_cols = ['PRIORITY', 'NOTE', 'EMPCODE', 'FULLNAME', 'CLIENTGROUPNAME', 'SITENAME',
+    # Rule M18 (day-basis + allowances):
+    #   M18a  FIXEDGROSS is expressed at the SITEDIVISIONDAYS divisor
+    #         (1 = PER-DAY rate, else 26/27/28/30/31 = monthly at that divisor).
+    #         EXPECTED_BASE = FIXEDGROSS / SITEDIVISIONDAYS x NORMALDAYS.
+    #   M18b  Add legit variable pay on top:
+    #         EXPECTED_TOTAL = EXPECTED_BASE + OT + arrears + attendance alw +
+    #                          paid leave + weekly off + holiday amounts + travel.
+    #         If EXPECTED_TOTAL is within max(Rs.500, 2%) of GROSS AMT /
+    #         REVISED_GROSS / REVISED_GROSS_NEW -> NO OVERPAYMENT, row cleared.
+    #   EXCESS_TO_REVIEW = clamp(GROSS - EXPECTED_TOTAL, 0, GROSS).
+    VAR_COLS = ['OT AMOUNT', 'EXTRA OT', 'BASIC DA ARREARS', 'OTHER ARREARS',
+                'ATTENDANCE ALW', 'PAID LEAVE', 'NATIONAL /FESTIVAL HOLIDAY',
+                'FESTIVAL HOLIDAY', 'WEEKLY OFF', 'TRAVELLING ALLOWANCE',
+                'PAID HOLIDAY']
+    rec_cols = ['PRIORITY', 'EMPCODE', 'FULLNAME', 'CLIENTGROUPNAME', 'SITENAME',
                 'SITESTATE', 'DESIGNATIONNAME', 'RATE_BASIS', 'FIXEDGROSS',
-                'NORMALDAYS', 'EXPECTED_GROSS (rate/div×days)', 'GROSS AMT',
-                'OT+ARREARS', 'ATTENDANCE ALW', 'EXCESS_TO_REVIEW',
+                'NORMALDAYS', 'EXPECTED_BASE (rate/div×days)', 'ALLOWANCES (OT/arr/att/hol)',
+                'EXPECTED_TOTAL', 'GROSS AMT', 'REVISED_GROSS', 'EXCESS_TO_REVIEW',
                 'VERIFIED (Y/N)', 'DECISION (RECOVER/WAIVE/JUSTIFIED)',
                 'RECOVERY_MONTH', 'REMARKS']
     wr = out.active
@@ -94,48 +103,47 @@ def main(src, dst):
     wr.append(rec_cols)
     style_header(wr, len(rec_cols))
 
-    def daybasis(r):
-        div = num(g(r, 'SITEDIVISIONDAYS')) or 30
-        days = num(g(r, 'NORMALDAYS'))
-        fg = num(g(r, 'FIXEDGROSS'))
-        gr = num(g(r, 'GROSS AMT'))
-        expected = fg / div * days if div > 0 else fg
-        exc = max(0.0, min(gr - expected, gr))
-        return div, days, fg, gr, expected, exc
-
     cleared = 0
     cleared_amt = 0.0
     kept = []
     for r in recovery:
-        div, days, fg, gr, expected, exc = daybasis(r)
+        div = num(g(r, 'SITEDIVISIONDAYS')) or 30
+        days = num(g(r, 'NORMALDAYS'))
+        fg = num(g(r, 'FIXEDGROSS'))
+        gr = num(g(r, 'GROSS AMT'))
+        base = fg / div * days if div > 0 else fg
+        var = sum(num(g(r, c)) for c in VAR_COLS if c in ix)
+        expected = base + var
+        exc = max(0.0, min(gr - expected, gr))
+        rg = num(g(r, 'REVISED_GROSS'))
+        rgn = num(g(r, 'REVISED_GROSS_NEW'))
+        tol = max(500.0, expected * 0.02)
+        close = any(abs(cand - expected) <= tol for cand in (gr, rg, rgn) if cand > 0)
         old = min(num(g(r, 'EXCESS_SALARY')), gr)
-        if exc < 1:
+        if exc < 1 or close:
             cleared += 1
             cleared_amt += old
             continue
-        kept.append((exc, div, days, fg, gr, expected, r))
+        kept.append((exc, div, days, fg, gr, base, var, expected, rg, r))
     kept.sort(key=lambda x: -x[0])
     n_hi = 0
     rec_total = hi_total = 0.0
-    for exc, div, days, fg, gr, expected, r in kept:
-        ot_arr = (num(g(r, 'OT AMOUNT')) + num(g(r, 'EXTRA OT')) +
-                  num(g(r, 'BASIC DA ARREARS')) + num(g(r, 'OTHER ARREARS')))
-        note = 'OT/ARREARS may explain' if ot_arr >= exc else ''
+    for exc, div, days, fg, gr, base, var, expected, rg, r in kept:
         hi = exc > 10000
         n_hi += hi
         rec_total += exc
         hi_total += exc if hi else 0
-        wr.append(['HIGH' if hi else 'LOW', note, g(r, 'EMPCODE'), g(r, 'FULLNAME'),
+        wr.append(['HIGH' if hi else 'LOW', g(r, 'EMPCODE'), g(r, 'FULLNAME'),
                    g(r, 'CLIENTGROUPNAME'), g(r, 'SITENAME'), g(r, 'SITESTATE'),
                    g(r, 'DESIGNATIONNAME'),
                    'PER-DAY' if div == 1 else f'MONTHLY/{int(div)}',
-                   round(fg, 0), days, round(expected, 0), round(gr, 0),
-                   round(ot_arr, 0), round(num(g(r, 'ATTENDANCE ALW')), 0),
+                   round(fg, 0), days, round(base, 0), round(var, 0),
+                   round(expected, 0), round(gr, 0), round(rg, 0),
                    round(exc, 0), '', '', '', ''])
         if hi:
             for c in range(1, len(rec_cols) + 1):
                 wr.cell(row=wr.max_row, column=c).fill = HI_FILL
-    autowidth(wr, [8, 22, 11, 24, 26, 24, 14, 18, 11, 10, 8, 13, 10, 10, 9, 12, 9, 16, 12, 24])
+    autowidth(wr, [8, 11, 24, 26, 24, 14, 18, 11, 10, 8, 13, 12, 12, 10, 11, 12, 9, 16, 12, 24])
 
     # -- Tab 3: ESI_ENROLLMENT ---------------------------------------------
     esi_cols = ['EMPCODE', 'FULLNAME', 'CLIENTGROUPNAME', 'SITENAME', 'SITESTATE',
@@ -218,8 +226,10 @@ def main(src, dst):
     s.cell(row=5, column=1).fill = HI_FILL
     s.append(["Recovery review — remaining (small amounts)", len(kept) - n_hi,
               round(rec_total - hi_total, 0), "Tab RECOVERY_REVIEW"])
-    s.append(["Cleared by M18 day-basis correction (rate/div × days)", cleared,
-              round(cleared_amt, 0), "Removed from tab — expected pay >= gross once FIXEDGROSS read at its divisor"])
+    s.append(["Cleared by M18 (rate/div × days + allowances ≈ gross/revised gross)", cleared,
+              round(cleared_amt, 0),
+              "Removed from tab — per-day rate × NORMALDAYS + OT/arrears/attendance/holiday pay "
+              "explains the gross (within max(Rs.500, 2%)) → no overpayment"])
     s.append(["ESI enrollment needed (eligible, currently exempt)", len(esi),
               round(esi_gross * 0.04, 0), "Tab ESI_ENROLLMENT (amount = 4%/month exposure)"])
     wc_short = sum(max(0.0, ctc * 0.5 - (b + d)) for _, b, d, ctc, _g, _o, _r in wage_fail)
@@ -244,7 +254,7 @@ def main(src, dst):
     s.cell(row=s.max_row, column=1).fill = OK_FILL
     s.cell(row=s.max_row, column=1).font = TOT_FONT
     rec_cl = defaultdict(lambda: [0, 0.0])
-    for exc, div, days, fg, gr, expected, r in kept:
+    for exc, div, days, fg, gr, base, var, expected, rg, r in kept:
         k = str(g(r, 'CLIENTGROUPNAME') or 'UNKNOWN')[:45]
         rec_cl[k][0] += 1
         rec_cl[k][1] += exc
