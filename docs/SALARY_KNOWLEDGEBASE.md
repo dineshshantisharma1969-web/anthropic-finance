@@ -50,8 +50,8 @@ ESTATE — in `PF_M13_Exceptions_Review.xlsx`.
 Status per month — recovery worklist (M18 day-basis) · ESI enrollment · wage-code 50%:
 | Month | Examined | Month | Examined |
 |---|---|---|---|
-| Apr | 🔴 pending upload | Oct | 🔴 pending upload |
-| May | 🔴 pending upload | Nov | 🔴 pending upload |
+| Apr | ✅ 04-07-2026 — HIGH 221 ₹24.2L · ESI 590 · WC 875 | Oct | 🔴 pending upload |
+| May | ✅ 04-07-2026 — HIGH 97 ₹10.9L · ESI 350 · WC 1,097 | Nov | 🔴 pending upload |
 | Jun | 🔴 pending upload | Dec | 🔴 pending upload |
 | Jul | 🔴 pending upload | Jan | 🔴 pending upload |
 | Aug | 🔴 pending upload | Feb | 🔴 pending upload |
@@ -59,8 +59,20 @@ Status per month — recovery worklist (M18 day-basis) · ESI enrollment · wage
 
 Monthly files are 17–19.5 MB — **over the 10 MB Drive-API cap**, so each month must
 be **uploaded in chat** (like April-26 was); the D-drive copies work fine for this —
-drag the file into the conversation. Pipeline: `make_worklist_M17.py` (April-26
-column layout may differ for FY25-26 M13 files — verify headers on first month).
+drag the file into the conversation.
+
+**Pipeline:** `docs/pf-salary-reconciliation/fy2025-26/fy2526_worklist.py`
+(M17 adapted to the M13-FINAL layout; header on row 2; universes computed from
+scratch). Two new rules beyond April-26's M18a–c:
+- **M18d** — excess measured against the **most conservative positive gross**
+  (min of GROSS AMT / REVISED_GROSS / REVISED_GROSS_NEW): M13 restructured gross
+  holding NET, so original GROSS can carry clawed-back components.
+- **M18e** — **cash cap by row NETPAYABLE**: recoverable excess cannot exceed the
+  row's take-home (clawback rows carry inflated gross offset by deductions, NET ≈ small).
+April-25 effect of d+e: phantom pool ₹7.1 Cr → real ₹1.27 Cr (HIGH ₹24.2L).
+Outputs per month: `<Mon>25_WORKLIST_Recovery_ESI_WageCode.xlsx` +
+`SUMMARY_<Mon>2025.md` (bot-queryable digest — the Telegram bot indexes
+`docs/pf-salary-reconciliation/` and answers salary questions from these).
 
 ### April 2026 (M12/M15 FINAL — footed row-by-row from the full 21,152-row sheet)
 | Anchor | ₹ |

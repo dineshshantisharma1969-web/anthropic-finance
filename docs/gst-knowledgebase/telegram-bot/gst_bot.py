@@ -38,6 +38,12 @@ logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=loggin
 log = logging.getLogger("gst-bot")
 
 LIBRARY_DIR = Path(os.environ.get("GST_LIBRARY_DIR", Path(__file__).parent.parent / "law-library"))
+# extra knowledge folders (salary reconciliation summaries etc.) — the bot answers
+# ISPL payroll questions from these the same way it answers law from the library
+EXTRA_DIRS = [Path(p) for p in os.environ.get(
+    "EXTRA_LIBRARY_DIRS",
+    str(Path(__file__).parent.parent.parent / "pf-salary-reconciliation")
+).split(os.pathsep)]
 MODEL = "claude-opus-4-8"
 MAX_DOC_CHARS = 60_000          # per retrieved doc slice sent to the model
 TOP_K = 4                       # docs per query
@@ -48,8 +54,13 @@ client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
 # --------------------------------------------------------------------------
 # System prompt — frozen (cacheable). Encodes SKILL_GST.md golden rules.
 # --------------------------------------------------------------------------
-SYSTEM_PROMPT = """You are a GST (India, Goods and Services Tax) law research assistant \
-answering queries over Telegram for a tax professional.
+SYSTEM_PROMPT = """You are a research assistant answering queries over Telegram for a \
+tax/finance professional at ISPL (Impressions Services), covering two domains:
+(A) GST (India) law — from the law-library documents; and
+(B) ISPL salary/PF/ESI reconciliation data — from the pf-salary-reconciliation \
+summary documents (monthly worklists: recovery review, ESI enrollment, wage-code 50%). \
+For salary questions, quote the exact figures from those documents and name the month \
+and file; if a month's summary is not in the documents, say it has not been examined yet.
 
 GOLDEN RULES — never violated:
 1. Answer ONLY from the law-library documents provided in the conversation. \
@@ -84,15 +95,18 @@ and answer, rather than only asking a clarifying question."""
 # --------------------------------------------------------------------------
 def load_library() -> list[tuple[str, str]]:
     docs = []
-    if LIBRARY_DIR.exists():
-        for p in sorted(LIBRARY_DIR.rglob("*")):
+    roots = [(LIBRARY_DIR, "")] + [(d, f"{d.name}/") for d in EXTRA_DIRS if d.exists()]
+    for root, prefix in roots:
+        if not root.exists():
+            continue
+        for p in sorted(root.rglob("*")):
             # archive/ holds superseded period-versions (old-period matters only)
             # — excluded so current-period answers never cite stale text
             if "archive" in p.parts:
                 continue
             if p.suffix.lower() in (".md", ".txt") and p.is_file():
                 try:
-                    docs.append((str(p.relative_to(LIBRARY_DIR)), p.read_text(errors="ignore")))
+                    docs.append((prefix + str(p.relative_to(root)), p.read_text(errors="ignore")))
                 except OSError:
                     pass
     log.info("law library: %d documents loaded from %s", len(docs), LIBRARY_DIR)
