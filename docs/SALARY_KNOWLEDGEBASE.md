@@ -47,15 +47,15 @@ RIKSANA BIBI Sep (₹180 PF) and SADHANA S. PAWAR Feb (₹73 PF), both NEOLIV RE
 ESTATE — in `PF_M13_Exceptions_Review.xlsx`.
 
 ### FY2025-26 row-level examination programme (April-26-level: M16/M17/M18)
-Status per month — recovery worklist (M18 day-basis) · ESI enrollment · wage-code 50%:
+**ALL 12 MONTHS EXAMINED (completed 04-07-2026).** Recovery worklist (M18 day-basis) · ESI enrollment · wage-code 50%:
 | Month | Examined | Month | Examined |
 |---|---|---|---|
-| Apr | ✅ 04-07-2026 — HIGH 221 ₹24.2L · ESI 590 · WC 875 | Oct | 🔴 pending upload |
-| May | ✅ 04-07-2026 — HIGH 97 ₹10.9L · ESI 350 · WC 1,097 | Nov | 🔴 pending upload |
-| Jun | 🔴 pending upload | Dec | ✅ 04-07-2026 — HIGH 105 ₹11.7L · ESI 121 · WC 1,082 ⚖️law live |
-| Jul | 🔴 pending upload | Jan | ✅ 04-07-2026 — HIGH 147 ₹16.5L · ESI 123 · WC 1,146 ⚖️ |
-| Aug | 🔴 pending upload | Feb | ✅ 04-07-2026 — HIGH 284 ₹32.0L · ESI 106 · WC 1,225 ⚖️ |
-| Sep | 🔴 pending upload | Mar | ✅ 04-07-2026 — HIGH 245 ₹28.1L · ESI 159 · WC 1,361 ⚖️ |
+| Apr | ✅ 04-07-2026 — HIGH 221 ₹24.2L · ESI 590 · WC 875 | Oct | ✅ 04-07-2026 — HIGH 88 ₹9.6L · ESI 114 · WC 1,381 (REVISED_DA) |
+| May | ✅ 04-07-2026 — HIGH 97 ₹10.9L · ESI 350 · WC 1,097 | Nov | ✅ 04-07-2026 — HIGH 96 ₹10.7L · ESI 113 · WC 1,064 ⚖️law from 21st |
+| Jun | ✅ 04-07-2026 — HIGH 156 ₹17.4L · ESI 257 · WC 1,100 | Dec | ✅ 04-07-2026 — HIGH 105 ₹11.7L · ESI 121 · WC 1,082 ⚖️law live |
+| Jul | ✅ 04-07-2026 — HIGH 75 ₹8.2L · ESI 226 · WC 1,115 | Jan | ✅ 04-07-2026 — HIGH 147 ₹16.5L · ESI 123 · WC 1,146 ⚖️ |
+| Aug | ✅ 04-07-2026 — HIGH 132 ₹14.6L · ESI 165 · WC 1,083 | Feb | ✅ 04-07-2026 — HIGH 284 ₹32.0L · ESI 106 · WC 1,225 ⚖️ |
+| Sep | ✅ 04-07-2026 — HIGH 66 ₹7.3L · ESI 128 · WC 1,142 | Mar | ✅ 04-07-2026 — HIGH 245 ₹28.1L · ESI 159 · WC 1,361 ⚖️ |
 
 Monthly files are 17–19.5 MB — **over the 10 MB Drive-API cap**, so each month must
 be **uploaded in chat** (like April-26 was); the D-drive copies work fine for this —
