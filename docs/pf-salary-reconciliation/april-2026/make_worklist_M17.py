@@ -103,6 +103,15 @@ def main(src, dst):
     wr.append(rec_cols)
     style_header(wr, len(rec_cols))
 
+    # M18c — the SITEDIVISIONDAYS column is UNRELIABLE on some rows (per-day
+    # rates like Rs.808 stored with divisor 30/31). Detect the effective basis:
+    #   div == 1            -> PER-DAY
+    #   FIXEDGROSS < 3,000  -> PER-DAY (no monthly salary is < Rs.3,000; daily
+    #                          minimum wages run Rs.300-1,500)
+    #   3,000 <= FG < 6,000 -> ambiguous: pick the reading (per-day vs
+    #                          monthly/div) whose expected total best explains
+    #                          the gross actually paid
+    #   else                -> MONTHLY at the divisor
     cleared = 0
     cleared_amt = 0.0
     kept = []
@@ -111,32 +120,42 @@ def main(src, dst):
         days = num(g(r, 'NORMALDAYS'))
         fg = num(g(r, 'FIXEDGROSS'))
         gr = num(g(r, 'GROSS AMT'))
-        base = fg / div * days if div > 0 else fg
-        var = sum(num(g(r, c)) for c in VAR_COLS if c in ix)
-        expected = base + var
+        # negative values in variable columns are reconciliation adjustments,
+        # not pay — they must not reduce the expected figure
+        var = sum(max(0.0, num(g(r, c))) for c in VAR_COLS if c in ix)
+        cand = {}
+        cand['PER-DAY'] = fg * days + var
+        cand[f'MONTHLY/{int(div)}'] = (fg / div * days if div > 0 else fg) + var
+        if div == 1 or fg < 3000:
+            basis = 'PER-DAY'
+        elif fg < 6000:
+            basis = min(cand, key=lambda k: abs(gr - cand[k]))
+        else:
+            basis = f'MONTHLY/{int(div)}'
+        expected = cand[basis]
+        base = expected - var
         exc = max(0.0, min(gr - expected, gr))
         rg = num(g(r, 'REVISED_GROSS'))
         rgn = num(g(r, 'REVISED_GROSS_NEW'))
         tol = max(500.0, expected * 0.02)
-        close = any(abs(cand - expected) <= tol for cand in (gr, rg, rgn) if cand > 0)
+        close = any(abs(c_ - expected) <= tol for c_ in (gr, rg, rgn) if c_ > 0)
         old = min(num(g(r, 'EXCESS_SALARY')), gr)
         if exc < 1 or close:
             cleared += 1
             cleared_amt += old
             continue
-        kept.append((exc, div, days, fg, gr, base, var, expected, rg, r))
+        kept.append((exc, basis, days, fg, gr, base, var, expected, rg, r))
     kept.sort(key=lambda x: -x[0])
     n_hi = 0
     rec_total = hi_total = 0.0
-    for exc, div, days, fg, gr, base, var, expected, rg, r in kept:
+    for exc, basis, days, fg, gr, base, var, expected, rg, r in kept:
         hi = exc > 10000
         n_hi += hi
         rec_total += exc
         hi_total += exc if hi else 0
         wr.append(['HIGH' if hi else 'LOW', g(r, 'EMPCODE'), g(r, 'FULLNAME'),
                    g(r, 'CLIENTGROUPNAME'), g(r, 'SITENAME'), g(r, 'SITESTATE'),
-                   g(r, 'DESIGNATIONNAME'),
-                   'PER-DAY' if div == 1 else f'MONTHLY/{int(div)}',
+                   g(r, 'DESIGNATIONNAME'), basis,
                    round(fg, 0), days, round(base, 0), round(var, 0),
                    round(expected, 0), round(gr, 0), round(rg, 0),
                    round(exc, 0), '', '', '', ''])
@@ -254,7 +273,7 @@ def main(src, dst):
     s.cell(row=s.max_row, column=1).fill = OK_FILL
     s.cell(row=s.max_row, column=1).font = TOT_FONT
     rec_cl = defaultdict(lambda: [0, 0.0])
-    for exc, div, days, fg, gr, base, var, expected, rg, r in kept:
+    for exc, basis, days, fg, gr, base, var, expected, rg, r in kept:
         k = str(g(r, 'CLIENTGROUPNAME') or 'UNKNOWN')[:45]
         rec_cl[k][0] += 1
         rec_cl[k][1] += exc

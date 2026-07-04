@@ -45,22 +45,34 @@ it is a PER-DAY rate** (e.g. ₹866, ₹985/day), else a monthly figure at divis
 flags nearly every such employee as overpaid. Correct comparison:
 
 ```
-EXPECTED_BASE    = FIXEDGROSS / SITEDIVISIONDAYS × NORMALDAYS          (M18a)
-EXPECTED_TOTAL   = EXPECTED_BASE + OT + EXTRA OT + arrears +           (M18b)
-                   ATTENDANCE ALW + PAID LEAVE + WEEKLY OFF +
-                   NATIONAL/FESTIVAL/PAID HOLIDAY + TRAVELLING ALW
+RATE BASIS (M18c — the SITEDIVISIONDAYS column is unreliable on some rows;
+per-day rates like ₹808 appear with divisor 30/31):
+  div = 1               → PER-DAY
+  FIXEDGROSS < ₹3,000   → PER-DAY (no monthly salary is < ₹3,000; daily
+                          minimum wages run ₹300–1,500)
+  ₹3,000 ≤ FG < ₹6,000  → ambiguous: pick the reading (per-day vs monthly/div)
+                          whose expected total best explains the gross paid
+  else                  → MONTHLY at the divisor
+
+EXPECTED_BASE    = rate × NORMALDAYS            (PER-DAY basis)
+                 = FIXEDGROSS / div × NORMALDAYS (MONTHLY basis)      (M18a)
+EXPECTED_TOTAL   = EXPECTED_BASE + Σ max(0, OT, EXTRA OT, arrears,    (M18b)
+                   ATTENDANCE ALW, PAID LEAVE, WEEKLY OFF,
+                   NATIONAL/FESTIVAL/PAID HOLIDAY, TRAVELLING ALW)
+                   — negatives are reconciliation adjustments, never subtract
 EXCESS_TO_REVIEW = clamp(GROSS AMT − EXPECTED_TOTAL, 0, GROSS AMT)
 
 CLEAR (no overpayment) when EXCESS < 1 OR EXPECTED_TOTAL is within
 max(₹500, 2%) of GROSS AMT / REVISED_GROSS / REVISED_GROSS_NEW.
 ```
 
-The tab shows `RATE_BASIS` (PER-DAY / MONTHLY/30 …), rate, days, EXPECTED_BASE,
-ALLOWANCES, EXPECTED_TOTAL, GROSS and REVISED_GROSS so every number is verifiable
-by eye. April-26 effect: **588 rows cleared** (₹14.85L phantom excess removed —
-ALL 297 per-day-rate rows clear once rate × days + allowances is compared to the
-revised gross); remaining genuine pool **2,189 rows / ₹82.3L, HIGH 130 rows / ₹15.9L**
-(e.g. monthly-rated ₹83,443 paid ₹106,253 with zero allowances → ₹22,810 genuine).
+**NORMALDAYS (actual days worked) is always the multiplier.** The tab shows
+`RATE_BASIS`, rate, NORMALDAYS, EXPECTED_BASE, ALLOWANCES, EXPECTED_TOTAL, GROSS
+and REVISED_GROSS so every number is verifiable by eye. April-26 effect:
+**644 rows cleared** (₹20.2L phantom excess removed — all 297 divisor-1 rows AND
+58 per-day rates mislabeled with divisor 30/31, e.g. ₹808 × 25 days = ₹20,192 ≈
+₹22,015 gross, previously flagged ₹21,342). Remaining genuine pool
+**2,133 rows / ₹76.1L, HIGH 100 rows / ₹11.3L**.
 - **ESI_ENROLLMENT** = reason contains `ESI-EXEMPT`. Exposure/head/month =
   `GROSS AMT × 4%` (EE 0.75% + ER 3.25%).
 
@@ -68,9 +80,9 @@ revised gross); remaining genuine pool **2,189 rows / ₹82.3L, HIGH 130 rows / 
 
 | Workstream | Employees | Amount |
 |---|--:|--:|
-| Recovery — HIGH (> ₹10k each, M18 basis) | **130** | **₹15,93,312** |
-| Recovery — remaining small rows | 2,059 | ₹66,35,846 |
-| Recovery rows cleared by M18 (incl. all 297 per-day rows) | 588 | (₹14.85L phantom excess removed) |
+| Recovery — HIGH (> ₹10k each, M18 basis) | **100** | **₹11,26,667** |
+| Recovery — remaining small rows | 2,033 | ₹64,84,330 |
+| Recovery rows cleared by M18 (297 div-1 + 58 mislabeled per-day + others) | 644 | (₹20.2L phantom excess removed) |
 | ESI enrollment needed | **1,940** | ₹15,38,471 / month exposure |
 | Wage Code 50% fails (1,019 structural + 31 noted; 234 negative-gross reversals excluded; 46 severe <30%) | **1,050** | ₹25,48,764 / month shortfall to 50% |
 
