@@ -21,6 +21,7 @@ workstreams that always need human decisions are:
 | **SUMMARY** | Headline counts/amounts + by-client top-10 for both workstreams | — |
 | **RECOVERY_REVIEW** | All overpaid-vs-rate rows, sorted biggest-first; **HIGH priority (> ₹10k) highlighted red and on top**. Shows fixed gross vs actual gross, OT and attendance allowance (so legit variable pay is visible), and `EXCESS_TO_REVIEW` (M16-capped) | `VERIFIED (Y/N)` · `DECISION (RECOVER/WAIVE/JUSTIFIED)` · `RECOVERY_MONTH` · `REMARKS` |
 | **ESI_ENROLLMENT** | Eligible-but-exempt employees **grouped by client** with ESIC/UAN numbers and per-head EE 0.75% / ER 3.25% amounts | `IC_NO_ALLOTTED` · `ENROLLED_FROM (month)` · `REMARKS` |
+| **WAGE_CODE_50PCT** | Code on Wages 2019 test: `BASIC+DA < 50% of CTC`, worst ratio first, severity-banded (`<30%` structural rows highlighted red). Guards: negative-gross reversal rows excluded; `NOTE` column marks OT/arrears-heavy and ≤2-day rows so structural fails read clean. Shows shortfall-to-50% and target Basic+DA | `RESTRUCTURE (Y/N)` · `TARGET_BASIC_DA (=50% CTC)` · `REMARKS` |
 
 ## How to generate
 
@@ -45,6 +46,11 @@ M16-patched file — M17 uses the cash-capped excess.
 | Recovery — HIGH (> ₹10k each) | **133** | **₹16,22,437** |
 | Recovery — remaining small rows | 2,644 | ₹74,48,065 |
 | ESI enrollment needed | **1,940** | ₹15,38,471 / month exposure |
+| Wage Code 50% fails (1,019 structural + 31 noted; 234 negative-gross reversals excluded; 46 severe <30%) | **1,050** | ₹25,48,764 / month shortfall to 50% |
+
+Wage-code concentration: Ministry of Railways, Blink Commerce (58% of its rows fail),
+Bhagwati Products (87% fail), JLL, Zomato Hyperpure, Infosys. Fixing = restructure
+salary components so Basic+DA ≥ 50% of CTC (raises PF/gratuity cost — price it first).
 
 Working order: HIGH recovery rows first (5% of rows, ~18% of value, biggest tickets),
 ESI enrollment in parallel (statutory clock runs monthly), small recovery rows batch-wise.

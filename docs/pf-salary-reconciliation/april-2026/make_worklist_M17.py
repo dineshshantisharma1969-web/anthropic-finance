@@ -12,6 +12,12 @@ Takes a reconciled monthly file (AFTER Rule M16 is applied) and produces
   3. ESI_ENROLLMENT   — ESI-eligible-but-exempt employees grouped by client,
                         with EE/ER contribution columns and working columns:
                         IC_NO_ALLOTTED / ENROLLED_FROM / REMARKS
+  4. WAGE_CODE_50PCT  — Code on Wages 2019 test: rows where BASIC+DA < 50% of
+                        CTC (wages must be >= 50% of total remuneration).
+                        Severity-banded (<30% highlighted), with working
+                        columns: RESTRUCTURE (Y/N) / TARGET_BASIC_DA / REMARKS.
+                        CTC is located by header name 'CTC' (column FI in the
+                        April-26 reconciled layout).
 
 Usage:  python make_worklist_M17.py <Month_RECONCILED_M16.xlsx> <output.xlsx>
 Needs:  pip install openpyxl
@@ -120,6 +126,53 @@ def main(src, dst):
                    round(gr * 0.0075, 0), round(gr * 0.0325, 0), '', '', ''])
     autowidth(we, [11, 24, 26, 24, 14, 14, 14, 10, 12, 10, 10, 14, 12, 24])
 
+    # -- Tab 4: WAGE_CODE_50PCT ----------------------------------------------
+    wc_cols = ['SEVERITY', 'NOTE', 'EMPCODE', 'FULLNAME', 'CLIENTGROUPNAME', 'SITENAME',
+               'SITESTATE', 'DESIGNATIONNAME', 'NORMALDAYS', 'BASIC', 'DA', 'BASIC+DA',
+               'OT+ARREARS', 'GROSS AMT', 'CTC', 'BASIC+DA % OF CTC', 'SHORTFALL_TO_50PCT',
+               'RESTRUCTURE (Y/N)', 'TARGET_BASIC_DA (=50% CTC)', 'REMARKS']
+    ww = out.create_sheet("WAGE_CODE_50PCT")
+    ww.append(wc_cols)
+    style_header(ww, len(wc_cols))
+    wage_fail, neg_gross = [], 0
+    for r in rows:
+        b, d, ctc = num(g(r, 'BASIC')), num(g(r, 'DA')), num(g(r, 'CTC'))
+        gr = num(g(r, 'GROSS AMT'))
+        if ctc <= 0 or (b + d) <= 0:
+            continue                       # zero-basic skip rows / no CTC
+        if gr < 0:                         # salary-reversal rows are not wage structures
+            neg_gross += 1
+            continue
+        ratio = (b + d) / ctc
+        if ratio < 0.5:
+            ot_arr = (num(g(r, 'OT AMOUNT')) + num(g(r, 'EXTRA OT')) +
+                      num(g(r, 'BASIC DA ARREARS')) + num(g(r, 'OTHER ARREARS')))
+            wage_fail.append((ratio, b, d, ctc, gr, ot_arr, r))
+    wage_fail.sort(key=lambda x: x[0])     # worst ratio first
+    n_sev = n_struct = 0
+    for ratio, b, d, ctc, gr, ot_arr, r in wage_fail:
+        sev = '<30%' if ratio < 0.30 else ('30-40%' if ratio < 0.40 else
+              ('40-45%' if ratio < 0.45 else '45-50%'))
+        note = ''
+        if ot_arr > gr * 0.5:
+            note = 'OT/ARREARS-HEAVY — remuneration inflated this month'
+        elif num(g(r, 'NORMALDAYS')) <= 2:
+            note = 'LOW-DAY ROW — verify'
+        else:
+            n_struct += 1
+        target = round(ctc * 0.5, 0)
+        ww.append([sev, note, g(r, 'EMPCODE'), g(r, 'FULLNAME'), g(r, 'CLIENTGROUPNAME'),
+                   g(r, 'SITENAME'), g(r, 'SITESTATE'), g(r, 'DESIGNATIONNAME'),
+                   num(g(r, 'NORMALDAYS')), round(b, 0), round(d, 0), round(b + d, 0),
+                   round(ot_arr, 0), round(gr, 0), round(ctc, 0),
+                   round(ratio * 100, 1), round(target - (b + d), 0),
+                   '', target, ''])
+        if ratio < 0.30 and not note:
+            n_sev += 1
+            for c in range(1, len(wc_cols) + 1):
+                ww.cell(row=ww.max_row, column=c).fill = HI_FILL
+    autowidth(ww, [8, 34, 11, 24, 26, 24, 14, 18, 8, 9, 8, 10, 10, 10, 10, 11, 12, 9, 14, 24])
+
     # -- Tab 1: SUMMARY ------------------------------------------------------
     s = out.create_sheet("SUMMARY", 0)
     s.append(["MONTHLY WORKLIST — RECOVERY REVIEW & ESI ENROLLMENT (Rule M17)"])
@@ -137,9 +190,14 @@ def main(src, dst):
               round(rec_total - hi_total, 0), "Tab RECOVERY_REVIEW"])
     s.append(["ESI enrollment needed (eligible, currently exempt)", len(esi),
               round(esi_gross * 0.04, 0), "Tab ESI_ENROLLMENT (amount = 4%/month exposure)"])
-    s.append(["TOTAL", len(recovery) + len(esi), "", ""])
-    s.cell(row=8, column=1).font = TOT_FONT
-    s.cell(row=8, column=2).font = TOT_FONT
+    wc_short = sum(max(0.0, ctc * 0.5 - (b + d)) for _, b, d, ctc, _g, _o, _r in wage_fail)
+    s.append(["Wage Code 50% test FAIL (Basic+DA < 50% of CTC)", len(wage_fail),
+              round(wc_short, 0),
+              f"Tab WAGE_CODE_50PCT ({n_struct} structural; rest OT/arrears/low-day — see NOTE col; "
+              f"{neg_gross} negative-gross reversal rows excluded)"])
+    s.append(["TOTAL", len(recovery) + len(esi) + len(wage_fail), "", ""])
+    s.cell(row=s.max_row, column=1).font = TOT_FONT
+    s.cell(row=s.max_row, column=2).font = TOT_FONT
     s.append([])
     # by-client tables
     from collections import defaultdict
@@ -161,12 +219,25 @@ def main(src, dst):
     s.cell(row=s.max_row, column=1).font = TOT_FONT
     for k, (n, v) in byclient(esi, lambda r: num(g(r, 'GROSS AMT')) * 0.04)[:10]:
         s.append([k, n, round(v, 0)])
+    s.append([])
+    s.append(["WAGE CODE 50% FAILS BY CLIENT (top 10)", "EMPLOYEES", "SHORTFALL (Rs.)"])
+    s.cell(row=s.max_row, column=1).fill = OK_FILL
+    s.cell(row=s.max_row, column=1).font = TOT_FONT
+    from collections import defaultdict as dd
+    wc_cl = dd(lambda: [0, 0.0])
+    for ratio, b, d, ctc, _g2, _o2, r in wage_fail:
+        k = str(g(r, 'CLIENTGROUPNAME') or 'UNKNOWN')[:45]
+        wc_cl[k][0] += 1
+        wc_cl[k][1] += max(0.0, ctc * 0.5 - (b + d))
+    for k, (n_, v) in sorted(wc_cl.items(), key=lambda x: -x[1][0])[:10]:
+        s.append([k, n_, round(v, 0)])
     autowidth(s, [52, 12, 16, 42])
 
     out.save(dst)
     print(f"worklist written: {dst}")
     print(f"  RECOVERY_REVIEW : {len(recovery):,} rows (HIGH {n_hi}, Rs.{hi_total:,.0f}) · total Rs.{rec_total:,.0f}")
     print(f"  ESI_ENROLLMENT  : {len(esi):,} rows · 4%/month exposure Rs.{esi_gross*0.04:,.0f}")
+    print(f"  WAGE_CODE_50PCT : {len(wage_fail):,} rows (<30% severe: {n_sev}) · monthly shortfall to 50% Rs.{wc_short:,.0f}")
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
