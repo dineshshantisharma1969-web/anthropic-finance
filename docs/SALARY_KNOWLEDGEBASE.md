@@ -126,7 +126,7 @@ Run locally (files >10 MB exceed the Drive-connector download cap). To rebuild t
 
 | # | Item | Status |
 |---|---|---|
-| 1 | **April-26 excess salary — TRIAGED 2026-07-04** (see `april-2026/EXCESS_SALARY_TRIAGE_April2026.md`): headline ₹5.45 Cr → **real cash cap ₹1.92 Cr**, of which: 🔴 genuine overpaid review = `REVIEW_1` 133 rows > ₹10k (≈₹31L, start here) + 2,644 small rows; 🟠 ESI compliance gap = 1,940 eligible employees not enrolled (₹15.4L/month exposure, `REVIEW_3`); 🟢 ₹2.4 Cr = projection artifact on 0–2-day rows (`REVIEW_4`, patch formula: cap EXCESS at GROSS, skip when days ≤ 2) | 🔴 **OPEN — decisions 1–3 in triage doc** |
+| 1 | **April-26 excess salary — TRIAGED & PATCHED (Rule M16, 2026-07-04)**: headline ₹5.45 Cr was inflated by projection artifacts; after M16 (cap excess at gross + suppress ≤2-day flags — `april-2026/SKILL_PATCH_M16_excess_artifact.md` + `patch_excess_artifact_M16.py`) the real flagged excess is **₹1.91 Cr on 4,775 rows** (golden rules verified intact). Remaining human decisions: 🔴 recovery review `REVIEW_1` 133 rows > ₹10k ≈ ₹31L; 🟠 ESI enrollment of 1,940 eligible employees (₹15.4L/month exposure, `REVIEW_3`). Patched file: `April26_RECONCILED_FINAL_M16_PATCHED.xlsx` (delivered to user 2026-07-04; regenerate anytime with the script). Apply M16 to all future months. | 🟠 **OPEN — 2 decisions left (recovery + ESI)** |
 | 2 | April-26 ESI vs Future gap ₹37,736 (secondary-site / Future-only; expected per E1) — confirm in report's ESI_Audit tab | 🟡 Verify before ESI filing |
 | 3 | FY25-26: `M13_SUMMARY` October net short ₹9,76,861 vs pivot (pre-final build) → **use pivot/monthly figure** | 🟡 Documented |
 | 4 | FY25-26: `M13_SUMMARY` June PF short ₹858 → **use pivot/ECR figure** | 🟡 Documented |
