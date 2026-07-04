@@ -16,6 +16,21 @@ Telegram message
    → cited answer back to Telegram (Position / Basis / Risk / Action format)
 ```
 
+## Quickest start on Windows
+
+1. Install Python 3.10+ from python.org (tick **"Add python.exe to PATH"**).
+2. Get the code:
+   ```
+   git clone https://github.com/dineshshantisharma1969-web/anthropic-finance.git
+   cd anthropic-finance
+   git checkout claude/pf-salary-reconciliation-2026-1x7pmd
+   ```
+   (or download the repo ZIP from GitHub — Code → Download ZIP)
+3. Open `docs\gst-knowledgebase\telegram-bot\run_bot.bat` in Notepad, paste your
+   two keys, save, double-click it. Done — message your bot on Telegram.
+
+For a Linux server, use `gst-bot.service` (instructions inside the file).
+
 ## Setup (one-time, ~10 minutes)
 
 1. **Create the Telegram bot**: open Telegram → search `@BotFather` → `/newbot`

@@ -1,0 +1,22 @@
+# GST Law Telegram Bot — systemd unit (Linux server deployment)
+# 1) Put secrets in /etc/gst-bot.env (chmod 600):
+#      TELEGRAM_BOT_TOKEN=...
+#      ANTHROPIC_API_KEY=...
+# 2) Adjust WorkingDirectory to where the repo is cloned.
+# 3) sudo cp gst-bot.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#    sudo systemctl enable --now gst-bot
+[Unit]
+Description=GST Law Telegram Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/gst-bot.env
+WorkingDirectory=/opt/anthropic-finance/docs/gst-knowledgebase/telegram-bot
+ExecStart=/usr/bin/python3 gst_bot.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
