@@ -70,6 +70,21 @@ scratch). Two new rules beyond April-26's M18a–c:
 - **M18e** — **cash cap by row NETPAYABLE**: recoverable excess cannot exceed the
   row's take-home (clawback rows carry inflated gross offset by deductions, NET ≈ small).
 April-25 effect of d+e: phantom pool ₹7.1 Cr → real ₹1.27 Cr (HIGH ₹24.2L).
+**Official statutory guidance loaded (04-07-2026)** → `fy2025-26/../statutory/`:
+MoLE *Additional FAQs on Labour Codes (16.03.2026)* + *Employer Compliance
+Handbook (Four Labour Codes)*. Operative clarifications for the 50% test
+(per FAQ, cite S.2(y) Code on Wages for the legal position):
+- **OT allowance IS included** in the 50% wage calculation (FAQ 1a, 8).
+- Denominator "remuneration" **includes** employer PF/pension contribution +
+  statutory bonus; **excludes gratuity, ESI, other retirement benefits** (FAQ 1).
+- Annual performance incentives are **NOT** wages (FAQ 4).
+- Revised wages definition applies to **gratuity computation from 21-11-2025** (FAQ 6).
+⚠️ Our pack used `BASIC+DA < 50% of CTC`. If ISPL's CTC includes gratuity
+provision / ER-ESI, the denominator is overstated → some rows over-flagged;
+conversely OT-inclusive remuneration can raise the denominator. **Open item:
+re-run pack v2 with FAQ-adjusted denominator** (CTC − gratuity provision −
+ER ESI; columns exist in M13 files: GRATUITY_PROVISION, ESIC COMPANY).
+
 **Wage-code law period (Code on Wages in force 21-11-2025):** consolidated pack
 `fy2025-26/Dec25_Mar26_WAGECODE_50PCT_PACK.xlsx` — 1,650 failers, **1,252 persistent
 (≥2 months) = restructuring list**, shortfall ₹28.4L/mo, ER cost to fix ₹5.06L/mo
