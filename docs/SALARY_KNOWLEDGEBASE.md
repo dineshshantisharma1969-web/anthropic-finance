@@ -126,7 +126,7 @@ Run locally (files >10 MB exceed the Drive-connector download cap). To rebuild t
 
 | # | Item | Status |
 |---|---|---|
-| 1 | **April-26: 4,974 ACTION_NEEDED rows, ₹5.45 Cr excess salary** — top reasons: paid above fixed rate (2,458), ESI-exempt but rate ≤ ₹21k (1,940), implied full-month ≫ rate (319), low attendance (257). List: `april-2026/ACTION_NEEDED_April2026.csv` | 🔴 **OPEN — needs decision** |
+| 1 | **April-26 excess salary — TRIAGED 2026-07-04** (see `april-2026/EXCESS_SALARY_TRIAGE_April2026.md`): headline ₹5.45 Cr → **real cash cap ₹1.92 Cr**, of which: 🔴 genuine overpaid review = `REVIEW_1` 133 rows > ₹10k (≈₹31L, start here) + 2,644 small rows; 🟠 ESI compliance gap = 1,940 eligible employees not enrolled (₹15.4L/month exposure, `REVIEW_3`); 🟢 ₹2.4 Cr = projection artifact on 0–2-day rows (`REVIEW_4`, patch formula: cap EXCESS at GROSS, skip when days ≤ 2) | 🔴 **OPEN — decisions 1–3 in triage doc** |
 | 2 | April-26 ESI vs Future gap ₹37,736 (secondary-site / Future-only; expected per E1) — confirm in report's ESI_Audit tab | 🟡 Verify before ESI filing |
 | 3 | FY25-26: `M13_SUMMARY` October net short ₹9,76,861 vs pivot (pre-final build) → **use pivot/monthly figure** | 🟡 Documented |
 | 4 | FY25-26: `M13_SUMMARY` June PF short ₹858 → **use pivot/ECR figure** | 🟡 Documented |
