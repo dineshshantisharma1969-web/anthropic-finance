@@ -58,12 +58,14 @@ Pattern: identical to `docs/SALARY_KNOWLEDGEBASE.md` (the salary second brain).
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Load law library (Acts → Rules → notification/circular indexes) | 🔴 IN PROGRESS |
+| 1 | Load law library (Acts → Rules → notification/circular indexes) — **CBIC sites block non-India IPs; Dinesh must download & hand over: see `law-library/SOURCES_TO_LOAD.md`** | 🔴 BLOCKED ON DINESH |
 | 2 | Fill entity/GSTIN table (§3) and returns calendar | 🔴 pending |
 | 3 | Load pending cases/notices into `cases/CASE_TRACKER.md` | 🔴 pending |
 | 4 | Record first positions on recurring issues (e.g. manpower supply valuation, RCM items) | 🔴 pending |
 | 5 | Deploy Telegram bot (`telegram-bot/README.md`) — needs BotFather token + API key + a machine that stays on | 🟡 code ready |
 | 6 | Run first live GSTR-1 reco (`recon/`) — needs current month's sales register + portal GSTR-1 export | 🟡 tool ready |
+| 7 | **June-26 IRN pending: 367 docs, net ₹5.56 Cr, GST ₹98.3L not yet e-invoiced** (Drive `1KIZPBAtFif0N-GlLJHbWsjpPGDuzlMMj`, analyzed 04-07-2026). 17 docs already >30 days old (₹2.1L GST — IRP 30-day window risk, mostly SIGNIFY/Karnataka + ALTF CNs), 145 docs at 24–30 days (₹35.4L GST). Worklist issued; generate IRNs before filing June R1 | 🔴 URGENT |
+| 8 | UNBS FY 2021-22 vendor ledger received — logged in `cases/CASE_TRACKER.md`; awaiting context (which notice/query?) | 🟡 awaiting Dinesh |
 
 ## 5. Update discipline
 
