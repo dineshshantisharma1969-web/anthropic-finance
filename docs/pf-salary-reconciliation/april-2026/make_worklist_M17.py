@@ -77,35 +77,65 @@ def main(src, dst):
 
     out = Workbook()
 
-    # -- Tab 2: RECOVERY_REVIEW --------------------------------------------
-    rec_cols = ['PRIORITY', 'EMPCODE', 'FULLNAME', 'CLIENTGROUPNAME', 'SITENAME',
-                'SITESTATE', 'DESIGNATIONNAME', 'NORMALDAYS', 'FIXEDGROSS',
-                'GROSS AMT', 'OT AMOUNT', 'ATTENDANCE ALW', 'EXCESS_TO_REVIEW',
-                'ACTION_REASON', 'VERIFIED (Y/N)', 'DECISION (RECOVER/WAIVE/JUSTIFIED)',
+    # -- Tab 2: RECOVERY_REVIEW ----------------------------------------------
+    # Rule M18 (day-basis correction): FIXEDGROSS is expressed at the
+    # SITEDIVISIONDAYS divisor (1 = per-day rate, else 26/27/28/30/31 = monthly
+    # at that divisor). Expected pay = FIXEDGROSS / SITEDIVISIONDAYS x NORMALDAYS.
+    # EXCESS_TO_REVIEW = clamp(GROSS - EXPECTED, 0, GROSS). Rows the day-basis
+    # clears (excess <= 0) are dropped from the tab and counted in SUMMARY.
+    rec_cols = ['PRIORITY', 'NOTE', 'EMPCODE', 'FULLNAME', 'CLIENTGROUPNAME', 'SITENAME',
+                'SITESTATE', 'DESIGNATIONNAME', 'RATE_BASIS', 'FIXEDGROSS',
+                'NORMALDAYS', 'EXPECTED_GROSS (rate/div×days)', 'GROSS AMT',
+                'OT+ARREARS', 'ATTENDANCE ALW', 'EXCESS_TO_REVIEW',
+                'VERIFIED (Y/N)', 'DECISION (RECOVER/WAIVE/JUSTIFIED)',
                 'RECOVERY_MONTH', 'REMARKS']
     wr = out.active
     wr.title = "RECOVERY_REVIEW"
     wr.append(rec_cols)
     style_header(wr, len(rec_cols))
-    recovery.sort(key=lambda r: -min(num(g(r, 'EXCESS_SALARY')), num(g(r, 'GROSS AMT'))))
-    n_hi = 0
+
+    def daybasis(r):
+        div = num(g(r, 'SITEDIVISIONDAYS')) or 30
+        days = num(g(r, 'NORMALDAYS'))
+        fg = num(g(r, 'FIXEDGROSS'))
+        gr = num(g(r, 'GROSS AMT'))
+        expected = fg / div * days if div > 0 else fg
+        exc = max(0.0, min(gr - expected, gr))
+        return div, days, fg, gr, expected, exc
+
+    cleared = 0
+    cleared_amt = 0.0
+    kept = []
     for r in recovery:
-        exc = round(min(num(g(r, 'EXCESS_SALARY')), num(g(r, 'GROSS AMT'))), 0)
+        div, days, fg, gr, expected, exc = daybasis(r)
+        old = min(num(g(r, 'EXCESS_SALARY')), gr)
+        if exc < 1:
+            cleared += 1
+            cleared_amt += old
+            continue
+        kept.append((exc, div, days, fg, gr, expected, r))
+    kept.sort(key=lambda x: -x[0])
+    n_hi = 0
+    rec_total = hi_total = 0.0
+    for exc, div, days, fg, gr, expected, r in kept:
+        ot_arr = (num(g(r, 'OT AMOUNT')) + num(g(r, 'EXTRA OT')) +
+                  num(g(r, 'BASIC DA ARREARS')) + num(g(r, 'OTHER ARREARS')))
+        note = 'OT/ARREARS may explain' if ot_arr >= exc else ''
         hi = exc > 10000
         n_hi += hi
-        wr.append(['HIGH' if hi else 'LOW', g(r, 'EMPCODE'), g(r, 'FULLNAME'),
+        rec_total += exc
+        hi_total += exc if hi else 0
+        wr.append(['HIGH' if hi else 'LOW', note, g(r, 'EMPCODE'), g(r, 'FULLNAME'),
                    g(r, 'CLIENTGROUPNAME'), g(r, 'SITENAME'), g(r, 'SITESTATE'),
-                   g(r, 'DESIGNATIONNAME'), num(g(r, 'NORMALDAYS')),
-                   num(g(r, 'FIXEDGROSS')), num(g(r, 'GROSS AMT')),
-                   num(g(r, 'OT AMOUNT')), num(g(r, 'ATTENDANCE ALW')), exc,
-                   str(g(r, 'ACTION_REASON') or '')[:60], '', '', '', ''])
+                   g(r, 'DESIGNATIONNAME'),
+                   'PER-DAY' if div == 1 else f'MONTHLY/{int(div)}',
+                   round(fg, 0), days, round(expected, 0), round(gr, 0),
+                   round(ot_arr, 0), round(num(g(r, 'ATTENDANCE ALW')), 0),
+                   round(exc, 0), '', '', '', ''])
         if hi:
             for c in range(1, len(rec_cols) + 1):
                 wr.cell(row=wr.max_row, column=c).fill = HI_FILL
-    autowidth(wr, [8, 11, 24, 26, 24, 14, 18, 7, 10, 10, 9, 9, 12, 40, 9, 16, 12, 24])
-    rec_total = sum(min(num(g(r, 'EXCESS_SALARY')), num(g(r, 'GROSS AMT'))) for r in recovery)
-    hi_total = sum(min(num(g(r, 'EXCESS_SALARY')), num(g(r, 'GROSS AMT')))
-                   for r in recovery if min(num(g(r, 'EXCESS_SALARY')), num(g(r, 'GROSS AMT'))) > 10000)
+    autowidth(wr, [8, 22, 11, 24, 26, 24, 14, 18, 11, 10, 8, 13, 10, 10, 9, 12, 9, 16, 12, 24])
 
     # -- Tab 3: ESI_ENROLLMENT ---------------------------------------------
     esi_cols = ['EMPCODE', 'FULLNAME', 'CLIENTGROUPNAME', 'SITENAME', 'SITESTATE',
@@ -184,10 +214,12 @@ def main(src, dst):
         s.cell(row=4, column=c).fill = HDR_FILL
         s.cell(row=4, column=c).font = HDR_FONT
     s.append(["Recovery review — HIGH priority (> Rs.10k each)", n_hi, round(hi_total, 0),
-              "Tab RECOVERY_REVIEW (red rows, on top)"])
+              "Tab RECOVERY_REVIEW (red rows, on top; M18 day-basis excess)"])
     s.cell(row=5, column=1).fill = HI_FILL
-    s.append(["Recovery review — remaining (small amounts)", len(recovery) - n_hi,
+    s.append(["Recovery review — remaining (small amounts)", len(kept) - n_hi,
               round(rec_total - hi_total, 0), "Tab RECOVERY_REVIEW"])
+    s.append(["Cleared by M18 day-basis correction (rate/div × days)", cleared,
+              round(cleared_amt, 0), "Removed from tab — expected pay >= gross once FIXEDGROSS read at its divisor"])
     s.append(["ESI enrollment needed (eligible, currently exempt)", len(esi),
               round(esi_gross * 0.04, 0), "Tab ESI_ENROLLMENT (amount = 4%/month exposure)"])
     wc_short = sum(max(0.0, ctc * 0.5 - (b + d)) for _, b, d, ctc, _g, _o, _r in wage_fail)
@@ -195,7 +227,7 @@ def main(src, dst):
               round(wc_short, 0),
               f"Tab WAGE_CODE_50PCT ({n_struct} structural; rest OT/arrears/low-day — see NOTE col; "
               f"{neg_gross} negative-gross reversal rows excluded)"])
-    s.append(["TOTAL", len(recovery) + len(esi) + len(wage_fail), "", ""])
+    s.append(["TOTAL (working rows)", len(kept) + len(esi) + len(wage_fail), "", ""])
     s.cell(row=s.max_row, column=1).font = TOT_FONT
     s.cell(row=s.max_row, column=2).font = TOT_FONT
     s.append([])
@@ -208,11 +240,16 @@ def main(src, dst):
             d[k][0] += 1
             d[k][1] += valfn(r)
         return sorted(d.items(), key=lambda x: -x[1][1])
-    s.append(["RECOVERY BY CLIENT (top 10)", "EMPLOYEES", "EXCESS (Rs.)"])
+    s.append(["RECOVERY BY CLIENT (top 10, M18 day-basis)", "EMPLOYEES", "EXCESS (Rs.)"])
     s.cell(row=s.max_row, column=1).fill = OK_FILL
     s.cell(row=s.max_row, column=1).font = TOT_FONT
-    for k, (n, v) in byclient(recovery, lambda r: min(num(g(r, 'EXCESS_SALARY')), num(g(r, 'GROSS AMT'))))[:10]:
-        s.append([k, n, round(v, 0)])
+    rec_cl = defaultdict(lambda: [0, 0.0])
+    for exc, div, days, fg, gr, expected, r in kept:
+        k = str(g(r, 'CLIENTGROUPNAME') or 'UNKNOWN')[:45]
+        rec_cl[k][0] += 1
+        rec_cl[k][1] += exc
+    for k, (n_, v) in sorted(rec_cl.items(), key=lambda x: -x[1][1])[:10]:
+        s.append([k, n_, round(v, 0)])
     s.append([])
     s.append(["ESI ENROLLMENT BY CLIENT (top 10)", "EMPLOYEES", "4%/MONTH EXPOSURE (Rs.)"])
     s.cell(row=s.max_row, column=1).fill = OK_FILL
@@ -235,7 +272,7 @@ def main(src, dst):
 
     out.save(dst)
     print(f"worklist written: {dst}")
-    print(f"  RECOVERY_REVIEW : {len(recovery):,} rows (HIGH {n_hi}, Rs.{hi_total:,.0f}) · total Rs.{rec_total:,.0f}")
+    print(f"  RECOVERY_REVIEW : {len(kept):,} rows (HIGH {n_hi}, Rs.{hi_total:,.0f}) · total Rs.{rec_total:,.0f} · M18 cleared {cleared} rows (Rs.{cleared_amt:,.0f} old excess)")
     print(f"  ESI_ENROLLMENT  : {len(esi):,} rows · 4%/month exposure Rs.{esi_gross*0.04:,.0f}")
     print(f"  WAGE_CODE_50PCT : {len(wage_fail):,} rows (<30% severe: {n_sev}) · monthly shortfall to 50% Rs.{wc_short:,.0f}")
 
