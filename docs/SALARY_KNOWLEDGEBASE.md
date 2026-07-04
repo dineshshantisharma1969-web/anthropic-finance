@@ -52,10 +52,10 @@ Status per month — recovery worklist (M18 day-basis) · ESI enrollment · wage
 |---|---|---|---|
 | Apr | ✅ 04-07-2026 — HIGH 221 ₹24.2L · ESI 590 · WC 875 | Oct | 🔴 pending upload |
 | May | ✅ 04-07-2026 — HIGH 97 ₹10.9L · ESI 350 · WC 1,097 | Nov | 🔴 pending upload |
-| Jun | 🔴 pending upload | Dec | 🔴 pending upload |
-| Jul | 🔴 pending upload | Jan | 🔴 pending upload |
-| Aug | 🔴 pending upload | Feb | 🔴 pending upload |
-| Sep | 🔴 pending upload | Mar | 🔴 pending upload |
+| Jun | 🔴 pending upload | Dec | ✅ 04-07-2026 — HIGH 105 ₹11.7L · ESI 121 · WC 1,082 ⚖️law live |
+| Jul | 🔴 pending upload | Jan | ✅ 04-07-2026 — HIGH 147 ₹16.5L · ESI 123 · WC 1,146 ⚖️ |
+| Aug | 🔴 pending upload | Feb | ✅ 04-07-2026 — HIGH 284 ₹32.0L · ESI 106 · WC 1,225 ⚖️ |
+| Sep | 🔴 pending upload | Mar | ✅ 04-07-2026 — HIGH 245 ₹28.1L · ESI 159 · WC 1,361 ⚖️ |
 
 Monthly files are 17–19.5 MB — **over the 10 MB Drive-API cap**, so each month must
 be **uploaded in chat** (like April-26 was); the D-drive copies work fine for this —
@@ -70,6 +70,12 @@ scratch). Two new rules beyond April-26's M18a–c:
 - **M18e** — **cash cap by row NETPAYABLE**: recoverable excess cannot exceed the
   row's take-home (clawback rows carry inflated gross offset by deductions, NET ≈ small).
 April-25 effect of d+e: phantom pool ₹7.1 Cr → real ₹1.27 Cr (HIGH ₹24.2L).
+**Wage-code law period (Code on Wages in force 21-11-2025):** consolidated pack
+`fy2025-26/Dec25_Mar26_WAGECODE_50PCT_PACK.xlsx` — 1,650 failers, **1,252 persistent
+(≥2 months) = restructuring list**, shortfall ₹28.4L/mo, ER cost to fix ₹5.06L/mo
+(PF ~13% + gratuity 4.81%). Top: JLL (241/₹8.95L), Blink (146), Railways (109),
+CBRE (103), Zomato Hyperpure (77). Trend rising Dec→Mar.
+
 Outputs per month: `<Mon>25_WORKLIST_Recovery_ESI_WageCode.xlsx` +
 `SUMMARY_<Mon>2025.md` (bot-queryable digest — the Telegram bot indexes
 `docs/pf-salary-reconciliation/` and answers salary questions from these).
