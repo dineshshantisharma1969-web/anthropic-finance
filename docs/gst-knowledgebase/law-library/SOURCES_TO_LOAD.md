@@ -17,6 +17,15 @@
 Claude then extracts the text to markdown under `law-library/`, indexes every
 document with its version date in the INDEX files, and commits.
 
+## ✅ LOADED 04-07-2026 — items 1–3 (and more) covered
+
+Dinesh provided the *GST Manual* PDF (Garg & Garg, text as on **01-01-2026**) in
+Drive folder `GST LAW -LIBRARY` → extracted to 60+ chapter-wise md files:
+CGST Act & Rules, IGST Act & Rules, Cess Act & Rules, GSTAT Rules 2023 +
+(Procedure) Rules 2025, with the book's per-section notification/circular tracker.
+**Still wanted:** full texts of NN 11/2017 & 12/2017-CT(R) (as amended), key
+circulars, UTGST Act (only if needed) — same hand-over route below.
+
 ## Priority order (download the LATEST "updated/as-amended" version of each)
 
 | # | Document | Where (open from India) |

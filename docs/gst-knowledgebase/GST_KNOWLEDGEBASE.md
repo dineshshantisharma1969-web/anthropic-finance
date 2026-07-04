@@ -22,9 +22,9 @@ Pattern: identical to `docs/SALARY_KNOWLEDGEBASE.md` (the salary second brain).
 | Folder | Contents | Status |
 |---|---|---|
 | `SKILL_GST.md` | **The methodology** — source hierarchy, citation rules, answer workflow, update discipline | ✅ v1 ready |
-| `law-library/acts/` | CGST / IGST / UTGST / SGST / Compensation Cess Acts, as amended | 🔴 to load |
-| `law-library/rules/` | CGST Rules 2017 (as amended), other rules | 🔴 to load |
-| `law-library/notifications/` | Rate + non-rate notifications, indexed | 🔴 to load |
+| `law-library/acts/` | CGST / IGST / Cess Acts **as on 01-01-2026** (chapter-wise files) | ✅ LOADED 04-07-2026 |
+| `law-library/rules/` | CGST Rules (19 chapters), IGST Rules, GSTAT Rules 2023 & (Procedure) 2025, Cess Rules — **as on 01-01-2026** | ✅ LOADED 04-07-2026 |
+| `law-library/notifications/` | Rate + non-rate notifications, indexed. (Per-section NN tracker embedded in loaded Act/Rules text; full NN 11/12-2017-CT(R) texts still to load) | 🟡 partial (tracker only) |
 | `law-library/circulars/` | CBIC circulars, indexed by number/topic | 🔴 to load |
 | `returns/` | Return forms map, due-date calendar, entity filing tracker | 🟡 template ready |
 | `cases/` | Litigation tracker — notices, replies, orders, appeals, deadlines | 🟡 template ready |
@@ -38,11 +38,15 @@ Pattern: identical to `docs/SALARY_KNOWLEDGEBASE.md` (the salary second brain).
 
 | Document | Version/as-amended date | Drive ID / link | Loaded |
 |---|---|---|---|
-| CGST Act 2017 (updated) | — | — | ☐ |
-| IGST Act 2017 (updated) | — | — | ☐ |
-| CGST Rules 2017 (updated) | — | — | ☐ |
-| Notification compilations (rate/non-rate) | — | — | ☐ |
+| **GST Manual (Garg & Garg, 2nd ed.)** — CGST Act & Rules, IGST Act & Rules, Cess Act & Rules, GSTAT Rules 2023 + (Procedure) 2025, per-section NN/circular tracker | **01-01-2026** | `1zQQoAOMZrpsPuLxlTJlur3Hy3_uh-84z` (folder `GST LAW -LIBRARY`) | ✅ 04-07-2026 → 60+ md files under `law-library/` |
+| Notification compilations — full texts of NN 11/2017 & 12/2017-CT(R) as amended (manpower-supply rate/exemptions) | — | — | ☐ next |
 | Circular compilation | — | — | ☐ |
+| UTGST Act (only if a matter needs it) | — | — | ☐ |
+
+⚠️ The loaded text is a professional compilation, not the official Gazette — for
+filings/litigation verify operative wording against CBIC. Anything amended
+**after 01-01-2026** is not in the library; every answer for later periods must
+carry that caveat.
 
 **Official sources to download from:** cbic-gst.gov.in (Acts/Rules/Notifications/Circulars — "GST Law" section), gstcouncil.gov.in (Council decisions), gst.gov.in (portal advisories). Prefer the CBIC "updated/as-amended" PDFs which consolidate amendments.
 
@@ -58,7 +62,7 @@ Pattern: identical to `docs/SALARY_KNOWLEDGEBASE.md` (the salary second brain).
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Load law library (Acts → Rules → notification/circular indexes) — **CBIC sites block non-India IPs; Dinesh must download & hand over: see `law-library/SOURCES_TO_LOAD.md`** | 🔴 BLOCKED ON DINESH |
+| 1 | Load law library — Acts & Rules ✅ done 04-07-2026 (GST Manual as on 01-01-2026). Remaining: full texts of NN 11/2017 & 12/2017-CT(R) as amended + key circulars — see `law-library/SOURCES_TO_LOAD.md` | 🟡 acts/rules DONE, NNs next |
 | 2 | Fill entity/GSTIN table (§3) and returns calendar | 🔴 pending |
 | 3 | Load pending cases/notices into `cases/CASE_TRACKER.md` | 🔴 pending |
 | 4 | Record first positions on recurring issues (e.g. manpower supply valuation, RCM items) | 🔴 pending |

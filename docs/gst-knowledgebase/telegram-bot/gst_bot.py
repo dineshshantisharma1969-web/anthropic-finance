@@ -18,7 +18,9 @@ Setup:
 """
 import html
 import logging
+import math
 import os
+import re
 from pathlib import Path
 
 import anthropic
@@ -94,15 +96,29 @@ def load_library() -> list[tuple[str, str]]:
 
 LIBRARY = load_library()
 
+# words too common in a tax statute to discriminate between chapters
+STOPWORDS = {"the", "and", "for", "any", "such", "under", "shall", "may", "means",
+             "tax", "goods", "services", "service", "supply", "supplies", "person",
+             "act", "acts", "rule", "rules", "section", "sections", "gst", "cgst",
+             "said", "provided", "where", "with", "that", "this", "not", "central"}
+
 def retrieve(query: str, k: int = TOP_K) -> list[tuple[str, str]]:
-    words = {w.lower() for w in query.split() if len(w) > 2}
+    ql = query.lower()
+    words = {w for w in re.findall(r"[a-z0-9]+", ql) if len(w) > 2 and w not in STOPWORDS}
+    # "section 73" / "rule 36" style references get a heading-level boost
+    refs = re.findall(r"(?:section|sec|rule)\s*(\d+[a-z]*)", ql)
     scored = []
     for name, text in LIBRARY:
         tl = text.lower()
-        score = sum(tl.count(w) for w in words) + 5 * sum(w in name.lower() for w in words)
+        tf = sum(tl.count(w) for w in words)
+        score = 1000.0 * tf / math.sqrt(max(1, len(tl)))       # length-normalized
+        score += 10 * sum(w in name.lower() for w in words)     # filename hit
+        for n in refs:                                          # "73. ..." heading present?
+            if re.search(rf"^\s*(?:\d+\[)?{n}\.\s", text, re.M):
+                score += 40
         if score > 0:
             scored.append((score, name, text))
-    scored.sort(reverse=True)
+    scored.sort(key=lambda s: -s[0])
     return [(n, t[:MAX_DOC_CHARS]) for _, n, t in scored[:k]]
 
 # --------------------------------------------------------------------------
