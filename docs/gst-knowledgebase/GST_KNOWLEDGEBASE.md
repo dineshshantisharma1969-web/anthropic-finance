@@ -39,6 +39,7 @@ Pattern: identical to `docs/SALARY_KNOWLEDGEBASE.md` (the salary second brain).
 | Document | Version/as-amended date | Drive ID / link | Loaded |
 |---|---|---|---|
 | **GST Manual (Garg & Garg, 2nd ed.)** — CGST Act & Rules, IGST Act & Rules, Cess Act & Rules, GSTAT Rules 2023 + (Procedure) 2025, per-section NN/circular tracker | **01-01-2026** | `1zQQoAOMZrpsPuLxlTJlur3Hy3_uh-84z` (folder `GST LAW -LIBRARY`) | ✅ 04-07-2026 → 60+ md files under `law-library/` |
+| **CGST Act 2017 — OFFICIAL CBIC consolidated text (period archive)** | as on **30-09-2020** | `1NtQtPF2ydkH3ywu7RyUK8nCwLjhs1UDK` | ✅ 04-07-2026 → `law-library/archive/` (old-period matters FY17-18→FY20-21 only; excluded from bot retrieval) |
 | Notification compilations — full texts of NN 11/2017 & 12/2017-CT(R) as amended (manpower-supply rate/exemptions) | — | — | ☐ next |
 | Circular compilation | — | — | ☐ |
 | UTGST Act (only if a matter needs it) | — | — | ☐ |

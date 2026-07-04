@@ -17,6 +17,15 @@ Each section carries the book's tracker of related rules/forms/notifications/cir
 | UTGST Act 2017 | — | not in source PDF — load if a matter needs it | ☐ |
 | State SGST Acts (per registration state, if needed) | — | — | ☐ |
 
+### Period archive (official texts as they stood — for old-period matters ONLY)
+| Act | As-on date | Source | File(s) | Loaded |
+|---|---|---|---|---|
+| CGST Act 2017 — **OFFICIAL CBIC** consolidated | **30-09-2020** | Drive `1NtQtPF2ydkH3ywu7RyUK8nCwLjhs1UDK` (`CGST-Act-Updated-30092020.pdf`) | `archive/cgst-act-2017-as-on-30092020/` (21 chapters) | ✅ 04-07-2026 |
+
+Verified on load: S.16(2)(c) present, S.16(2)(aa) absent — historically correct
+for 30-09-2020. `archive/` is excluded from Telegram-bot retrieval (Golden Rule 5,
+SKILL_GST.md) — use it only for FY 2017-18 → FY 2020-21 matters.
+
 ## Amendments log (append-only; check BEFORE quoting any section)
 | Amending Act / Finance Act | Sections affected | Effective from (NN) | Noted |
 |---|---|---|---|

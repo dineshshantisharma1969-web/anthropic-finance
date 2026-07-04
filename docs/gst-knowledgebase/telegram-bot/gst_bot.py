@@ -86,6 +86,10 @@ def load_library() -> list[tuple[str, str]]:
     docs = []
     if LIBRARY_DIR.exists():
         for p in sorted(LIBRARY_DIR.rglob("*")):
+            # archive/ holds superseded period-versions (old-period matters only)
+            # — excluded so current-period answers never cite stale text
+            if "archive" in p.parts:
+                continue
             if p.suffix.lower() in (".md", ".txt") and p.is_file():
                 try:
                     docs.append((str(p.relative_to(LIBRARY_DIR)), p.read_text(errors="ignore")))

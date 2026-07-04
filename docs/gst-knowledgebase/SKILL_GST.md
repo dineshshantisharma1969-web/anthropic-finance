@@ -26,6 +26,17 @@ description: >
    wrong for FY2026-27.
 4. **For cases: limitation first.** Before any analysis of a notice/order, compute
    and state the reply/appeal deadline. A brilliant argument filed late is worthless.
+5. **Period-match the text version.** The library holds more than one version of the
+   CGST Act; answer from the version in force for the tax period in question:
+   - **Current periods** → `law-library/acts/cgst-act-2017/` (compilation as on
+     **01-01-2026**; flag anything after that date as unverified).
+   - **Old-period matters (FY 2017-18 → FY 2020-21)** → `law-library/archive/
+     cgst-act-2017-as-on-30092020/` — **official CBIC** consolidated text as on
+     30-09-2020. Never cite it for later periods (e.g. it predates S.16(2)(aa)).
+   - Old-period gaps (FY 2021-22 → 2025-26 as-it-stood text) → reconstruct from the
+     01-01-2026 text's footnoted amendment history, and say you did so.
+   The `archive/` folder is excluded from the Telegram bot's retrieval by design;
+   old-period questions are desk-research questions, not bot questions.
 
 ## Source hierarchy (higher overrides lower)
 

@@ -1,0 +1,233 @@
+# CGST Act 2017 (OFFICIAL, as on 30-09-2020) — Chapter XI: Refunds
+
+> **Source: OFFICIAL CBIC consolidated text — CGST Act, 2017 AS ON 30-09-2020.**
+> Drive PDF: `1NtQtPF2ydkH3ywu7RyUK8nCwLjhs1UDK` (folder `GST LAW -LIBRARY`),
+> CBIC publication `CGST-Act-Updated-30092020.pdf`.
+> 🕰️ **PERIOD ARCHIVE — do NOT cite for periods after 30-09-2020.** Use for
+> matters relating to FY 2017-18 → FY 2020-21 where the law as it then stood
+> governs (e.g. old-period notices). Current text (as on 01-01-2026) lives in
+> `acts/cgst-act-2017/`. This folder is EXCLUDED from the Telegram bot's
+> retrieval to keep current-period answers clean.
+
+CHAPTER XI REFUNDS 
+  
+88 
+ 
+CHAPTER XI REFUNDS 
+54. Refund of tax.— (1) Any person claiming refund of any tax and interest, if 
+any, paid on such tax or any other amount paid by him, may make an application before 
+the expiry of two years from the relevant date in such form and manner as may be  
+prescribed: 
+Provided that a registered person, claiming refund of any bal ance in the electronic 
+cash ledger in accordance with the provisions of sub -section (6) of section 49, may claim 
+such refund in the return furnished under section 39 in such manner as may be 
+prescribed. 
+(2) A specialised agency of the United Nations Organisation or any Multilateral 
+Financial Institution and Organisation notified under the United Nations (Privileges and 
+Immunities) Act, 1947, Consulate or Embassy of foreign countries or any other person or 
+class of persons, as notified under section 55, entitled to a refund of tax paid by it on inward 
+supplies of goods or services or both, may make an application for such refund, in such 
+form and manner as may  be prescribed, before the expiry of six months from the last day 
+of the quarter in which such supply was received. 
+(3) Subject to the provisions of sub-section (10), a registered person may claim 
+refund of any unutilised input tax credit at the end of any tax period: 
+Provided that no refund of unutilised input tax credit shall be allowed in cases 
+other than–– 
+(i) zero rated supplies made without payment of tax; 
+(ii) where the credit has accumulated on account of rate of tax on inputs  being 
+higher than the rate of tax on output supplies (other than nil rated or fully exempt 
+supplies), except supplies of goods or services o r both as may be notified by the 
+Government on the recommendations of the Council: 
+Provided further that no refund of unutilised input tax credit shall be allowed in 
+cases where the goods exported out of India are subjected to export duty: 
+Provided also that no refund of input tax credit shall be allowed, if the supplier of 
+ 
+CHAPTER XI REFUNDS 
+  
+89 
+goods or services or both avails of drawback in respect of central tax or claims refund of 
+the integrated tax paid on such supplies. 
+(4) The application shall be accompanied by— 
+(a) such documentary evidence as may be prescribed to establish that a refund 
+is due to the applicant; and 
+(b) such documentary or other evidence (including the documents referred to in 
+section 33) as the applicant may furnish to establish that the amount of tax and interest, if 
+any, paid on such tax or any other amount paid in relation to which such refund is 
+claimed was collected from, or paid by, him and the incidence of such tax and interest had 
+not been passed on to any other person: 
+Provided that where the amount claimed as refund is less than two lakh rupees, it 
+shall not be necessary for the applicant to furnish any documentary and other evidences  
+but he may file a declaration, based on the documentary or other evidences available with 
+him, certifying that the incidence of such tax and interest had not been passed on to any 
+other person. 
+(5) If, on receipt of any such application, the proper officer is satisfied that the 
+whole or  part of the amount claimed as refund is refundable, he may make an order 
+accordingly and the  amount so determined shall be credited to the Fund referred to in 
+section 57. 
+(6) Notwithstanding anything contained in sub -section ( 5), the proper officer 
+may, in the case of any claim for refund on account of zero -rated supply of goods or 
+services or both made by registered persons, other than such category of registered 
+persons as may be notified by the Government on the recommendations of the Council, 
+refund on a provisional  basis, ninety per cent. of the total amount so claimed, excluding 
+the amount of input tax credit provisionally accepted, in such manner and subject to such 
+conditions, limitations and safeguards as may be prescribed and thereafter make an order 
+under sub -section ( 5) for final settlement of the refund claim after due verification of 
+documents furnished by the applicant. 
+(7) The proper officer shall issue the order under sub-section (5) within sixty days 
+ 
+CHAPTER XI REFUNDS 
+  
+90 
+from the date of receipt of application complete in all respects. 
+(8) Notwithstanding anything contained in sub -section ( 5), the refundable 
+amount sh all, instead of being credited to the Fund, be paid to the applicant, if such 
+amount is relatable to— 
+(a) [refund of tax paid on export of goods or services or both or on inputs or 
+input services used in making such exports;]75 
+(b) refund of unutilised input tax credit under sub-section (3); 
+(c) refund of tax paid on a supply which is not provided, either wholly or partially, 
+and for which invoice has not been issued, or where a refund voucher has been issued; 
+(d) refund of tax in pursuance of section 77; 
+(e) the tax and interest, if any, or any other amount paid by the applicant, if he 
+had not passed on the incidence of such tax and interest to any other person; or 
+(f) the tax or interest borne by such other class of applicants as the Government 
+may, on the recommendations of the Council, by notification, specify. 
+[(8A)  The Government may disburse the refund of the State tax in such manner 
+as may be prescribed.]76 
+(9) Notwithstanding anything to the contrary contained in any judgment, 
+decree, order or direction of the Appellate Tribunal or any court or in any other provisions 
+of this Act or the rules made thereunder or in any other law for the time being in force, no 
+refund shall be made except in accordance with the provisions of sub-section (8). 
+(10) Where any refund is due under sub -section (3) to a registered person who 
+has defaulted in furnishing any return or who is required to pay any tax, interest or penalty, 
+which has not been stayed by any court, Tribunal or Appellate Authority by the specified 
+date, the proper officer may— 
+(a) withhold payment of refund due until the said person has furnished the 
+                                                      
+75 Substituted for ―zero -rated supplies‖ by The Central Goods and Services Tax (Amendment) Act, 2018 
+(No. 31 of 2018) – Brought into force w.e.f. 01st February, 2019.  
+76 Inserted by The Finance (No. 2) Act, 2019 (No. 23 of 2019) – Brought into force w.e.f. 01 st September, 
+2019 vide Notification No. 39/2019 – Central Tax dt. 31st August, 2019.  
+ 
+CHAPTER XI REFUNDS 
+  
+91 
+return or paid the tax, interest or penalty, as the case may be; 
+(b) deduct from the refund due, any tax, interest, penalty, fee or any other 
+amount which the taxable person is liable to pay but which remains unpaid under this Act 
+or under the existing law. 
+Explanation.––For the purposes of this sub -section, the expression ―specified date‖ 
+shall mean the last date for filing an appeal under this Act. 
+(11) Where an order giving rise to a refund is the subject matter of an appeal or 
+further proceedings  or where any other proceedings under this Act is pending and the 
+Commissioner is of the opinion that grant of such refund is likely to adversely affect the 
+revenue in the said appeal or other proceedings on ac count of malfeasance or fraud 
+committed, he may, after giving  the taxable person an opportunity of being heard, 
+withhold the refund till such time as he may determine. 
+(12) Where a refund is withheld under sub-section (11), the taxable person shall, 
+notwithstanding anything contained in section 56, be entitled to interest at such rate not 
+exceeding six per cent. as may be notified on the recommendations of the Council, if as a 
+result of the appeal or further proceedings he becomes entitled to refund. 
+(13) Notwithstanding anything to the contrary contained in this section, the 
+amount of  advance tax deposited by a casual taxable person or a non-resident taxable 
+person under sub-section (2) of section 27, shall not be refunded unless such person has, in 
+respect of the en tire period for which the certificate of registration granted to him had 
+remained in force, furnished all the returns required under section 39. 
+(14) Notwithstanding anything contained in this section, no refund under sub-
+section (5) or sub-section (6) shall be paid to an applicant, if the amount is less than one 
+thousand rupees. 
+Explanation.—For the purposes of this section,–– 
+(1) ―refund‖ includes refund of tax paid on zero -rated supplies of goods or 
+services or both or on inputs or input services used in making such zero-rated supplies, or 
+refund of tax on the supply of goods regarded as deemed exports, or refund of unutilised 
+input tax credit as provided under sub-section (3). 
+ 
+CHAPTER XI REFUNDS 
+  
+92 
+(2) ―relevant date‖ means— 
+(a) in the case of goods exported out of India where a refund of tax paid is 
+available in respect of goods themselves or, as the case may be, the inputs or input  
+services used in such goods,–– 
+(i) if the goods are exported by sea or air, the date on which the ship or the 
+aircraft in which such goods are loaded, leaves India; or 
+(ii) if the goods are exported by land, the date on which such goods pass the 
+frontier; or 
+(iii) if the goods are exported by post, the date of despatch of goods by the Post 
+Office concerned to a place outside India; 
+(b) in the case of supply of goods regarded as deeme d exports where a refund 
+of tax paid is available in respect of the goods, the date on which the return relating to 
+such deemed exports is furnished; 
+(c) in the case of services exported out of India where a refund of tax paid is 
+available in respect of servic es themselves or, as the case may be, the  inputs or  input 
+services used in such services, the date of–– 
+(i) receipt of payment in convertible foreign exchange  [or in Indian rupees 
+wherever permitted by the Reserve Bank of India] 77, where the supply of services had been 
+completed prior to the receipt of such payment; or 
+(ii) issue of invoice, where payment for the services had been received in advance 
+prior to the date of issue of the invoice; 
+(d) in case where the tax becomes refundable as a consequence of judgment, 
+decree, order or direction of the Appellate Authority, Appellate Tribunal or any court, the 
+date of communication of such judgment, decree, order or direction; 
+(e) [in the case of refund of unutilised input tax credit under clause (ii) of 
+the first proviso to sub -section (3), the due date for furnishing of return under section 39 
+                                                      
+77 Inserted by The Central Goods and Services Tax (Amendment) Act, 2018 (No. 31 of 2018) – Brought 
+into force w.e.f. 01st February, 2019.  
+ 
+CHAPTER XI REFUNDS 
+  
+93 
+for the period in which such claim for refund arises;]78 
+(f) in the case where tax is paid provisionally under this Act or the rules made  
+thereunder, the date of adjustment of tax after the final assessment thereof; 
+(g) in the case of a person, other than the supplier, the date of receipt of goods  
+or services or both by such person; and 
+(h) in any other case, the date of payment of tax. 
+55. Refund in certain cases. — The Government may, on the 
+recommendations of the Council, by notification, specify any specialised agency of the 
+United Nations Organisation or any Multilateral Financial Institution and Organisation 
+notified under the United Nations (Privileges and Immunities) Act, 1947, Consulate or 
+Embassy of foreign countries and any other person or class of persons as may be specified 
+in this behalf, who shall, subject to such conditions and restrictions as may be prescribed, be 
+entitled to claim a refund of taxes paid on the notified supplies of goods or se rvices or 
+both received by them. 
+56. Interest on delayed refunds. — If any tax ordered to be refunded under 
+sub-section (5) of section 54 to any applicant  is not refunded within sixty days from the 
+date of receipt of application under sub- section (1) of that section, interest at such rate not 
+exceeding six per cent. as may be specified in the notification issued by the Government on 
+the recommendations of the Council shall be payable in respect of such refund from the 
+date immediately after the expiry of sixty days from the date of receipt of application 
+under the said sub-section till the date of refund of such tax: 
+Provided that where any claim of refund arises from an order passed by an 
+adjudicating authority or Appellate Authority or Appellate Tribunal or court which has 
+attained finality and the same is not refunded within sixty days from the date of receipt of 
+application filed consequent to such order, interest at such rate not exceeding nine per 
+cent. as may be notified  by the Government on the recommendations of the Council 
+shall be payable in respect  of such refund from the date immediately after the expiry of 
+                                                      
+78 Substituted for ―(e) in the case of refund of unutilised input tax credit under sub-section (3), the end 
+of the financial year in which such claim for refund arises; ‖ by The Cen tral Goods and Services Tax 
+(Amendment) Act, 2018 (No. 31 of 2018) – Brought into force w.e.f. 01st February, 2019.  
+ 
+CHAPTER XI REFUNDS 
+  
+94 
+sixty days from the date of receipt of application till the date of refund. 
+Explanation.––For the purposes of this section, where any order of refund is made 
+by an Appellate Authority, Appellate Tribunal or any court against an order of the proper 
+officer under sub -section (5) of section 54, the order passed by the Appellate Authority, 
+Appellate Tribunal or by the court shall be deemed to be an orde r passed under the said 
+sub-section (5). 
+57. Consumer Welfare Fund. — The Government shall constitute a Fund, to 
+be called the Consumer Welfare Fund and there shall be credited to the Fund,— 
+(a) the amount referred to in sub-section (5) of section 54; 
+(b) any income from investment of the amount credited to the Fund; and 
+(c) such other monies received by it, in such manner as may be prescribed. 
+58. Utilisation of Fund. — (1) All sums credited to the Fund shall be utilised 
+by the Government for the welfare of the consumers in suc h manner as may be  
+prescribed. 
+(2) The Government or the authority specified by it shall maintain proper and 
+separate account and other relevant records in relation to the Fund and prepare an 
+annual statement of accounts in such form as may be prescribed in co nsultation with the 
+Comptroller and Auditor-General of India.
