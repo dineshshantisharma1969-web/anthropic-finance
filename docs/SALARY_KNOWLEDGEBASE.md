@@ -40,6 +40,28 @@ Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliatio
 | M13+CL merged Net Payable | 3,19,40,63,202 |
 | Bonus / Leave encashment | 2,77,73,882 / 4,42,61,081 |
 
+**M13 FINAL invariants (all 12 months, per `FINAL_REPORT.md`):** NET drift 0 ·
+REVISED_PF = ECR_PF drift 0 · REVISED_ESIC = Future drift 0 · HARDPASS true.
+Only **2 exceptions** in the whole year (DA exceeds ECR_PF/0.12, basic clamped):
+RIKSANA BIBI Sep (₹180 PF) and SADHANA S. PAWAR Feb (₹73 PF), both NEOLIV REAL
+ESTATE — in `PF_M13_Exceptions_Review.xlsx`.
+
+### FY2025-26 row-level examination programme (April-26-level: M16/M17/M18)
+Status per month — recovery worklist (M18 day-basis) · ESI enrollment · wage-code 50%:
+| Month | Examined | Month | Examined |
+|---|---|---|---|
+| Apr | 🔴 pending upload | Oct | 🔴 pending upload |
+| May | 🔴 pending upload | Nov | 🔴 pending upload |
+| Jun | 🔴 pending upload | Dec | 🔴 pending upload |
+| Jul | 🔴 pending upload | Jan | 🔴 pending upload |
+| Aug | 🔴 pending upload | Feb | 🔴 pending upload |
+| Sep | 🔴 pending upload | Mar | 🔴 pending upload |
+
+Monthly files are 17–19.5 MB — **over the 10 MB Drive-API cap**, so each month must
+be **uploaded in chat** (like April-26 was); the D-drive copies work fine for this —
+drag the file into the conversation. Pipeline: `make_worklist_M17.py` (April-26
+column layout may differ for FY25-26 M13 files — verify headers on first month).
+
 ### April 2026 (M12/M15 FINAL — footed row-by-row from the full 21,152-row sheet)
 | Anchor | ₹ |
 |---|--:|
@@ -88,7 +110,19 @@ Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliatio
 | ├─ `PF_ESI_Audit_Report_FY25-26.xlsx` (20 MB) | `16-yZy4vFRefZDffsw1fNsi6p_kJvjjJw` | Per-row year audit |
 | ├─ `Salary_as_per_Max_SA_consolidated_SUMMARY.xlsx` | `1QjNLeXFy3nxn7P9V5FkRdoQv5MCuc26l` | **Tally books ledger totals** |
 | └─ `v3_projection_addendum_for_skill.md` | `10i5y99PyuXPPMhSAXk-bK_Erd4cA4-Ij` | Projection-column corrections |
-| **CORRECTED SALARY 25-26 (M13 FINAL)** | `1PU9QyY4VwyNrlHzwaBJj8Sku0qKmhmky` | 12 final monthly files + `FINAL_REPORT.md` (`1-7g0p1PoanRks_bOnXDWo7a2flf4h-Mm`) + `PF_M13_Exceptions_Review.xlsx` + `_change_logs/` |
+| **CORRECTED SALARY 25-26 (M13 FINAL)** | `1PU9QyY4VwyNrlHzwaBJj8Sku0qKmhmky` | **THE 12 authoritative monthly files** (per-month IDs below) + `FINAL_REPORT.md` (`1-7g0p1PoanRks_bOnXDWo7a2flf4h-Mm`) + `PF_M13_Exceptions_Review.xlsx` (`1WeJzX0tzHsfWEr4z_ObpU6Qr6h-tK2Xa`) + `Monthwise_Salary_Summary_FY2025-26_M13_FINAL.xlsx` (`1kfoCRU7Y__P4amUCVFXcGVGBJcFVbofh`) + `_change_logs/` — mirrors the user's D-drive folder |
+| ├─ `April_M13_FINAL.xlsx` (18.9 MB, 18,794 active) | `1DsNNlIKRxSku8S2JKDib-Fce0LcoEMMV` | ⚠️ >10 MB API cap — chat-upload to examine |
+| ├─ `May_M13_FINAL.xlsx` (19.6 MB, 18,774) | `1vGGARlWClixWoVS7HVz4THvaxRoBHbeV` | 〃 |
+| ├─ `June_M13_FINAL.xlsx` (19.1 MB, 18,754) | `1mFT9sd3dILEwQJDYpLL8hFcvao9PnpPk` | 〃 |
+| ├─ `July_M13_FINAL.xlsx` (18.2 MB, 18,905) | `1pWJ9ylvoWqHskeY2pHZVbkrUPg6FWbHY` | 〃 |
+| ├─ `August_M13_FINAL.xlsx` (18.2 MB, 18,626) | `13BMYJaGWgq6_rONes6OmxPG6QiVWQRVt` | 〃 |
+| ├─ `September_M13_FINAL.xlsx` (18.2 MB, 18,830) | `10jKqn17ocuvs_hdEWTD7yD9nUmJDi2ti` | 〃 |
+| ├─ `October_M13_FINAL.xlsx` (19.5 MB, 18,699) | `1O_SdOLXGvIGp9RHj0K2tEI5BdrhE82xF` | 〃 |
+| ├─ `November_M13_FINAL.xlsx` (18.6 MB, 18,986) | `1U7jERbPPDkZ8gONuFMyFbiJIHuEH_ZT_` | 〃 |
+| ├─ `December_M13_FINAL.xlsx` (19.1 MB, 19,460) | `1CSf2AdG1LFgXAMqiPCqebLWnI0L3wsQb` | 〃 |
+| ├─ `January_M13_FINAL.xlsx` (17.3 MB, 19,624) | `11Wo_rPT2MjXZIsS5gdtji--Wqh_1hjSx` | 〃 |
+| ├─ `February_M13_FINAL.xlsx` (19.1 MB, 19,649) | `1wlJlYth3V5s3L4CGvi55l_k8BYapJBoy` | 〃 |
+| └─ `March_M13_FINAL.xlsx` (18.0 MB, 20,279) | `1MC6E4C537KJpBtJXG9uagv8sTUxwtV7t` | 〃 |
 | **MONTHLY SALARY FINAL DATA FOR 2025-26** | `1LiA13hSSNdDh3O0JsiANzCcDTGWONiS2` | Monthly final data |
 | **ECR PF 2025-26** | `1YsX0QjjOSRYrhkFDPrEl95oJBQN1Thsp` | Filed ECR files |
 | `Salary_Master_With_Summary_CORRECTED_v2.xlsm` | `1zGtlj2NZM7zY56BMYlp0PCfYdmFZSCyC` | Salary master workbook |
