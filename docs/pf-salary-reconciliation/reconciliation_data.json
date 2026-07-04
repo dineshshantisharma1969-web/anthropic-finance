@@ -1,0 +1,403 @@
+{
+ "months": [
+  "Apr-25",
+  "May-25",
+  "Jun-25",
+  "Jul-25",
+  "Aug-25",
+  "Sep-25",
+  "Oct-25",
+  "Nov-25",
+  "Dec-25",
+  "Jan-26",
+  "Feb-26",
+  "Mar-26"
+ ],
+ "cols": [
+  "Earned_Basic_DA",
+  "Other_Allowances",
+  "Total_Earned_Gross",
+  "PF_booked",
+  "ESI",
+  "PT",
+  "Other_Deductions",
+  "Total_Deduction",
+  "Net_Payable"
+ ],
+ "summary": {
+  "Apr-25": [
+   210043740,
+   53423443,
+   263467183,
+   24173582,
+   1489009,
+   631048,
+   7483658,
+   33777297,
+   229689886
+  ],
+  "May-25": [
+   209829942,
+   54053636,
+   263883578,
+   24610756,
+   1505739,
+   668332,
+   4996518,
+   31781344,
+   232102234
+  ],
+  "Jun-25": [
+   209550065,
+   55672396,
+   265222461,
+   24904423,
+   1518775,
+   657648,
+   5202922,
+   32283768,
+   232938693
+  ],
+  "Jul-25": [
+   216450960,
+   57832758,
+   274283718,
+   25695497,
+   1569237,
+   681438,
+   5242616,
+   33188788,
+   241094930
+  ],
+  "Aug-25": [
+   211723679,
+   58249306,
+   269972986,
+   25208736,
+   1540847,
+   680314,
+   5373555,
+   32803452,
+   237169533
+  ],
+  "Sep-25": [
+   215604615,
+   59856339,
+   275460954,
+   25684018,
+   1574933,
+   691456,
+   7020570,
+   34970977,
+   240489977
+  ],
+  "Oct-25": [
+   201092730,
+   73570730,
+   274663460,
+   24362599,
+   1544260,
+   702917,
+   5787816,
+   32397592,
+   242265868
+  ],
+  "Nov-25": [
+   211826625,
+   59928929,
+   271755554,
+   25168592,
+   1536582,
+   687847,
+   4672355,
+   32065376,
+   239690178
+  ],
+  "Dec-25": [
+   226034081,
+   64620891,
+   290654972,
+   26592067,
+   1611674,
+   723248,
+   4824198,
+   33751187,
+   256903785
+  ],
+  "Jan-26": [
+   228650533,
+   64623148,
+   293273681,
+   26840187,
+   1625762,
+   715246,
+   4603570,
+   33784765,
+   259488916
+  ],
+  "Feb-26": [
+   226809311,
+   65702072,
+   292511383,
+   26750772,
+   1616147,
+   865325,
+   5671449,
+   34903693,
+   257607690
+  ],
+  "Mar-26": [
+   231077269,
+   66925374,
+   298002643,
+   27081131,
+   1646232,
+   728379,
+   5016645,
+   34472387,
+   263530256
+  ]
+ },
+ "total": [
+  2598693550,
+  734459022,
+  3333152573,
+  307072360,
+  18779197,
+  8433198,
+  65895872,
+  400180626,
+  2932971946
+ ],
+ "m13_rule_cols": [
+  "Active_Employees",
+  "RuleA_12pct_BDA",
+  "RuleB_day_adj",
+  "RuleB_lift_to_att",
+  "RuleB_lift_to_OD",
+  "NET_drift",
+  "GROSS_up_OD_route",
+  "Exceptions"
+ ],
+ "m13_rules": {
+  "Apr-25": [
+   18794,
+   2355,
+   111,
+   3,
+   0,
+   0,
+   0,
+   0
+  ],
+  "May-25": [
+   18774,
+   2443,
+   197,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "Jun-25": [
+   18754,
+   2547,
+   1143,
+   0,
+   0,
+   0,
+   0,
+   0
+  ],
+  "Jul-25": [
+   18905,
+   2577,
+   974,
+   3,
+   0,
+   0,
+   0,
+   0
+  ],
+  "Aug-25": [
+   18626,
+   2520,
+   1103,
+   3,
+   0,
+   0,
+   0,
+   0
+  ],
+  "Sep-25": [
+   18830,
+   2671,
+   1055,
+   1,
+   0,
+   0,
+   0,
+   1
+  ],
+  "Oct-25": [
+   18699,
+   2606,
+   211,
+   0,
+   1,
+   0,
+   1,
+   0
+  ],
+  "Nov-25": [
+   18986,
+   2928,
+   211,
+   636,
+   0,
+   0,
+   0,
+   0
+  ],
+  "Dec-25": [
+   19460,
+   3192,
+   217,
+   664,
+   3,
+   0,
+   3,
+   0
+  ],
+  "Jan-26": [
+   19624,
+   3286,
+   841,
+   341,
+   0,
+   0,
+   0,
+   0
+  ],
+  "Feb-26": [
+   19649,
+   3349,
+   770,
+   311,
+   2,
+   0,
+   2,
+   1
+  ],
+  "Mar-26": [
+   20279,
+   3378,
+   848,
+   406,
+   0,
+   0,
+   0,
+   0
+  ]
+ },
+ "anchors": {
+  "pan_pf": 290652769,
+  "backoffice_pf": 16419591,
+  "booked_pf": 307072360,
+  "tally_epf": 296746845,
+  "future_esi": 18693848,
+  "pt": 8433198,
+  "net": 2932971946,
+  "m13cl_gross": 4652522768,
+  "m13cl_net": 3194063202,
+  "bonus": 27773882,
+  "leave": 44261081
+ },
+ "checks": [
+  {
+   "id": "FOOT-1",
+   "name": "Net Payable = Total Earned Gross \u2212 Total Deduction (every month)",
+   "status": "PASS",
+   "detail": "All 12 months foot to the rupee."
+  },
+  {
+   "id": "FOOT-2",
+   "name": "Total Deduction = PF + ESI + PT + Other Deductions (every month)",
+   "status": "PASS",
+   "detail": "All 12 months foot to the rupee."
+  },
+  {
+   "id": "FOOT-3",
+   "name": "\u03a3(12 months) reconciles to the published TOTAL row",
+   "status": "PASS",
+   "detail": "All 9 columns tie out."
+  },
+  {
+   "id": "GOLD-PF",
+   "name": "Golden Rule 1 \u2014 \u03a3 REVISED_PF = ECR_PF (per-employee, \u20b90 gap)",
+   "status": "PASS",
+   "detail": "M13 FINAL asserts 0 drift on all 12 months. Reconciled PAN PF = \u20b9290,652,769 is the ECR-filed anchor."
+  },
+  {
+   "id": "GOLD-NET",
+   "name": "Golden Rule 3 \u2014 NET PAYABLE unchanged (REVISED_NET = NETPAYABLE)",
+   "status": "PASS",
+   "detail": "M13 FINAL: NET drift ALL ZERO (row & total) across all 12 months + M13."
+  },
+  {
+   "id": "GOLD-ESI",
+   "name": "Golden Rule 2 \u2014 \u03a3 REVISED_ESIC = Future-sheet ESIC",
+   "status": "PASS",
+   "detail": "M13 FINAL: 0 drift. Future-basis ESI anchor = \u20b918,693,848."
+  },
+  {
+   "id": "XCHK-NET",
+   "name": "Cross-check: Net total across summary builds",
+   "status": "REVIEW",
+   "detail": "Monthly = Pivot = \u20b92,932,971,946 (agree). M13_SUMMARY build = \u20b92,931,995,085 \u2192 short by \u20b9976,861, isolated to October (\u20b9241,289,007 vs authoritative \u20b9242,265,868). M13_SUMMARY appears to have used a pre-final October build; use the pivot/monthly figure."
+  },
+  {
+   "id": "XCHK-PF",
+   "name": "Cross-check: reconciled PAN PF across summary builds",
+   "status": "REVIEW",
+   "detail": "Pivot (ECR anchor) = \u20b9290,652,769. M13_SUMMARY = \u20b9290,651,911 \u2192 short by \u20b9858, isolated to June (\u20b923,278,054 vs \u20b923,278,912). Treat the pivot/ECR figure as authoritative."
+  },
+  {
+   "id": "BRIDGE-PF",
+   "name": "PF reconciliation bridge (booked \u2192 reconciled \u2192 Tally)",
+   "status": "INFO",
+   "detail": "Booked PF incl back-office \u20b9307,072,360 = Reconciled PAN PF \u20b9290,652,769 + Back-office PF \u20b916,419,591. Tally EPF payable ledger = \u20b9296,746,845."
+  },
+  {
+   "id": "BRIDGE-PF-FOOT",
+   "name": "Bridge foots: Reconciled PAN PF + Back-office PF = Booked PF",
+   "status": "PASS",
+   "detail": "290,652,769 + 16,419,591 = 307,072,360 vs booked 307,072,360."
+  },
+  {
+   "id": "XCHK-ESI",
+   "name": "Cross-check: ESI basis (Future vs M13_SUMMARY)",
+   "status": "REVIEW",
+   "detail": "Future-basis (anchor) = \u20b918,693,848; M13_SUMMARY pre-merge basis = \u20b918,466,035 (\u0394 \u20b9227,813). The Future-basis figure is the statutory anchor."
+  },
+  {
+   "id": "XCHK-M13CL",
+   "name": "Cross-check: M13+CL/Bonus merged Net vs Tally Salary Payable",
+   "status": "REVIEW",
+   "detail": "M13+CL merged REVISED_NET = \u20b93,194,063,202 vs Tally 'SALARY PAYABLE-2025-26' = \u20b93,194,048,568 \u2192 \u0394 \u20b914,634 (\u22480.0005%). Immaterial; reconciles within rounding of the bonus/leave merge."
+  },
+  {
+   "id": "M13-EXC",
+   "name": "M13 exceptions (DA alone exceeds ECR_PF/0.12 \u2014 exact 12% cannot hold)",
+   "status": "INFO",
+   "detail": "2 exception rows total (Sep 1, Feb 1) \u2014 basic clamped, listed in PF_M13_Exceptions_Review.xlsx. All other rows satisfy REVISED_PF = 12%(BASIC+DA)."
+  },
+  {
+   "id": "ANOM-JF",
+   "name": "Anomaly flag \u2014 Jan/Feb gross \u2248 2\u00d7 run",
+   "status": "REVIEW",
+   "detail": "Source note: Jan-26 & Feb-26 gross ~2\u00d7 other months on same headcount \u2014 possible double/bonus run in those source files. Net Payable still ties; verify before statutory filing."
+  }
+ ]
+}

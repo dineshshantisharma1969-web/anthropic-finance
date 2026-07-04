@@ -1,0 +1,14 @@
+ISPL PF/ESI Salary Reconciliation — APRIL 2026 (FY2026-27) — Summary
+"Source: April26_Reconciliation_Report.xlsx (reconcile.py, 2026-06-19). All ₹."
+
+Rule group,Rows,Revised PF,ECR PF,Revised ESIC,Future ESI
+PF_ANCHOR,18389,25221042,25221042,293963.6425,304176.6425
+PF_SECONDARY,1754,0,0,10213.0,34400.0
+ESI_ONLY,479,0,0,17759.9775,17792.9775
+NO_PF_NO_ESI,530,0,0,0.0,0.0
+TOTAL,21152,25221042,25221042,321936.62,356369.62
+
+PF gap (Revised - ECR),0
+ESI gap (Future - Revised),34433.0
+PF-anchor employees,18389
+12% compliance (PF>0 rows audited),15352/15352 = 100%
