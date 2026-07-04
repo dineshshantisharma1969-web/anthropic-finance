@@ -56,6 +56,11 @@ Track in `returns/RETURNS_CALENDAR.md`: GSTR-1 (outward), GSTR-3B (summary+payme
 GSTR-9/9C (annual), plus ITC-04, ISD returns as applicable — per GSTIN. Rule:
 **never state a due date without checking for extension notifications for that period.**
 
+**Before filing every GSTR-1: run the books-vs-portal reconciliation**
+(`recon/SKILL_GSTR1_RECON.md`, Rules G1–G4) — bill no, taxable value, rate and
+GST amount must match invoice-by-invoice; exceptions are actioned via the
+worklist (BOOKS_ONLY first — the interest clock runs on those).
+
 ## Update discipline
 
 - New notification/circular arrives → add one row to the relevant INDEX before anything else.

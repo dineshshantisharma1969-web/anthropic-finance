@@ -30,6 +30,7 @@ Pattern: identical to `docs/SALARY_KNOWLEDGEBASE.md` (the salary second brain).
 | `cases/` | Litigation tracker — notices, replies, orders, appeals, deadlines | 🟡 template ready |
 | `positions/` | Positions register — YOUR stance on recurring issues, with citations | 🟡 template ready |
 | `telegram-bot/` | **Telegram enquiry bot** — ask law/rules questions from your phone; answers only from the law library, with citations (`telegram-bot/README.md` for setup) | ✅ v1 ready — needs library docs loaded |
+| `recon/` | **GSTR-1 books-vs-portal reco** (Rules G1–G4) — match bill no / taxable / rate / GST amount, exception buckets with actions. Run before filing every R1. `python recon/gstr1_reco.py books.xlsx portal.xlsx out.xlsx` | ✅ v1 ready — tested |
 
 ## 2. Source documents (Drive)
 
@@ -62,6 +63,7 @@ Pattern: identical to `docs/SALARY_KNOWLEDGEBASE.md` (the salary second brain).
 | 3 | Load pending cases/notices into `cases/CASE_TRACKER.md` | 🔴 pending |
 | 4 | Record first positions on recurring issues (e.g. manpower supply valuation, RCM items) | 🔴 pending |
 | 5 | Deploy Telegram bot (`telegram-bot/README.md`) — needs BotFather token + API key + a machine that stays on | 🟡 code ready |
+| 6 | Run first live GSTR-1 reco (`recon/`) — needs current month's sales register + portal GSTR-1 export | 🟡 tool ready |
 
 ## 5. Update discipline
 
