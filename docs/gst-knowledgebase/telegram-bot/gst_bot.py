@@ -123,9 +123,36 @@ STOPWORDS = {"the", "and", "for", "any", "such", "under", "shall", "may", "means
              "act", "acts", "rule", "rules", "section", "sections", "gst", "cgst",
              "said", "provided", "where", "with", "that", "this", "not", "central"}
 
+# Domain router — the corpus spans two very different bodies of knowledge:
+# GST law (large statute) and ISPL salary/payroll data (small digests). Without
+# routing, a salary question drowns in the big law files (and vice versa). We
+# detect the query's domain and boost that domain's docs. Salary docs carry the
+# "pf-salary-reconciliation/" path prefix.
+SALARY_MARKERS = {"salary", "payroll", "wage", "wages", "wagecode", "basic", "da",
+    "ctc", "pf", "esi", "esic", "recovery", "worklist", "enrollment", "enrolment",
+    "gratuity", "employee", "employees", "failer", "failers", "reconciliation",
+    "net", "gross", "restructure", "attendance", "arrears", "ecr", "50", "clients",
+    "january", "february", "march", "april", "may", "june", "july", "august",
+    "september", "october", "november", "december", "esic", "worklists", "persistent"}
+LAW_MARKERS = {"itc", "cgst", "igst", "sgst", "utgst", "notification", "circular",
+    "invoice", "eway", "gstr", "refund", "rcm", "registration", "appeal", "drc",
+    "asmt", "valuation", "cess", "adjudication", "reverse", "credit", "e-way",
+    "input", "levy", "eligibility", "assessment", "demand", "limitation"}
+
+def _domain(name: str) -> str:
+    return "salary" if name.startswith("pf-salary-reconciliation/") else "law"
+
 def retrieve(query: str, k: int = TOP_K) -> list[tuple[str, str]]:
     ql = query.lower()
     words = {w for w in re.findall(r"[a-z0-9]+", ql) if len(w) > 2 and w not in STOPWORDS}
+    qtok = set(re.findall(r"[a-z0-9]+", ql))
+    sal_hits, law_hits = len(qtok & SALARY_MARKERS), len(qtok & LAW_MARKERS)
+    # pick a target domain only when the query clearly leans one way
+    target = None
+    if sal_hits >= law_hits + 1:
+        target = "salary"
+    elif law_hits >= sal_hits + 1:
+        target = "law"
     # "section 73" / "rule 36" style references get a heading-level boost
     refs = re.findall(r"(?:section|sec|rule)\s*(\d+[a-z]*)", ql)
     scored = []
@@ -134,6 +161,9 @@ def retrieve(query: str, k: int = TOP_K) -> list[tuple[str, str]]:
         tf = sum(tl.count(w) for w in words)
         score = 1000.0 * tf / math.sqrt(max(1, len(tl)))       # length-normalized
         score += 10 * sum(w in name.lower() for w in words)     # filename hit
+        if target:                                              # domain router
+            dom = _domain(name)
+            score *= 3.0 if dom == target else 0.15
         for n in refs:                                          # "73. ..." heading present?
             if re.search(rf"^\s*(?:\d+\[)?{n}\.\s", text, re.M):
                 score += 40
