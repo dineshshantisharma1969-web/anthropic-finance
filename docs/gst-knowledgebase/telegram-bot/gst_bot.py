@@ -34,16 +34,29 @@ from telegram.ext import (
     filters,
 )
 
-logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
-log = logging.getLogger("gst-bot")
+# BOT_MODE selects which knowledge this process serves:
+#   "gst"    → GST law only (law-library/)
+#   "salary" → ISPL salary/PF/ESI + labour codes only (pf-salary-reconciliation/)
+#   "both"   → everything, with a domain router (default; backwards-compatible)
+# Run two separate bots by launching this file twice with different BOT_MODE and
+# TELEGRAM_BOT_TOKEN (see run_gst_bot.bat / run_salary_bot.bat).
+BOT_MODE = os.environ.get("BOT_MODE", "both").lower()
 
-LIBRARY_DIR = Path(os.environ.get("GST_LIBRARY_DIR", Path(__file__).parent.parent / "law-library"))
-# extra knowledge folders (salary reconciliation summaries etc.) — the bot answers
-# ISPL payroll questions from these the same way it answers law from the library
-EXTRA_DIRS = [Path(p) for p in os.environ.get(
+logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", level=logging.INFO)
+log = logging.getLogger(f"{BOT_MODE}-bot")
+
+LAW_DIR = Path(os.environ.get("GST_LIBRARY_DIR", Path(__file__).parent.parent / "law-library"))
+SALARY_DIRS = [Path(p) for p in os.environ.get(
     "EXTRA_LIBRARY_DIRS",
     str(Path(__file__).parent.parent.parent / "pf-salary-reconciliation")
 ).split(os.pathsep)]
+# Which roots this process loads, given its mode.
+if BOT_MODE == "gst":
+    LIBRARY_DIR, EXTRA_DIRS = LAW_DIR, []
+elif BOT_MODE == "salary":
+    LIBRARY_DIR, EXTRA_DIRS = SALARY_DIRS[0], SALARY_DIRS[1:]  # first salary dir is primary
+else:
+    LIBRARY_DIR, EXTRA_DIRS = LAW_DIR, SALARY_DIRS
 MODEL = "claude-opus-4-8"
 MAX_DOC_CHARS = 60_000          # per retrieved doc slice sent to the model
 TOP_K = 4                       # docs per query
@@ -54,16 +67,29 @@ client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
 # --------------------------------------------------------------------------
 # System prompt — frozen (cacheable). Encodes SKILL_GST.md golden rules.
 # --------------------------------------------------------------------------
-SYSTEM_PROMPT = """You are a research assistant answering queries over Telegram for a \
+_INTRO = {
+"gst": """You are a GST (India, Goods and Services Tax) law research assistant \
+answering queries over Telegram for a tax professional at ISPL (Impressions Services). \
+Answer ONLY from the loaded GST law-library documents (Acts, Rules, notifications, \
+circulars).""",
+"salary": """You are an ISPL (Impressions Services) payroll/compliance assistant \
+answering queries over Telegram from the salary-reconciliation documents — monthly \
+worklists (recovery review, ESI enrollment, wage-code 50%), the Dec-Mar wage-code \
+packs, client restructuring annexures, and the OFFICIAL MoLE Labour-Code documents \
+(Code on Wages 2019 in force 21-11-2025; FAQs 16.03.2026; employer handbook). Quote \
+exact figures and name the month/file/client. If a month or client is not in the \
+documents, say it has not been examined yet — do NOT invent numbers. For Labour-Code \
+questions cite the FAQ number or handbook section; note FAQs are guidance, S.2(y) governs.""",
+"both": """You are a research assistant answering queries over Telegram for a \
 tax/finance professional at ISPL (Impressions Services), covering two domains:
 (A) GST (India) law — from the law-library documents; and
 (B) ISPL salary/PF/ESI reconciliation data — from the pf-salary-reconciliation \
-summary documents (monthly worklists: recovery review, ESI enrollment, wage-code 50%). \
-For salary questions, quote the exact figures from those documents and name the month \
-and file; if a month's summary is not in the documents, say it has not been examined yet.
-(C) Labour Codes (Code on Wages 2019 etc., in force 21-11-2025) — from the OFFICIAL \
-MoLE documents in the statutory folder (FAQs 16.03.2026, employer compliance handbook). \
-Cite the FAQ number or handbook section; note FAQs are guidance, S.2(y) governs.
+summary documents (monthly worklists, wage-code packs, restructuring annexures, MoLE \
+Labour-Code documents). For salary questions quote exact figures and name the month/file; \
+if a month is not in the documents, say it has not been examined yet.""",
+}[BOT_MODE]
+
+SYSTEM_PROMPT = _INTRO + """
 
 GOLDEN RULES — never violated:
 1. Answer ONLY from the law-library documents provided in the conversation. \
@@ -147,12 +173,14 @@ def retrieve(query: str, k: int = TOP_K) -> list[tuple[str, str]]:
     words = {w for w in re.findall(r"[a-z0-9]+", ql) if len(w) > 2 and w not in STOPWORDS}
     qtok = set(re.findall(r"[a-z0-9]+", ql))
     sal_hits, law_hits = len(qtok & SALARY_MARKERS), len(qtok & LAW_MARKERS)
-    # pick a target domain only when the query clearly leans one way
+    # domain routing only matters in "both" mode (mixed corpus); single-domain
+    # bots load only their own docs, so no routing needed
     target = None
-    if sal_hits >= law_hits + 1:
-        target = "salary"
-    elif law_hits >= sal_hits + 1:
-        target = "law"
+    if BOT_MODE == "both":
+        if sal_hits >= law_hits + 1:
+            target = "salary"
+        elif law_hits >= sal_hits + 1:
+            target = "law"
     # "section 73" / "rule 36" style references get a heading-level boost
     refs = re.findall(r"(?:section|sec|rule)\s*(\d+[a-z]*)", ql)
     scored = []
@@ -213,12 +241,19 @@ def ask_claude(history: list[dict], question: str) -> str:
 # --------------------------------------------------------------------------
 # Telegram handlers
 # --------------------------------------------------------------------------
+_HELP_INTRO = {
+    "gst": "GST Law Bot — ask any question on GST law, rules, notifications or circulars.",
+    "salary": "ISPL Salary Bot — ask about the salary/PF/ESI reconciliation, recovery "
+              "worklists, ESI enrollment, wage-code 50% packs, client restructuring, or "
+              "the Labour Codes.",
+    "both": "ISPL Assistant — ask about GST law OR salary/PF/ESI reconciliation & Labour Codes.",
+}[BOT_MODE]
 HELP = (
-    "GST Law Bot — ask any question on GST law, rules, notifications, returns or cases.\n\n"
-    "Answers come ONLY from the loaded law library, with citations. "
-    "If the library doesn't cover it, I'll say so.\n\n"
-    "Commands:\n/start /help — this message\n/reload — reload the law library\n"
-    f"/status — library status\n\nLibrary: {LIBRARY_DIR}"
+    f"{_HELP_INTRO}\n\n"
+    "Answers come ONLY from the loaded documents, with citations. "
+    "If they don't cover it, I'll say so — I won't invent an answer.\n\n"
+    "Commands:\n/start /help — this message\n/reload — reload the documents\n"
+    f"/status — document status\n\nMode: {BOT_MODE}"
 )
 
 async def cmd_start(update: Update, _: ContextTypes.DEFAULT_TYPE):
@@ -264,7 +299,7 @@ def main():
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("reload", cmd_reload))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
-    log.info("GST bot running (model=%s, library=%d docs)", MODEL, len(LIBRARY))
+    log.info("bot running (mode=%s, model=%s, library=%d docs)", BOT_MODE, MODEL, len(LIBRARY))
     app.run_polling()
 
 if __name__ == "__main__":
