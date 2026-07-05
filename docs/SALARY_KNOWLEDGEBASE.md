@@ -81,9 +81,10 @@ Handbook (Four Labour Codes)*. Operative clarifications for the 50% test
 - Revised wages definition applies to **gratuity computation from 21-11-2025** (FAQ 6).
 ⚠️ Our pack used `BASIC+DA < 50% of CTC`. If ISPL's CTC includes gratuity
 provision / ER-ESI, the denominator is overstated → some rows over-flagged;
-conversely OT-inclusive remuneration can raise the denominator. **Open item:
-re-run pack v2 with FAQ-adjusted denominator** (CTC − gratuity provision −
-ER ESI; columns exist in M13 files: GRATUITY_PROVISION, ESIC COMPANY).
+conversely OT-inclusive remuneration can raise the denominator. **✅ DONE 04-07-2026 — pack v2** (`Dec25_Mar26_WAGECODE_50PCT_PACK_v2.xlsx`,
+FAQ-adjusted denominator = CTC − GRATUITY_PROVISION − ESIC COMPANY): 1,559
+failers / **1,176 persistent** / shortfall ₹26.9L/mo / ER cost ₹4.79L/mo.
+v2 SUPERSEDES v1 for client conversations.
 
 **Wage-code law period (Code on Wages in force 21-11-2025):** consolidated pack
 `fy2025-26/Dec25_Mar26_WAGECODE_50PCT_PACK.xlsx` — 1,650 failers, **1,252 persistent
