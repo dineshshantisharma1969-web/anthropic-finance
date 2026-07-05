@@ -62,6 +62,21 @@ MAX_DOC_CHARS = 60_000          # per retrieved doc slice sent to the model
 TOP_K = 4                       # docs per query
 HISTORY_TURNS = 6               # remembered turns per chat
 
+# Access control — the bot holds confidential ISPL salary/client data, so only
+# allowlisted Telegram user IDs get answers. Set ALLOWED_USER_IDS to a
+# comma-separated list of numeric IDs (each teammate sends /myid to get theirs).
+# If left EMPTY the bot is OPEN to anyone who finds it (fine for solo/testing).
+ALLOWED_USER_IDS = {
+    int(x) for x in re.split(r"[,\s]+", os.environ.get("ALLOWED_USER_IDS", "").strip())
+    if x.strip().isdigit()
+}
+
+def _authorized(update) -> bool:
+    if not ALLOWED_USER_IDS:          # empty allowlist = open (solo mode)
+        return True
+    u = update.effective_user
+    return bool(u and u.id in ALLOWED_USER_IDS)
+
 client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
 
 # --------------------------------------------------------------------------
@@ -256,19 +271,43 @@ HELP = (
     f"/status — document status\n\nMode: {BOT_MODE}"
 )
 
+async def cmd_myid(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    u = update.effective_user
+    ok = "✅ you are authorized" if _authorized(update) else "🚫 not on the allowlist yet"
+    await update.message.reply_text(
+        f"Your Telegram ID: {u.id}\nName: {u.full_name}\n{ok}\n\n"
+        "Send this ID to the bot owner to be added.")
+
 async def cmd_start(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not _authorized(update):
+        await update.message.reply_text(
+            "🚫 This bot is private (ISPL internal). Send /myid and share the ID "
+            "with the bot owner to be granted access.")
+        return
     await update.message.reply_text(HELP)
 
 async def cmd_status(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    names = "\n".join(f"• {n}" for n, _t in LIBRARY[:30]) or "(empty — load official CBIC docs first)"
+    if not _authorized(update):
+        await update.message.reply_text("🚫 Not authorized. Send /myid.")
+        return
+    names = "\n".join(f"• {n}" for n, _t in LIBRARY[:30]) or "(empty — load documents first)"
     await update.message.reply_text(f"Documents loaded: {len(LIBRARY)}\n{names}")
 
 async def cmd_reload(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not _authorized(update):
+        await update.message.reply_text("🚫 Not authorized. Send /myid.")
+        return
     global LIBRARY
     LIBRARY = load_library()
     await update.message.reply_text(f"Reloaded: {len(LIBRARY)} documents.")
 
 async def on_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not _authorized(update):
+        await update.message.reply_text(
+            "🚫 Not authorized. Send /myid and share the ID with the bot owner.")
+        log.warning("blocked user %s (%s)", update.effective_user.id,
+                    update.effective_user.full_name)
+        return
     question = (update.message.text or "").strip()
     if not question:
         return
@@ -296,10 +335,13 @@ def main():
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     app = Application.builder().token(token).build()
     app.add_handler(CommandHandler(["start", "help"], cmd_start))
+    app.add_handler(CommandHandler("myid", cmd_myid))
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("reload", cmd_reload))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
-    log.info("bot running (mode=%s, model=%s, library=%d docs)", BOT_MODE, MODEL, len(LIBRARY))
+    acl = f"{len(ALLOWED_USER_IDS)} allowed users" if ALLOWED_USER_IDS else "OPEN (no allowlist)"
+    log.info("bot running (mode=%s, model=%s, library=%d docs, access=%s)",
+             BOT_MODE, MODEL, len(LIBRARY), acl)
     app.run_polling()
 
 if __name__ == "__main__":
