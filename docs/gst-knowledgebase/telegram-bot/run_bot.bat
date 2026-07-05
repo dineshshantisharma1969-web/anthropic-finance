@@ -1,15 +1,18 @@
 @echo off
-REM ── GST Law Telegram Bot — Windows starter ──────────────────────────────
-REM 1) Edit the two lines below with your real keys (keep this file private!)
-REM 2) Double-click this file. A console window stays open while the bot runs.
-
-set TELEGRAM_BOT_TOKEN=PASTE-YOUR-BOTFATHER-TOKEN-HERE
-set ANTHROPIC_API_KEY=PASTE-YOUR-ANTHROPIC-KEY-HERE
-REM Access control: comma-separated Telegram IDs allowed to use this bot.
-REM Leave blank = open to anyone. Each teammate sends /myid to get their ID.
-set ALLOWED_USER_IDS=
+REM ── ISPL Assistant bot (GST + Salary) ───────────────────────────────────
+REM Your keys live in keys.bat (git-ignored) — see keys.bat.example for setup.
+REM Double-click this file to start the bot. Keep the window open while it runs.
 
 cd /d "%~dp0"
+if not exist keys.bat (
+  echo.
+  echo  ERROR: keys.bat not found.
+  echo  Copy keys.bat.example to keys.bat and paste your real keys into it.
+  echo.
+  pause
+  exit /b 1
+)
+call keys.bat
 python -m pip install -q -r requirements.txt
 python gst_bot.py
 pause

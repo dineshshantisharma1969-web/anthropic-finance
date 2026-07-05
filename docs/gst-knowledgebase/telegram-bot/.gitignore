@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .env
+keys.bat
+keys_gst.bat
+keys_salary.bat

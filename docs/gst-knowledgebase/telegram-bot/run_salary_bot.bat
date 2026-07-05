@@ -1,16 +1,18 @@
 @echo off
-REM ── SALARY-ONLY Telegram bot ────────────────────────────────────────────
-REM Answers ISPL salary/PF/ESI reconciliation, wage-code & Labour-Code questions only.
-REM Needs its OWN bot token from @BotFather (a DIFFERENT bot from the GST one).
+REM ── SALARY-ONLY bot ─────────────────────────────────────────────────────
+REM Keys come from keys.bat (git-ignored). To run this as a SEPARATE bot from
+REM the GST one, give it its own token: make a copy of keys.bat named
+REM keys_salary.bat with a different TELEGRAM_BOT_TOKEN, then change the line
+REM below from "call keys.bat" to "call keys_salary.bat".
 
 set BOT_MODE=salary
-set TELEGRAM_BOT_TOKEN=PASTE-YOUR-SALARY-BOT-TOKEN-HERE
-set ANTHROPIC_API_KEY=PASTE-YOUR-ANTHROPIC-KEY-HERE
-REM Access control: comma-separated Telegram IDs allowed to use this bot.
-REM Leave blank = open to anyone. Each teammate sends /myid to get their ID.
-set ALLOWED_USER_IDS=
-
 cd /d "%~dp0"
+if not exist keys.bat (
+  echo ERROR: keys.bat not found. Copy keys.bat.example to keys.bat and add your keys.
+  pause
+  exit /b 1
+)
+call keys.bat
 python -m pip install -q -r requirements.txt
 python gst_bot.py
 pause

@@ -1,0 +1,17 @@
+@echo off
+REM ============================================================================
+REM  keys.bat  —  YOUR PRIVATE KEYS.  This file is git-ignored: git never sees
+REM  it, never overwrites it, never conflicts with it. Your keys are safe here.
+REM
+REM  ONE-TIME SETUP:
+REM    1. Make a copy of this file named exactly  keys.bat  (same folder).
+REM    2. Open keys.bat in Notepad and paste your real values below.
+REM    3. Save. Done — run_bot.bat now reads your keys from here.
+REM ============================================================================
+
+set TELEGRAM_BOT_TOKEN=PASTE-YOUR-BOTFATHER-TOKEN-HERE
+set ANTHROPIC_API_KEY=PASTE-YOUR-ANTHROPIC-KEY-HERE
+
+REM Optional access control: comma-separated Telegram IDs allowed to use the bot.
+REM Leave blank = open to anyone. Each teammate sends /myid to get their ID.
+set ALLOWED_USER_IDS=
