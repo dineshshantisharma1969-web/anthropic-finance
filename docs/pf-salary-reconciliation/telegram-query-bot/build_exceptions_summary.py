@@ -27,7 +27,7 @@ It auto-finds every "*_Final_Complete.xlsx" under each --in folder and derives
 the month label from the file name. Nothing is changed in your source files.
 """
 from __future__ import annotations
-import argparse, glob, os, re, sys
+import argparse, calendar, glob, os, re, sys
 import pandas as pd
 
 BD_CEILING = 15000.0   # PF wage ceiling (BASIC+DA)
@@ -106,6 +106,7 @@ def analyse(path):
     relax  = resolve(df, "RULE_075_RELAXED")
     negod  = resolve(df, "REVISED_OTHER_DEDUCTION")
     bdproj = resolve(df, "MONTHLY_BD_PROJECTION")
+    daysc  = resolve(df, "ADJ_WORKING_DAYS", "NORMALDAYS", "NORMAL DAYS")
 
     df["_EMP"] = df[emp].astype(str).str.strip().str.split(".").str[0]
     df["_PF"]  = pd.to_numeric(df[rpf], errors="coerce").fillna(0.0)
@@ -113,14 +114,23 @@ def analyse(path):
     df["_GROSS"] = pd.to_numeric(df[rgross], errors="coerce").fillna(0.0) if rgross else 0.0
     df["_BD"]  = (pd.to_numeric(df[rb], errors="coerce").fillna(0.0)
                   + pd.to_numeric(df[rd], errors="coerce").fillna(0.0))
+    df["_DAYS"] = pd.to_numeric(df[daysc], errors="coerce").fillna(0.0) if daysc else 0.0
+
+    # full-month days for this file's month (for the part-days split)
+    fmd = None
+    m = re.match(r"(20\d{2})-(\d{2})$", month_label(path) or "")
+    if m:
+        fmd = calendar.monthrange(int(m.group(1)), int(m.group(2)))[1]
 
     # per-EMPLOYEE roll-up (an employee may have several site rows)
     g = df.groupby("_EMP").agg(pf=("_PF", "sum"), esi=("_ESI", "sum"),
-                               bd=("_BD", "sum"), gross=("_GROSS", "sum"))
+                               bd=("_BD", "sum"), gross=("_GROSS", "sum"),
+                               days=("_DAYS", "sum"))
     no_pf  = g["pf"] <= 0.5
     no_esi = g["esi"] <= 0.5
     bd_below   = (g["bd"] > 0) & (g["bd"] < BD_CEILING)
     gross_below = (g["gross"] > 0) & (g["gross"] <= ESI_CEILING)
+    part_days = (g["days"] > 0) & (g["days"] < (fmd - 0.5)) if (daysc and fmd) else None
 
     def truthy(col):
         return df[col].astype(str).str.upper().isin(["TRUE", "1", "1.0", "YES"])
@@ -130,7 +140,15 @@ def analyse(path):
         "TOTAL_EMPLOYEES": int(g.shape[0]),
         # ---- the anomalies you asked about ----
         "EMP_BD_LT_15000_AND_NO_PF": int((no_pf & bd_below).sum()),
+        "EMP_BD_LT_15000_NO_PF_PART_DAYS": (int((no_pf & bd_below & part_days).sum())
+                                            if part_days is not None else ""),
+        "EMP_BD_LT_15000_NO_PF_FULL_DAYS": (int((no_pf & bd_below & ~part_days).sum())
+                                            if part_days is not None else ""),
         "EMP_GROSS_LE_21000_AND_NO_ESI": int((no_esi & gross_below).sum()),
+        "EMP_GROSS_LE_21000_NO_ESI_PART_DAYS": (int((no_esi & gross_below & part_days).sum())
+                                                if part_days is not None else ""),
+        "EMP_GROSS_LE_21000_NO_ESI_FULL_DAYS": (int((no_esi & gross_below & ~part_days).sum())
+                                                if part_days is not None else ""),
         "ANOMALY_BELOW_CEILING_native": int(df.loc[truthy(anom), "_EMP"].nunique()) if anom else "",
         # ---- statutory-ceiling watches (row counts) ----
         "ROWS_PF_GT_1800": int((df["_PF"] > 1800.5).sum()),
