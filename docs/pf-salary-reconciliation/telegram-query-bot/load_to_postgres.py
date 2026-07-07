@@ -127,7 +127,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="inputs", nargs="+", action="append", required=True)
     ap.add_argument("--fy", type=int, default=None)
-    ap.add_argument("--conn", required=True, help="Postgres connection URI")
+    ap.add_argument("--conn", default=None, help="Full Postgres URI (or use the parts below)")
+    ap.add_argument("--host", default=None)
+    ap.add_argument("--port", default="5432")
+    ap.add_argument("--user", default="postgres")
+    ap.add_argument("--password", default=None, help="DB password (special chars handled automatically)")
+    ap.add_argument("--dbname", default="postgres")
     ap.add_argument("--table", default="salary_rows")
     a = ap.parse_args()
     a.inputs = [p for grp in a.inputs for p in grp]
@@ -159,10 +164,19 @@ def main():
 
     try:
         from sqlalchemy import create_engine, text
+        from sqlalchemy.engine import URL
     except ImportError:
         print("Missing libs. Run:  pip install sqlalchemy psycopg2-binary"); sys.exit(1)
 
-    eng = create_engine(a.conn)
+    if a.password is not None and a.host:
+        # build the URL from parts — SQLAlchemy percent-encodes the password for us
+        url = URL.create("postgresql+psycopg2", username=a.user, password=a.password,
+                         host=a.host, port=int(a.port), database=a.dbname)
+        eng = create_engine(url)
+    elif a.conn:
+        eng = create_engine(a.conn)
+    else:
+        print("Provide either --conn \"postgresql://...\"  OR  --host --user --password."); sys.exit(1)
     print(f"Writing to table '{a.table}' (replace)...")
     allrows.to_sql(a.table, eng, if_exists="replace", index=False,
                    chunksize=1000, method="multi")
