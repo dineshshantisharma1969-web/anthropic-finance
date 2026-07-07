@@ -13,6 +13,7 @@ pip install pandas openpyxl
 python build_exceptions_summary.py ^
   --in "D:\Desktop Data\salary 25-26\CORRECTED SALARY 25-26 (M13 FINAL)_20260626_020401 (1)\CORRECTED SALARY 25-26 (M13 FINAL)_20260626_020401\ESI_WASHING_REALLOCATED" ^
   --in "D:\Desktop Data\21062026\desktop salary folder" ^
+  --fy 2025 ^
   --out "Salary_Exceptions_Summary"
 
 echo.

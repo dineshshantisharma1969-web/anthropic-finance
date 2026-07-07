@@ -50,19 +50,40 @@ def resolve(df, *names):
     return None
 
 
+FY_START = None  # fiscal-year start year (e.g. 2025) — set from --fy in main()
+
+
 def month_label(path):
-    """Best-effort 'YYYY-MM'/'Mon-YY' label from a file name."""
+    """Best-effort 'YYYY-MM' label from a file name.
+    Handles April26 / 2026-04 / Oct_25, and bare month names
+    (January_M13_FINAL) via the fiscal-year rule when --fy is given."""
     base = os.path.basename(path)
-    # e.g. April26, Apr-25, 2026-04, Oct_25 ...
+    # e.g. 2026-04
     m = re.search(r"(20\d{2})[-_]?(0[1-9]|1[0-2])", base)
     if m:
         return f"{m.group(1)}-{m.group(2)}"
+    # e.g. April26, Apr-25, Oct_25  (month token immediately followed by a year)
     m = re.search(r"(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-_ ]?(\d{2,4})", base, re.I)
     if m:
         yy = m.group(2)
         yy = ("20" + yy) if len(yy) == 2 else yy
         return f"{yy}-{MONTHS[m.group(1).lower()[:3]]:02d}"
-    return base.replace("_Final_Complete.xlsx", "")
+    # bare month name, no year (e.g. January_M13_FINAL) — use fiscal-year rule
+    m = re.search(r"(january|february|march|april|may|june|july|august|september|october|november|december)",
+                  base, re.I)
+    if m and FY_START:
+        mo = MONTHS[m.group(1).lower()[:3]]
+        yr = FY_START if mo >= 4 else FY_START + 1   # Apr..Dec = FY_START, Jan..Mar = +1
+        return f"{yr}-{mo:02d}"
+    return base.replace("_Final_Complete.xlsx", "").replace("_M13_FINAL.xlsx", "").replace(".xlsx", "")
+
+
+def is_final_file(path):
+    """Only the canonical monthly FINAL outputs — never backups/worklists/audits."""
+    b = os.path.basename(path).lower()
+    if b.startswith("~$") or ".bak." in b or ".pre" in b:
+        return False
+    return b.endswith("_final_complete.xlsx") or b.endswith("_m13_final.xlsx")
 
 
 def analyse(path):
@@ -157,33 +178,38 @@ def resolve_in(cols, *names):
 
 
 def main():
+    global FY_START
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="inputs", nargs="+", required=True,
                     help="one or more folders (or files) with reconciled .xlsx outputs")
     ap.add_argument("--out", default="Salary_Exceptions_Summary",
                     help="output file prefix (writes .csv and .xlsx)")
+    ap.add_argument("--fy", type=int, default=None,
+                    help="fiscal-year start year for bare month names, e.g. 2025 "
+                         "(April..December -> 2025, January..March -> 2026)")
     a = ap.parse_args()
+    FY_START = a.fy
 
-    # Discover any .xlsx that has the reconciled columns (name-independent), so
-    # FY25-26 files that aren't called *_Final_Complete.xlsx are still picked up.
+    # Discover only the canonical monthly FINAL files (by name), then verify each
+    # actually has the reconciled columns. This skips .bak backups, worklists,
+    # ESI audits and other decoys sitting in the same folder.
     candidates = []
     for p in a.inputs:
         if os.path.isdir(p):
             candidates += glob.glob(os.path.join(p, "**", "*.xlsx"), recursive=True)
         elif os.path.isfile(p):
             candidates.append(p)
-    # skip Excel lock/temp files (~$...) and duplicates
-    candidates = sorted({f for f in candidates if not os.path.basename(f).startswith("~$")})
 
-    print(f"Scanning {len(candidates)} .xlsx file(s) for reconciled columns ...")
+    finals = sorted({f for f in candidates if is_final_file(f)})
+    print(f"Matched {len(finals)} FINAL file(s) by name (backups/worklists/audits ignored).")
     files = []
-    for f in candidates:
+    for f in finals:
         if is_reconciled(f):
             files.append(f)
         else:
-            print(f"  (skip, not a reconciled file) {os.path.basename(f)}")
+            print(f"  (skip, missing REVISED_PF/REVISED_BASIC) {os.path.basename(f)}")
     if not files:
-        print("No reconciled .xlsx files (with REVISED_PF / REVISED_BASIC) found.")
+        print("No usable FINAL files found (need *_M13_FINAL.xlsx or *_Final_Complete.xlsx).")
         sys.exit(1)
 
     print(f"\nFound {len(files)} reconciled file(s):")
