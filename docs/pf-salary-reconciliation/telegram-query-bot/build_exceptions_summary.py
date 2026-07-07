@@ -30,7 +30,8 @@ from __future__ import annotations
 import argparse, glob, os, re, sys
 import pandas as pd
 
-BD_CEILING = 15000.0  # PF wage ceiling (BASIC+DA)
+BD_CEILING = 15000.0   # PF wage ceiling (BASIC+DA)
+ESI_CEILING = 21000.0  # ESI wage ceiling (gross)
 
 MONTHS = {m.lower(): i for i, m in enumerate(
     ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], start=1)}
@@ -77,37 +78,67 @@ def analyse(path):
         print(f"  !! skipped {os.path.basename(path)} — missing required columns")
         return None
 
+    # optional extra columns (present in every reconciled output)
+    rgross = resolve(df, "REVISED_GROSS")
+    rule   = resolve(df, "RULE_APPLIED")
+    relax  = resolve(df, "RULE_075_RELAXED")
+    negod  = resolve(df, "REVISED_OTHER_DEDUCTION")
+    bdproj = resolve(df, "MONTHLY_BD_PROJECTION")
+
     df["_EMP"] = df[emp].astype(str).str.strip().str.split(".").str[0]
     df["_PF"]  = pd.to_numeric(df[rpf], errors="coerce").fillna(0.0)
+    df["_ESI"] = pd.to_numeric(df[resi], errors="coerce").fillna(0.0) if resi else 0.0
+    df["_GROSS"] = pd.to_numeric(df[rgross], errors="coerce").fillna(0.0) if rgross else 0.0
     df["_BD"]  = (pd.to_numeric(df[rb], errors="coerce").fillna(0.0)
                   + pd.to_numeric(df[rd], errors="coerce").fillna(0.0))
 
     # per-EMPLOYEE roll-up (an employee may have several site rows)
-    g = df.groupby("_EMP").agg(pf=("_PF", "sum"), bd=("_BD", "sum"))
-    no_pf = g["pf"] <= 0.5
-    below = (g["bd"] > 0) & (g["bd"] < BD_CEILING)
+    g = df.groupby("_EMP").agg(pf=("_PF", "sum"), esi=("_ESI", "sum"),
+                               bd=("_BD", "sum"), gross=("_GROSS", "sum"))
+    no_pf  = g["pf"] <= 0.5
+    no_esi = g["esi"] <= 0.5
+    bd_below   = (g["bd"] > 0) & (g["bd"] < BD_CEILING)
+    gross_below = (g["gross"] > 0) & (g["gross"] <= ESI_CEILING)
 
-    # headline metric — the user's exact question
-    emp_bd_lt_ceiling_no_pf = int((no_pf & below).sum())
+    def truthy(col):
+        return df[col].astype(str).str.upper().isin(["TRUE", "1", "1.0", "YES"])
 
-    # native reconcile.py metric (row-level flag, unique employees) for cross-check
-    native_anom = None
-    if anom:
-        flag = df[anom].astype(str).str.upper().isin(["TRUE", "1", "1.0", "YES"])
-        native_anom = int(df.loc[flag, "_EMP"].nunique())
-
-    return {
+    row = {
         "MONTH": month_label(path),
         "TOTAL_EMPLOYEES": int(g.shape[0]),
-        "EMP_BD_LT_15000_AND_NO_PF": emp_bd_lt_ceiling_no_pf,
-        "ANOMALY_BELOW_CEILING_native": native_anom if native_anom is not None else "",
+        # ---- the anomalies you asked about ----
+        "EMP_BD_LT_15000_AND_NO_PF": int((no_pf & bd_below).sum()),
+        "EMP_GROSS_LE_21000_AND_NO_ESI": int((no_esi & gross_below).sum()),
+        "ANOMALY_BELOW_CEILING_native": int(df.loc[truthy(anom), "_EMP"].nunique()) if anom else "",
+        # ---- statutory-ceiling watches (row counts) ----
+        "ROWS_PF_GT_1800": int((df["_PF"] > 1800.5).sum()),
+        "ROWS_ESI_GROSS_GT_21000": int(((df["_ESI"] > 0) & (df["_GROSS"] > 21001)).sum()),
+        "ROWS_PF_BDPROJ_GT_15000": (int(((df["_PF"] > 0) &
+            (pd.to_numeric(df[bdproj], errors="coerce").fillna(0) > 15000.5)).sum())
+            if bdproj else ""),
+        "ROWS_ESI_075_RELAXED": int(truthy(relax).sum()) if relax else "",
+        "ROWS_NEG_OTHER_DED": (int((pd.to_numeric(df[negod], errors="coerce").fillna(0) < -1).sum())
+                               if negod else ""),
+        # ---- PF/ESI coverage ----
         "EMP_WITH_PF": int((~no_pf).sum()),
         "EMP_NO_PF": int(no_pf.sum()),
+        "EMP_WITH_ESI": int((~no_esi).sum()),
+        # ---- rule breakdown (row counts) ----
+        "RULE_PF_ANCHOR": "", "RULE_PF_SECONDARY": "",
+        "RULE_ESI_ONLY": "", "RULE_NO_PF_NO_ESI": "",
+        # ---- month totals ----
         "REVISED_PF_TOTAL": round(float(df["_PF"].sum())),
-        "REVISED_ESIC_TOTAL": round(float(pd.to_numeric(df[resi], errors="coerce").sum())) if resi else "",
+        "REVISED_ESIC_TOTAL": round(float(df["_ESI"].sum())),
         "REVISED_NET_TOTAL": round(float(pd.to_numeric(df[net], errors="coerce").sum())) if net else "",
         "SOURCE_FILE": os.path.basename(path),
     }
+    if rule:
+        vc = df[rule].astype(str).str.upper().value_counts()
+        row["RULE_PF_ANCHOR"]    = int(vc.get("PF_ANCHOR", 0))
+        row["RULE_PF_SECONDARY"] = int(vc.get("PF_SECONDARY", 0))
+        row["RULE_ESI_ONLY"]     = int(vc.get("ESI_ONLY", 0))
+        row["RULE_NO_PF_NO_ESI"] = int(vc.get("NO_PF_NO_ESI", 0))
+    return row
 
 
 def main():
@@ -141,6 +172,27 @@ def main():
     if not rows:
         print("Nothing analysed.")
         sys.exit(1)
+
+    # ---- optional: attach ACTION_NEEDED_* row counts + excess salary by month ----
+    # (April-26 introduced ACTION_NEEDED_<Month><YY>.csv — only present where built)
+    action = {}
+    for p in a.inputs:
+        base = p if os.path.isdir(p) else os.path.dirname(p)
+        for csvf in glob.glob(os.path.join(base, "**", "ACTION_NEEDED*.csv"), recursive=True):
+            try:
+                adf = pd.read_csv(csvf)
+                mon = month_label(csvf)
+                exc_col = resolve(adf, "EXCESS_SALARY", "EXCESS", "EXCESS_AMOUNT")
+                action[mon] = (len(adf),
+                               round(float(pd.to_numeric(adf[exc_col], errors="coerce").sum()))
+                               if exc_col else "")
+                print(f"  action-needed {mon}: {len(adf)} rows")
+            except Exception as e:
+                print(f"  !! could not read {os.path.basename(csvf)}: {e}")
+    for r in rows:
+        cnt, exc = action.get(r["MONTH"], ("", ""))
+        r["ACTION_NEEDED_ROWS"] = cnt
+        r["ACTION_NEEDED_EXCESS_SALARY"] = exc
 
     out = pd.DataFrame(rows).sort_values("MONTH").reset_index(drop=True)
     out.to_csv(a.out + ".csv", index=False)

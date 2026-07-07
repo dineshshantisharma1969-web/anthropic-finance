@@ -49,10 +49,18 @@ column in that summary: **`EMP_BD_LT_15000_AND_NO_PF`**. It's the same metric
 |---|---|
 | `MONTH` | e.g. 2026-04 |
 | `TOTAL_EMPLOYEES` | employees that month |
-| **`EMP_BD_LT_15000_AND_NO_PF`** | **your metric — count below PF ceiling with no ECR PF** |
-| `ANOMALY_BELOW_CEILING_native` | the same count as flagged by reconcile.py (cross-check) |
-| `EMP_WITH_PF` / `EMP_NO_PF` | PF-covered vs not |
-| `REVISED_PF_TOTAL`, `REVISED_ESIC_TOTAL`, `REVISED_NET_TOTAL` | month totals |
+| **`EMP_BD_LT_15000_AND_NO_PF`** | **your metric — employees below PF ceiling (BASIC+DA < 15,000) with no ECR PF** |
+| `EMP_GROSS_LE_21000_AND_NO_ESI` | employees below ESI ceiling (gross ≤ 21,000) but not in ESI |
+| `ANOMALY_BELOW_CEILING_native` | same anomaly as flagged by reconcile.py (cross-check) |
+| `ROWS_PF_GT_1800` | rows where PF exceeds the ₹1,800 cap |
+| `ROWS_ESI_GROSS_GT_21000` | rows in ESI but gross above the ₹21,000 ceiling |
+| `ROWS_PF_BDPROJ_GT_15000` | PF rows whose month-projected BASIC+DA exceeds ₹15,000 |
+| `ROWS_ESI_075_RELAXED` | rows where the 0.75% ESI rule was relaxed (gross lifted) |
+| `ROWS_NEG_OTHER_DED` | rows with negative OTHER_DEDUCTION (should be 0) |
+| `EMP_WITH_PF` / `EMP_NO_PF` / `EMP_WITH_ESI` | coverage counts |
+| `RULE_PF_ANCHOR` / `RULE_PF_SECONDARY` / `RULE_ESI_ONLY` / `RULE_NO_PF_NO_ESI` | rule-mix row counts |
+| `ACTION_NEEDED_ROWS` / `ACTION_NEEDED_EXCESS_SALARY` | April-style action list size + ₹ excess (where an `ACTION_NEEDED_*.csv` exists) |
+| `REVISED_PF_TOTAL`, `REVISED_ESIC_TOTAL`, `REVISED_NET_TOTAL` | month ₹ totals |
 
 ---
 
@@ -77,10 +85,14 @@ Create a **new workflow** (don't touch the food-log one) with these nodes:
    sheet. System prompt, roughly:
    > "You answer questions about monthly salary/PF/ESI reconciliation. Use the
    > Google Sheets tool to read the Salary_Exceptions_Summary sheet. Each row is
-   > one month. The column `EMP_BD_LT_15000_AND_NO_PF` = employees with BASIC+DA
-   > below ₹15,000 and no ECR PF. If the user names a month, filter to that
-   > MONTH; if they say 'any month' or 'total', sum the column across all rows.
-   > Answer with just the number and the month(s). Amounts are in ₹."
+   > one month; each column is a pre-computed count or total. Key columns:
+   > `EMP_BD_LT_15000_AND_NO_PF` = employees with BASIC+DA below ₹15,000 and no
+   > ECR PF; `EMP_GROSS_LE_21000_AND_NO_ESI` = below ESI ceiling but not in ESI;
+   > `ROWS_PF_GT_1800` = PF above the ₹1,800 cap; `ACTION_NEEDED_ROWS` = action
+   > list size; `RULE_*` = rule-mix counts; `REVISED_*_TOTAL` = ₹ totals. If the
+   > user names a month, filter to that MONTH; if they say 'any month', 'total',
+   > or 'whole year', sum the column across all rows. Answer with just the
+   > number(s) and the month(s). Amounts are in ₹."
 3. **Telegram → Send Message** — reply text = `{{ $json.output }}` (same as your
    food bot's `Send Summary` node).
 
