@@ -141,26 +141,52 @@ def analyse(path):
     return row
 
 
+def is_reconciled(path):
+    """Cheap check: does this .xlsx have the reconciled audit columns?
+    Reads only the header row so it's fast even for 20 MB files."""
+    try:
+        cols = pd.read_excel(path, nrows=0).columns
+        return resolve_in(cols, "REVISED_PF") and resolve_in(cols, "REVISED_BASIC")
+    except Exception:
+        return False
+
+
+def resolve_in(cols, *names):
+    lut = {_norm(c): c for c in cols}
+    return any(_norm(n) in lut for n in names)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="inputs", nargs="+", required=True,
-                    help="one or more folders (or files) containing *_Final_Complete.xlsx")
+                    help="one or more folders (or files) with reconciled .xlsx outputs")
     ap.add_argument("--out", default="Salary_Exceptions_Summary",
                     help="output file prefix (writes .csv and .xlsx)")
     a = ap.parse_args()
 
-    files = []
+    # Discover any .xlsx that has the reconciled columns (name-independent), so
+    # FY25-26 files that aren't called *_Final_Complete.xlsx are still picked up.
+    candidates = []
     for p in a.inputs:
         if os.path.isdir(p):
-            files += glob.glob(os.path.join(p, "**", "*_Final_Complete.xlsx"), recursive=True)
+            candidates += glob.glob(os.path.join(p, "**", "*.xlsx"), recursive=True)
         elif os.path.isfile(p):
-            files.append(p)
-    files = sorted(set(files))
+            candidates.append(p)
+    # skip Excel lock/temp files (~$...) and duplicates
+    candidates = sorted({f for f in candidates if not os.path.basename(f).startswith("~$")})
+
+    print(f"Scanning {len(candidates)} .xlsx file(s) for reconciled columns ...")
+    files = []
+    for f in candidates:
+        if is_reconciled(f):
+            files.append(f)
+        else:
+            print(f"  (skip, not a reconciled file) {os.path.basename(f)}")
     if not files:
-        print("No *_Final_Complete.xlsx files found under the given --in path(s).")
+        print("No reconciled .xlsx files (with REVISED_PF / REVISED_BASIC) found.")
         sys.exit(1)
 
-    print(f"Found {len(files)} reconciled file(s):")
+    print(f"\nFound {len(files)} reconciled file(s):")
     rows = []
     for f in files:
         print(f"  reading {os.path.basename(f)} ...")
