@@ -114,6 +114,22 @@ needed.
 
 ---
 
+## ✅ LIVE STATUS (2026-07-07)
+
+**Working in production.** The deployed workflow is **`n8n_salary_bot_workflow_v2.json`**
+("ISPL Salary Query Bot v2") on the user's n8n Cloud, answering via the
+**ISPL GST LAW BOT** Telegram bot (its token was repurposed; the old local GST
+script is retired). Data source: Google Sheet **`Salary_Exceptions_Summary`**
+(ID `1smYxcENYcnfu8rF8uyfuqVUM-Qo_GmuG0-aV6EMA0b8`) in Drive folder
+**ISPL SALARY AUDIT 25-26** — 13 months, FY2025-26 (incl. Apr-25 = 455 via
+`April2025_Final_Complete.xlsx`) + Apr-26. Year total for the headline anomaly
+(BASIC+DA < 15,000 & no ECR PF): **4,679 employees**.
+
+v2 design note: v1 (agent + Sheets *tool*) hallucinated when the tool call
+failed. v2 reads the sheet deterministically on every message (Sheets read →
+Aggregate → full table embedded in the system prompt, model pinned to gpt-4o).
+Use v2 for any future bot of this kind.
+
 ## 24/7 operation — the PC is NOT needed for queries
 
 Confirmed setup (2026-07): the user's n8n is **cloud-hosted** (the food-log bot
