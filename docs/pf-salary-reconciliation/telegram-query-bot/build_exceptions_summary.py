@@ -87,7 +87,8 @@ def is_final_file(path):
 
 
 def analyse(path):
-    df = pd.read_excel(path)
+    hdr = detect_header(path)
+    df = pd.read_excel(path, header=hdr if hdr is not None else 0)
     emp = resolve(df, "EMPCODE", "EMP CODE")
     rpf = resolve(df, "REVISED_PF")
     rb  = resolve(df, "REVISED_BASIC")
@@ -162,19 +163,23 @@ def analyse(path):
     return row
 
 
+def detect_header(path, maxscan=10):
+    """Find the header row: some monthly finals have blank/title rows on top
+    (e.g. April_M13_FINAL.xlsx has its headers on the 2nd row)."""
+    raw = pd.read_excel(path, header=None, nrows=maxscan)
+    for i in range(len(raw)):
+        cells = {_norm(c) for c in raw.iloc[i].tolist()}
+        if "REVISED_PF" in cells and ("REVISED_BASIC" in cells or "EMPCODE" in cells):
+            return i
+    return None
+
+
 def is_reconciled(path):
-    """Cheap check: does this .xlsx have the reconciled audit columns?
-    Reads only the header row so it's fast even for 20 MB files."""
+    """Does this .xlsx have the reconciled audit columns on any of its top rows?"""
     try:
-        cols = pd.read_excel(path, nrows=0).columns
-        return resolve_in(cols, "REVISED_PF") and resolve_in(cols, "REVISED_BASIC")
+        return detect_header(path) is not None
     except Exception:
         return False
-
-
-def resolve_in(cols, *names):
-    lut = {_norm(c): c for c in cols}
-    return any(_norm(n) in lut for n in names)
 
 
 def main():
