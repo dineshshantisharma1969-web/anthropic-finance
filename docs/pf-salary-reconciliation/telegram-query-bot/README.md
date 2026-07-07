@@ -156,3 +156,24 @@ n8n workflow. Don't reuse the food-bot's token — create a **new bot** with
   the big files; the bot just reads the small result. That's why it's a
   once-a-month double-click, not fully automatic — the source files live on your
   PC, not in the cloud.
+
+## ⏸️ SQL database (Supabase) — paused mid-setup (2026-07-07)
+
+Blocked ONLY by a live Supabase outage ("We are investigating a technical issue"
+banner) causing `password authentication failed` on every connect, regardless of
+credentials. Our side is confirmed working: the loader reads all **256,276 rows**
+across 13 months every run; only the DB login fails during the incident.
+
+**Supabase project (free NANO tier, AWS ap-southeast-1):**
+- host: `aws-0-ap-southeast-1.pooler.supabase.com`  · port: `5432` (session pooler)
+- user: `postgres.tmjdhakaondusmvcmdmg`  · dbname: `postgres`
+- project ref: `tmjdhakaondusmvcmdmg`
+
+**Resume checklist (when the Supabase status banner is gone):**
+1. Supabase → Reset database password to a simple alphanumeric value (e.g. `IsplSalary2026`); wait **3 minutes** (no repeated resets — each restarts propagation).
+2. In SALARY BOT folder, quick login test:
+   `python -c "import psycopg2; psycopg2.connect(host='aws-0-ap-southeast-1.pooler.supabase.com',port=5432,user='postgres.tmjdhakaondusmvcmdmg',password='PW',dbname='postgres'); print('CONNECTED OK')"`
+3. On CONNECTED OK, run the loader:
+   `python load_to_postgres.py --in "<FY25-26 folder>" "<April-26 folder>" --fy 2025 --host aws-0-ap-southeast-1.pooler.supabase.com --port 5432 --user postgres.tmjdhakaondusmvcmdmg --password PW --dbname postgres`
+   → expect `DONE — 256,276 rows now in 'salary_rows'`.
+4. Import `n8n_salary_sql_bot.json`, set Postgres (same creds) + OpenAI + Telegram credentials, activate → ask-anything SQL bot live.
