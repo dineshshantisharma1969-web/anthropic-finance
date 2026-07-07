@@ -1,0 +1,359 @@
+<!-- ISPL Salary FY2025-26 — dark interactive dashboard. Self-contained, no external assets. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISPL Salary Dashboard · FY 2025-26</title>
+<style>
+:root{
+  --plane:#0a0a0b; --surface:#161618; --surface-2:#1c1c1f;
+  --ink:#ffffff; --ink-2:#c3c2b7; --muted:#8a8a84;
+  --grid:#2a2a28; --axis:#3a3a37; --border:rgba(255,255,255,.08); --border-2:rgba(255,255,255,.06);
+  --s1:#3987e5; --s2:#199e70; --s3:#c98500; --s5:#9085e9; --s6:#e66767;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b;
+  --glow1:rgba(57,135,229,.16); --glow2:rgba(144,133,233,.13);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--plane);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{background:
+  radial-gradient(1200px 600px at 15% -10%,var(--glow1),transparent 60%),
+  radial-gradient(1000px 560px at 100% 0%,var(--glow2),transparent 55%),
+  var(--plane);min-height:100vh}
+.wrap{max-width:1240px;margin:0 auto;padding:34px 22px 64px}
+.tnum{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:flex-end;gap:18px 24px;margin-bottom:8px}
+.h-left{flex:1 1 340px;min-width:280px}
+.eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 8px}
+h1{margin:0;font-size:clamp(26px,4vw,40px);line-height:1.05;font-weight:800;letter-spacing:-.02em}
+h1 .grad{background:linear-gradient(92deg,#6aa8ff,#b7aef4 60%,#5fd0a6);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{margin:10px 0 0;color:var(--ink-2);font-size:14.5px;max-width:52ch;line-height:1.5}
+.badges{display:flex;flex-wrap:wrap;gap:9px;justify-content:flex-end;flex:0 0 auto}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid var(--border);
+  border-radius:999px;background:rgba(255,255,255,.03);font-size:12.5px;color:var(--ink-2);font-weight:600;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%}
+.pill b{color:var(--ink);font-weight:700}
+
+/* section */
+.sec-title{display:flex;align-items:center;gap:11px;margin:34px 2px 15px;font-size:13px;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.sec-title::before{content:"";width:4px;height:15px;border-radius:2px;background:linear-gradient(180deg,var(--s1),var(--s5))}
+
+/* cards */
+.grid{display:grid;gap:15px}
+.kpis{grid-template-columns:repeat(6,1fr)}
+.card{background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border);
+  border-radius:16px;padding:17px 17px 15px;position:relative;overflow:hidden;
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 10px 26px -18px rgba(0,0,0,.9)}
+.kpi .k-label{font-size:11.5px;color:var(--muted);font-weight:600;letter-spacing:.04em;margin-bottom:9px;
+  display:flex;align-items:center;gap:7px}
+.kpi .k-val{font-size:clamp(20px,2.5vw,27px);font-weight:800;letter-spacing:-.02em;line-height:1}
+.kpi .k-foot{font-size:11.5px;color:var(--ink-2);margin-top:9px;line-height:1.35}
+.kpi.hero{grid-column:span 2}
+.kpi.hero .k-val{font-size:clamp(28px,4vw,42px);
+  background:linear-gradient(92deg,#7fb3ff,#b7aef4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.spark{margin-top:11px;height:26px;width:100%;display:block}
+.tick{color:var(--good);font-weight:700}
+
+.panel{background:linear-gradient(180deg,var(--surface-2),var(--surface));border:1px solid var(--border);
+  border-radius:18px;padding:18px 18px 12px;position:relative}
+.panel h3{margin:0 0 2px;font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.panel .p-sub{margin:0 0 12px;font-size:12.5px;color:var(--muted)}
+.two{grid-template-columns:1fr 1fr}
+
+/* toggle */
+.toggle{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:11px;padding:3px;gap:2px;margin:2px 0 6px}
+.toggle button{appearance:none;border:0;background:transparent;color:var(--ink-2);font:inherit;
+  font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap}
+.toggle button:hover{color:var(--ink)}
+.toggle button.on{background:linear-gradient(180deg,rgba(57,135,229,.28),rgba(57,135,229,.16));
+  color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.08) inset}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:2px 0 4px;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* svg chart */
+.chart{width:100%;display:block;overflow:visible}
+.chart text{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.gl{stroke:var(--grid);stroke-width:1}
+.baseline{stroke:var(--axis);stroke-width:1}
+.hitband{fill:transparent;cursor:crosshair}
+.guide{stroke:rgba(255,255,255,.28);stroke-width:1;stroke-dasharray:3 3;opacity:0;pointer-events:none}
+.dot-hi{opacity:0;pointer-events:none}
+
+/* tooltip */
+.tip{position:fixed;z-index:50;pointer-events:none;opacity:0;transform:translate(-50%,-112%);
+  transition:opacity .12s;background:rgba(20,20,22,.97);border:1px solid var(--border);
+  border-radius:11px;padding:10px 12px;min-width:150px;box-shadow:0 16px 40px -10px rgba(0,0,0,.8);backdrop-filter:blur(6px)}
+.tip .t-m{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px}
+.tip .t-row{display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:13px;margin:4px 0}
+.tip .t-row .l{display:flex;align-items:center;gap:7px;color:var(--ink-2)}
+.tip .t-row .l i{width:9px;height:9px;border-radius:2px}
+.tip .t-row .v{font-weight:700;font-variant-numeric:tabular-nums}
+
+/* pf recon bars */
+.rbar{margin:13px 0}
+.rbar .rb-top{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px}
+.rbar .rb-top .rl{color:var(--ink-2);font-weight:600}
+.rbar .rb-top .rv{font-weight:700;font-variant-numeric:tabular-nums}
+.rtrack{height:12px;border-radius:6px;background:rgba(255,255,255,.05);overflow:hidden;display:flex}
+.rtrack .seg{height:100%}
+
+/* footer */
+footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--border-2);color:var(--muted);font-size:12px;line-height:1.6}
+footer b{color:var(--ink-2)}
+.note{color:var(--muted);font-size:11.5px;margin-top:9px}
+
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.kpi.hero{grid-column:span 2}.two{grid-template-columns:1fr}}
+@media(max-width:560px){.wrap{padding:22px 14px 48px}.badges{justify-content:flex-start}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="h-left">
+      <p class="eyebrow">ISPL · Impressions Services · Payroll Reconciliation</p>
+      <h1>Salary <span class="grad">FY 2025-26</span><br>PF / ESI Reconciliation</h1>
+      <p class="sub">Twelve monthly payrolls across ~19,000 employees, pan-India — reconciled to the EPFO-filed ECR and the ESI Future basis, with Net Payable held sacrosanct. M13 annual true-up finalised.</p>
+    </div>
+    <div class="badges">
+      <span class="pill"><span class="dot" style="background:var(--good)"></span>ECR gap <b>₹0</b></span>
+      <span class="pill"><span class="dot" style="background:var(--good)"></span>Net drift <b>0</b></span>
+      <span class="pill"><span class="dot" style="background:var(--s1)"></span>Checks <b>7 PASS · 0 FAIL</b></span>
+    </div>
+  </header>
+
+  <div class="sec-title">Year at a glance</div>
+  <div class="grid kpis" id="kpis"></div>
+
+  <div class="grid two" style="margin-top:15px">
+    <div class="panel">
+      <h3>Monthly trend</h3>
+      <p class="p-sub">Choose a measure — hover any month for detail.</p>
+      <div class="toggle" id="trendToggle"></div>
+      <div class="legend" id="trendLegend"></div>
+      <svg class="chart" id="trendChart" viewBox="0 0 640 300" preserveAspectRatio="none" role="img" aria-label="Monthly trend chart"></svg>
+    </div>
+    <div class="panel">
+      <h3>Deduction composition</h3>
+      <p class="p-sub">Where each month's deductions go — PF, ESI, Prof. Tax, Other.</p>
+      <div class="legend">
+        <span><i style="background:var(--s1)"></i>PF (booked)</span>
+        <span><i style="background:var(--s2)"></i>ESI</span>
+        <span><i style="background:var(--s3)"></i>Prof. Tax</span>
+        <span><i style="background:var(--s5)"></i>Other ded.</span>
+      </div>
+      <svg class="chart" id="stackChart" viewBox="0 0 640 300" preserveAspectRatio="none" role="img" aria-label="Deduction composition chart"></svg>
+    </div>
+  </div>
+
+  <div class="sec-title">PF reconciliation — how booked PF ties to the filed ECR</div>
+  <div class="grid two">
+    <div class="panel">
+      <h3>Booked PF = filed ECR + back-office</h3>
+      <p class="p-sub">The reconciled PAN PF equals the EPFO-filed ECR exactly (gap ₹0).</p>
+      <div id="pfBars"></div>
+    </div>
+    <div class="panel">
+      <h3>Employees &amp; compliance watch</h3>
+      <p class="p-sub">Active employees per month, and those below the PF ceiling with no ECR PF.</p>
+      <div class="toggle" id="empToggle"></div>
+      <div class="legend" id="empLegend"></div>
+      <svg class="chart" id="empChart" viewBox="0 0 640 260" preserveAspectRatio="none" role="img" aria-label="Employees chart"></svg>
+    </div>
+  </div>
+
+  <footer>
+    <div><b>Anchors (year):</b> Net Payable ₹293.30 Cr · Reconciled PF (= ECR filed) ₹29.07 Cr · Booked PF ₹30.71 Cr · Future-basis ESI ₹1.87 Cr · Professional Tax ₹84.33 L · Total Gross ₹333.32 Cr.</div>
+    <div class="note">Golden rules never violated: Σ REVISED_PF = ECR_PF · Σ REVISED_ESIC = Future ESI · Net Payable unchanged. Source: <b>SUMMARY_FY2025-26.csv</b> + <b>M13_RULE_STATS_FY2025-26.csv</b>. Compliance-watch counts (BASIC+DA &lt; ₹15,000 &amp; ECR PF = 0) from the reconciled monthly finals; Apr-25 pending re-read. Figures in ₹ (Cr = crore, L = lakh).</div>
+  </footer>
+</div>
+
+<div class="tip" id="tip"></div>
+
+<script>
+const M=["Apr-25","May-25","Jun-25","Jul-25","Aug-25","Sep-25","Oct-25","Nov-25","Dec-25","Jan-26","Feb-26","Mar-26"];
+const D={
+ gross:[263467183,263883578,265222461,274283718,269972986,275460954,274663460,271755554,290654972,293273681,292511383,298002643],
+ pf:[24173582,24610756,24904423,25695497,25208736,25684018,24362599,25168592,26592067,26840187,26750772,27081131],
+ esi:[1489009,1505739,1518775,1569237,1540847,1574933,1544260,1536582,1611674,1625762,1616147,1646232],
+ pt:[631048,668332,657648,681438,680314,691456,702917,687847,723248,715246,865325,728379],
+ other:[7483658,4996518,5202922,5242616,5373555,7020570,5787816,4672355,4824198,4603570,5671449,5016645],
+ net:[229689886,232102234,232938693,241094930,237169533,240489977,242265868,239690178,256903785,259488916,257607690,263530256],
+ emp:[18794,18774,18754,18905,18626,18830,18699,18986,19460,19624,19649,20279],
+ excep:[null,183,366,440,508,408,343,347,317,215,584,445]
+};
+const C={s1:'#3987e5',s2:'#199e70',s3:'#c98500',s5:'#9085e9',s6:'#e66767',warn:'#fab219'};
+const sum=a=>a.reduce((x,y)=>x+(y||0),0);
+
+/* ---------- formatting (Indian) ---------- */
+function inr(v){ if(v==null)return'—';
+  if(Math.abs(v)>=1e7) return '₹'+(v/1e7).toFixed(2)+' Cr';
+  if(Math.abs(v)>=1e5) return '₹'+(v/1e5).toFixed(2)+' L';
+  return '₹'+Math.round(v).toLocaleString('en-IN'); }
+const num=v=>v==null?'—':Math.round(v).toLocaleString('en-IN');
+
+/* ---------- KPI tiles ---------- */
+const kpis=[
+ {label:'Net Payable',val:inr(2932971946),foot:'<span class="tick">✓</span> anchor · drift 0',hero:true,spark:D.net},
+ {label:'Total Gross',val:inr(3333152573),foot:'earned across the year',spark:D.gross},
+ {label:'PF · filed ECR',val:inr(290652769),foot:'<span class="tick">✓</span> gap ₹0 vs booked ₹30.71 Cr',spark:D.pf},
+ {label:'ESI · Future basis',val:inr(18693848),foot:'statutory anchor',spark:D.esi},
+ {label:'Professional Tax',val:inr(8433198),foot:'12-month total',spark:D.pt},
+ {label:'Avg employees / mo',val:num(Math.round(sum(D.emp)/12)),foot:'19,115 avg · peak 20,279 (Mar-26)',spark:D.emp}
+];
+const kw=document.getElementById('kpis');
+kpis.forEach(k=>{
+ const d=document.createElement('div');d.className='card kpi'+(k.hero?' hero':'');
+ d.innerHTML=`<div class="k-label">${k.label}</div><div class="k-val tnum">${k.val}</div>
+   <div class="k-foot">${k.foot}</div>`+sparkSVG(k.spark,k.hero?'#8fb8ff':'#5a5a86');
+ kw.appendChild(d);
+});
+function sparkSVG(a,col){const w=200,h=26,mn=Math.min(...a),mx=Math.max(...a),r=mx-mn||1;
+ const pts=a.map((v,i)=>[i/(a.length-1)*w,h-2-((v-mn)/r)*(h-4)]);
+ const dd=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+ const area=dd+` L${w} ${h} L0 ${h} Z`;const id='g'+Math.random().toString(36).slice(2,7);
+ return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+   <defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1">
+   <stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+   <path d="${area}" fill="url(#${id})"/><path d="${dd}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+/* ---------- shared helpers ---------- */
+const tip=document.getElementById('tip');
+function showTip(html,x,y){tip.innerHTML=html;tip.style.left=x+'px';tip.style.top=y+'px';tip.style.opacity=1;}
+function hideTip(){tip.style.opacity=0;}
+const VB={w:640,h:300},PAD={l:44,r:14,t:14,b:26};
+const niceMax=v=>{const p=Math.pow(10,Math.floor(Math.log10(v)));const n=v/p;
+ const s=n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10;return s*p;}
+
+/* ---------- LINE CHART (trend + employees) ---------- */
+function lineChart(svg,series,fmt,months){
+ months=months||M;const {w,h}=VB,iw=w-PAD.l-PAD.r,ih=h-PAD.t-PAD.b;
+ let mx=0;series.forEach(s=>s.vals.forEach(v=>{if(v!=null&&v>mx)mx=v;}));
+ let mn=Infinity;series.forEach(s=>s.vals.forEach(v=>{if(v!=null&&v<mn)mn=v;}));
+ if(series.length===1){const pad=(mx-mn)*.15||mx*.1;mx=mx+pad;mn=Math.max(0,mn-pad);}else{mn=0;}
+ const top=niceMax(mx);const lo=series.length===1?mn:0;
+ const X=i=>PAD.l+(months.length===1?iw/2:i/(months.length-1)*iw);
+ const Y=v=>PAD.t+ih-((v-lo)/(top-lo))*ih;
+ let g='';
+ const ticks=4;for(let i=0;i<=ticks;i++){const val=lo+(top-lo)*i/ticks,y=Y(val);
+   g+=`<line class="gl" x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${w-PAD.r}" y2="${y.toFixed(1)}"/>`;
+   g+=`<text x="${PAD.l-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${fmt.ax(val)}</text>`;}
+ months.forEach((m,i)=>{ if(i%(months.length>8?2:1)===0) g+=`<text x="${X(i).toFixed(1)}" y="${h-9}" text-anchor="middle">${m.slice(0,3)}</text>`; });
+ series.forEach(s=>{
+   const pts=s.vals.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);
+   const dd=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+   if(series.length===1){const id='ar'+Math.random().toString(36).slice(2,6);
+     g+=`<defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${s.color}" stop-opacity=".28"/><stop offset="1" stop-color="${s.color}" stop-opacity="0"/></linearGradient></defs>`;
+     g+=`<path d="${dd} L${pts[pts.length-1][0].toFixed(1)} ${Y(lo)} L${pts[0][0].toFixed(1)} ${Y(lo)} Z" fill="url(#${id})"/>`;}
+   g+=`<path d="${dd}" fill="none" stroke="${s.color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+   g+=s.vals.map((v,i)=>v==null?'':`<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.6" fill="${s.color}"/>`).join('');
+ });
+ g+=`<line class="baseline" x1="${PAD.l}" y1="${Y(lo).toFixed(1)}" x2="${w-PAD.r}" y2="${Y(lo).toFixed(1)}"/>`;
+ g+=`<line class="guide" id="${svg.id}-guide" x1="0" y1="${PAD.t}" x2="0" y2="${PAD.t+ih}"/>`;
+ series.forEach((s,si)=>g+=`<circle class="dot-hi" id="${svg.id}-hd${si}" r="4.5" fill="${s.color}" stroke="var(--surface)" stroke-width="2"/>`);
+ months.forEach((m,i)=>{const bw=iw/months.length;g+=`<rect class="hitband" data-i="${i}" x="${(X(i)-bw/2).toFixed(1)}" y="${PAD.t}" width="${bw.toFixed(1)}" height="${ih}"/>`;});
+ svg.innerHTML=g;
+ const guide=document.getElementById(svg.id+'-guide');
+ svg.querySelectorAll('.hitband').forEach(b=>{
+   b.addEventListener('mousemove',e=>{const i=+b.dataset.i;const gx=X(i);
+     guide.setAttribute('x1',gx);guide.setAttribute('x2',gx);guide.style.opacity=1;
+     let rows='';series.forEach((s,si)=>{const hd=document.getElementById(svg.id+'-hd'+si);
+       if(s.vals[i]==null){hd.style.opacity=0;return;}
+       hd.setAttribute('cx',gx);hd.setAttribute('cy',Y(s.vals[i]));hd.style.opacity=1;
+       rows+=`<div class="t-row"><span class="l"><i style="background:${s.color}"></i>${s.name}</span><span class="v">${fmt.tip(s.vals[i])}</span></div>`;});
+     showTip(`<div class="t-m">${months[i]}</div>${rows}`,e.clientX,e.clientY);});
+   b.addEventListener('mouseleave',()=>{guide.style.opacity=0;hideTip();
+     series.forEach((s,si)=>document.getElementById(svg.id+'-hd'+si).style.opacity=0);});
+ });
+}
+
+/* ---------- STACKED BARS ---------- */
+function stackChart(svg,stacks,months){
+ months=months||M;const {w,h}=VB,iw=w-PAD.l-PAD.r,ih=h-PAD.t-PAD.b;
+ const tot=months.map((_,i)=>sum(stacks.map(s=>s.vals[i])));
+ const top=niceMax(Math.max(...tot));
+ const bw=iw/months.length*0.62,gap=iw/months.length;
+ const Y=v=>PAD.t+ih-(v/top)*ih;
+ let g='';const ticks=4;
+ for(let i=0;i<=ticks;i++){const val=top*i/ticks,y=Y(val);
+   g+=`<line class="gl" x1="${PAD.l}" y1="${y.toFixed(1)}" x2="${w-PAD.r}" y2="${y.toFixed(1)}"/>`;
+   g+=`<text x="${PAD.l-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end">${inrAx(val)}</text>`;}
+ months.forEach((m,i)=>{const cx=PAD.l+gap*i+gap/2;
+   if(i%2===0)g+=`<text x="${cx.toFixed(1)}" y="${h-9}" text-anchor="middle">${m.slice(0,3)}</text>`;
+   let yb=Y(0);
+   stacks.forEach(s=>{const v=s.vals[i];const hh=(v/top)*ih;yb-=hh;
+     const yy=(yb+1).toFixed(1),hval=Math.max(0,hh-2).toFixed(1);
+     g+=`<rect x="${(cx-bw/2).toFixed(1)}" y="${yy}" width="${bw.toFixed(1)}" height="${hval}" fill="${s.color}" rx="1.5"/>`;});
+ });
+ g+=`<line class="baseline" x1="${PAD.l}" y1="${Y(0).toFixed(1)}" x2="${w-PAD.r}" y2="${Y(0).toFixed(1)}"/>`;
+ months.forEach((m,i)=>{const cx=PAD.l+gap*i+gap/2;
+   g+=`<rect class="hitband" data-i="${i}" x="${(cx-gap/2).toFixed(1)}" y="${PAD.t}" width="${gap.toFixed(1)}" height="${ih}"/>`;});
+ svg.innerHTML=g;
+ svg.querySelectorAll('.hitband').forEach(b=>{
+   b.addEventListener('mousemove',e=>{const i=+b.dataset.i;
+     let rows='';stacks.forEach(s=>rows+=`<div class="t-row"><span class="l"><i style="background:${s.color}"></i>${s.name}</span><span class="v">${inr(s.vals[i])}</span></div>`);
+     rows+=`<div class="t-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:6px"><span class="l">Total ded.</span><span class="v">${inr(tot[i])}</span></div>`;
+     showTip(`<div class="t-m">${months[i]}</div>${rows}`,e.clientX,e.clientY);});
+   b.addEventListener('mouseleave',hideTip);
+ });
+}
+const inrAx=v=>v>=1e7?(v/1e7).toFixed(0)+'Cr':v>=1e5?(v/1e5).toFixed(0)+'L':Math.round(v/1e3)+'k';
+
+/* ---------- render: trend toggle ---------- */
+const trendViews={
+ 'Gross vs Net':{series:[{name:'Gross',color:C.s1,vals:D.gross},{name:'Net payable',color:C.s2,vals:D.net}],fmt:fINR()},
+ 'PF booked':{series:[{name:'PF booked',color:C.s1,vals:D.pf}],fmt:fINR()},
+ 'ESI':{series:[{name:'ESI',color:C.s2,vals:D.esi}],fmt:fINR()},
+ 'Prof. Tax':{series:[{name:'Prof. Tax',color:C.s3,vals:D.pt}],fmt:fINR()}
+};
+function fINR(){return {ax:inrAx,tip:inr};}
+const tSvg=document.getElementById('trendChart'),tLeg=document.getElementById('trendLegend'),tTog=document.getElementById('trendToggle');
+function drawTrend(key){const v=trendViews[key];lineChart(tSvg,v.series,v.fmt);
+ tLeg.innerHTML=v.series.map(s=>`<span><i style="background:${s.color}"></i>${s.name}</span>`).join('');
+ [...tTog.children].forEach(b=>b.classList.toggle('on',b.textContent===key));}
+Object.keys(trendViews).forEach((k,i)=>{const b=document.createElement('button');b.textContent=k;
+ if(i===0)b.classList.add('on');b.onclick=()=>drawTrend(k);tTog.appendChild(b);});
+drawTrend('Gross vs Net');
+
+/* ---------- render: stacked deductions ---------- */
+stackChart(document.getElementById('stackChart'),[
+ {name:'PF (booked)',color:C.s1,vals:D.pf},
+ {name:'ESI',color:C.s2,vals:D.esi},
+ {name:'Prof. Tax',color:C.s3,vals:D.pt},
+ {name:'Other ded.',color:C.s5,vals:D.other}
+]);
+
+/* ---------- render: employees / compliance toggle ---------- */
+const empViews={
+ 'Active employees':{series:[{name:'Employees',color:C.s1,vals:D.emp}],fmt:{ax:v=>Math.round(v/1000)+'k',tip:num}},
+ 'Below-ceiling · no PF':{series:[{name:'Employees',color:C.warn,vals:D.excep}],fmt:{ax:v=>Math.round(v),tip:num}}
+};
+const eSvg=document.getElementById('empChart'),eLeg=document.getElementById('empLegend'),eTog=document.getElementById('empToggle');
+VB.h=300; // keep same coords; empChart viewBox is 260 tall but we scale via preserveAspectRatio none — reset per draw
+function drawEmp(key){const v=empViews[key];
+ // employees chart uses its own shorter viewBox height
+ const saved=VB.h;VB.h=260;lineChart(eSvg,v.series,v.fmt);VB.h=saved;
+ eLeg.innerHTML=v.series.map(s=>`<span><i style="background:${s.color}"></i>${key}${key.includes('Below')?' <span style="color:var(--muted)">(Apr-25 pending)</span>':''}</span>`).join('');
+ [...eTog.children].forEach(b=>b.classList.toggle('on',b.textContent===key));}
+Object.keys(empViews).forEach((k,i)=>{const b=document.createElement('button');b.textContent=k;
+ if(i===0)b.classList.add('on');b.onclick=()=>drawEmp(k);eTog.appendChild(b);});
+drawEmp('Active employees');
+
+/* ---------- render: PF reconciliation bars ---------- */
+const pf=[
+ {l:'Booked PF (PAN + back-office)',v:307072360,segs:[[290652769,C.s1],[16419591,C.s5]]},
+ {l:'Reconciled PAN PF = filed ECR',v:290652769,segs:[[290652769,C.s1]]},
+ {l:'Tally EPF payable ledger',v:296746845,segs:[[296746845,C.s2]]}
+];
+const pfMax=Math.max(...pf.map(p=>p.v));
+document.getElementById('pfBars').innerHTML=pf.map(p=>{
+ const segs=p.segs.map(s=>`<div class="seg" style="width:${(s[0]/pfMax*100).toFixed(2)}%;background:${s[1]}"></div>`).join('');
+ return `<div class="rbar"><div class="rb-top"><span class="rl">${p.l}</span><span class="rv tnum">${inr(p.v)}</span></div><div class="rtrack">${segs}</div></div>`;
+}).join('')+`<div class="note">Blue = filed ECR (₹29.07 Cr) · violet = back-office PF (₹1.64 Cr). The reconciled PAN PF matches the ECR to the rupee.</div>`;
+</script>
