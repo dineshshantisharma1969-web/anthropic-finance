@@ -1,0 +1,113 @@
+{
+  "name": "ISPL Salary Query Bot v2",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-260, 0],
+      "id": "7a2c3b20-2222-4b02-8f02-bbbbbbbb0001",
+      "name": "Telegram Trigger",
+      "webhookId": "ispl-salary-bot-v2"
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "1smYxcENYcnfu8rF8uyfuqVUM-Qo_GmuG0-aV6EMA0b8",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-40, 0],
+      "id": "7a2c3b20-2222-4b02-8f02-bbbbbbbb0002",
+      "name": "Read Salary Summary"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [160, 0],
+      "id": "7a2c3b20-2222-4b02-8f02-bbbbbbbb0003",
+      "name": "Bundle Rows"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "=You answer questions about monthly salary / PF / ESI reconciliation for ISPL (Impressions Services), covering FY2025-26 (Apr-2025 to Mar-2026) and FY2026-27 (Apr-2026 onward). The COMPLETE data table is below — answer ONLY from it, never invent numbers.\n\nEach object is one month (MONTH is YYYY-MM). Column meanings: EMP_BD_LT_15000_AND_NO_PF = employees with BASIC+DA below Rs 15,000 but NO ECR PF (the main compliance anomaly). EMP_GROSS_LE_21000_AND_NO_ESI = employees at or below the Rs 21,000 ESI ceiling but not in ESI. ROWS_PF_GT_1800 = rows where PF exceeds the Rs 1,800 cap. ROWS_ESI_GROSS_GT_21000 = rows in ESI with gross above Rs 21,000. ROWS_PF_BDPROJ_GT_15000 = PF rows whose month-projected BASIC+DA exceeds Rs 15,000. ROWS_ESI_075_RELAXED = rows where the 0.75% ESI rule was relaxed. ROWS_NEG_OTHER_DED = rows with negative OTHER_DEDUCTION. EMP_WITH_PF / EMP_NO_PF / EMP_WITH_ESI = coverage counts. RULE_* = rule-mix row counts. REVISED_PF_TOTAL / REVISED_ESIC_TOTAL / REVISED_NET_TOTAL = month rupee totals. ACTION_NEEDED_ROWS / ACTION_NEEDED_EXCESS_SALARY = open action list. TOTAL_EMPLOYEES = employees that month. SOURCE_FILE = source file.\n\nMonth matching: 'April 2025' or 'Apr-25' = 2025-04; 'April 2026' or 'Apr-26' = 2026-04. If the user names a month without a year, prefer the FY2025-26 row (2025-04 to 2026-03) and say which year you used. For 'any month', 'total' or 'whole year', sum the column across the relevant rows and show the per-month breakup briefly. Reply concisely with the number(s) and month(s). Amounts are Indian rupees; large amounts may be shown in crore (Cr) or lakh (L). If a cell is blank, say that metric was not computed for that month.\n\nDATA TABLE (JSON):\n{{ JSON.stringify($json.data) }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [380, 0],
+      "id": "7a2c3b20-2222-4b02-8f02-bbbbbbbb0004",
+      "name": "AI Answerer"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [340, 230],
+      "id": "7a2c3b20-2222-4b02-8f02-bbbbbbbb0005",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [700, 0],
+      "id": "7a2c3b20-2222-4b02-8f02-bbbbbbbb0006",
+      "name": "Send Reply"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "Read Salary Summary", "type": "main", "index": 0 }]]
+    },
+    "Read Salary Summary": {
+      "main": [[{ "node": "Bundle Rows", "type": "main", "index": 0 }]]
+    },
+    "Bundle Rows": {
+      "main": [[{ "node": "AI Answerer", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Answerer", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Answerer": {
+      "main": [[{ "node": "Send Reply", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
