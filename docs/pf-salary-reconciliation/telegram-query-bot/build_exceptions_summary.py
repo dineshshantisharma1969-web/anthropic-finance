@@ -180,7 +180,11 @@ def resolve_in(cols, *names):
 def main():
     global FY_START
     ap = argparse.ArgumentParser()
-    ap.add_argument("--in", dest="inputs", nargs="+", required=True,
+    # action="append" + nargs="+" so BOTH styles work:
+    #   --in "folder1" "folder2"     and     --in "folder1" --in "folder2"
+    # (with plain nargs="+", a second --in silently REPLACED the first — that bug
+    #  made the FY25-26 folder never get scanned)
+    ap.add_argument("--in", dest="inputs", nargs="+", action="append", required=True,
                     help="one or more folders (or files) with reconciled .xlsx outputs")
     ap.add_argument("--out", default="Salary_Exceptions_Summary",
                     help="output file prefix (writes .csv and .xlsx)")
@@ -188,6 +192,7 @@ def main():
                     help="fiscal-year start year for bare month names, e.g. 2025 "
                          "(April..December -> 2025, January..March -> 2026)")
     a = ap.parse_args()
+    a.inputs = [p for grp in a.inputs for p in grp]  # flatten append+nargs lists
     FY_START = a.fy
 
     # Discover only the canonical monthly FINAL files (by name), then verify each
