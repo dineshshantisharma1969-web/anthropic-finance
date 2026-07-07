@@ -193,15 +193,24 @@ def main():
     # Discover only the canonical monthly FINAL files (by name), then verify each
     # actually has the reconciled columns. This skips .bak backups, worklists,
     # ESI audits and other decoys sitting in the same folder.
+    # NOTE: use os.walk (not glob) — glob mishandles spaces/()/[] in long paths.
     candidates = []
     for p in a.inputs:
+        n0 = len(candidates)
         if os.path.isdir(p):
-            candidates += glob.glob(os.path.join(p, "**", "*.xlsx"), recursive=True)
+            for root, _dirs, fnames in os.walk(p):
+                for fn in fnames:
+                    if fn.lower().endswith(".xlsx"):
+                        candidates.append(os.path.join(root, fn))
+            print(f"  --in [OK] {len(candidates) - n0} .xlsx found in: {p}")
         elif os.path.isfile(p):
             candidates.append(p)
+            print(f"  --in [OK file] {p}")
+        else:
+            print(f"  --in [!! NOT FOUND — check this path] {p}")
 
     finals = sorted({f for f in candidates if is_final_file(f)})
-    print(f"Matched {len(finals)} FINAL file(s) by name (backups/worklists/audits ignored).")
+    print(f"\nMatched {len(finals)} FINAL file(s) by name (backups/worklists/audits ignored).")
     files = []
     for f in finals:
         if is_reconciled(f):
