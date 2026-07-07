@@ -1,0 +1,71 @@
+{
+  "name": "ISPL Salary SQL Bot (ask anything)",
+  "nodes": [
+    {
+      "parameters": { "updates": ["message"], "additionalFields": {} },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-260, 0],
+      "id": "9c4d5e30-3333-4c03-9003-cccccccc0001",
+      "name": "Telegram Trigger",
+      "webhookId": "ispl-salary-sql-bot"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Telegram Trigger').item.json.message.text }}",
+        "options": {
+          "systemMessage": "You are the ISPL payroll audit assistant. Answer questions about salary / PF / ESI by querying a Postgres database with the 'Run SQL' tool, then stating the result in plain words. NEVER invent numbers — always query first.\n\nTABLE: salary_rows  (one row = one employee at one site in one month; an employee can have several rows in a month across sites).\nCOLUMNS:\n- month (text 'YYYY-MM') payroll month. FY2025-26 = 2025-04 .. 2026-03; FY2026-27 starts 2026-04.\n- emp_code, emp_old_code, emp_master_id, full_name — employee identity.\n- site_code, site_name, site_state, branch_code, branch_name, client_group — location / posting.\n- normal_days, adj_working_days (numeric) — days worked/considered that month.\n- basic, da, gross_amt, netpayable (numeric, rupees) — ORIGINAL filed amounts.\n- ecr_pf (numeric) — EPFO-filed PF for the employee that month; 0 means NOT enrolled in PF.\n- revised_pf, revised_basic, revised_da, revised_gross, revised_esic, future_esi, revised_attendance_allow, revised_other_deduction, revised_total_ded, revised_net_payable (numeric, rupees) — RECONCILED amounts (use these by default).\n- monthly_bd_projection, monthly_gross_projection (numeric) — full-month projections.\n- rule_applied (text: PF_ANCHOR, PF_SECONDARY, ESI_ONLY, NO_PF_NO_ESI).\n- anomaly_below_ceiling (text 'True'/'False') — flagged pay-below-statutory-ceiling anomaly.\n- source_file (text).\n\nRULES FOR WRITING SQL:\n1. Read-only. Emit ONLY a single SELECT. Never INSERT/UPDATE/DELETE/DROP/ALTER.\n2. Table is salary_rows. Quote text compares case-insensitively where sensible (ILIKE).\n3. 'In PF' means revised_pf > 0; 'no PF' / 'PF is 0' means (revised_pf = 0 OR revised_pf IS NULL). ESI similarly on revised_esic.\n4. BASIC+DA below a ceiling → use (revised_basic + revised_da); gross ceiling → revised_gross.\n5. COUNTING EMPLOYEES vs ROWS: to count *employees* use COUNT(DISTINCT emp_code). For a per-employee condition that spans their multiple site-rows (e.g. total pay, total days, 'has no PF anywhere'), aggregate first, e.g.:\n   SELECT count(*) FROM (SELECT emp_code FROM salary_rows WHERE month='2025-04' GROUP BY emp_code HAVING sum(revised_basic+revised_da) < 15000 AND sum(revised_pf) = 0) t;\n6. Month: 'April 2025'/'Apr-25' = '2025-04'; 'April 2026'/'Apr-26' = '2026-04'. If a bare month is given, assume FY2025-26 and say which year you used. 'Whole year'/'total' = across all relevant months.\n7. If a state/site/branch is named, filter on site_state / site_name / branch_name with ILIKE '%...%'.\n\nAfter the tool returns rows, answer concisely: the number(s), the month(s)/filter, and what it means. Amounts in rupees (may show crore/lakh). If the query errors, briefly fix and retry once."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [40, 0],
+      "id": "9c4d5e30-3333-4c03-9003-cccccccc0002",
+      "name": "SQL Agent"
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "value": "gpt-4o", "mode": "list", "cachedResultName": "gpt-4o" },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [0, 230],
+      "id": "9c4d5e30-3333-4c03-9003-cccccccc0003",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $fromAI('sql_query', 'A single read-only Postgres SELECT statement against salary_rows') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.5,
+      "position": [280, 230],
+      "id": "9c4d5e30-3333-4c03-9003-cccccccc0004",
+      "name": "Run SQL"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [400, 0],
+      "id": "9c4d5e30-3333-4c03-9003-cccccccc0005",
+      "name": "Send Reply"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": { "main": [[{ "node": "SQL Agent", "type": "main", "index": 0 }]] },
+    "OpenAI Chat Model": { "ai_languageModel": [[{ "node": "SQL Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Run SQL": { "ai_tool": [[{ "node": "SQL Agent", "type": "ai_tool", "index": 0 }]] },
+    "SQL Agent": { "main": [[{ "node": "Send Reply", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}
