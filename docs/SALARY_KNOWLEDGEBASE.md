@@ -95,9 +95,14 @@ Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliatio
 
 Open any ID via: `https://drive.google.com/file/d/<ID>/view` (files) or `/drive/folders/<ID>` (folders).
 
-### C. Local (user's PC, D: drive)
-April-26 run folder is mirrored locally as the "desktop salary folder". Find it with:
-`dir /s /b D:\*apr26*.xlsx` or `dir /s /b D:\reconcile.py`
+### C. Local (user's PC, D: drive) — confirmed paths
+| What | Path on PC |
+|---|---|
+| **April-26 run folder** ("desktop salary folder" — reconcile.py, run_april26.bat, inputs & outputs) | `D:\Desktop Data\21062026\desktop salary folder` |
+| **FY2025-26 canonical data folder** (all latest 25-26 salary data — the folder Dinesh works from) | `D:\Desktop Data\salary 25-26\CORRECTED SALARY 25-26 (M13 FINAL)_20260626_020401 (1)\CORRECTED SALARY 25-26 (M13 FINAL)_20260626_020401\ESI_WASHING_REALLOCATED` |
+
+Find them again anytime: `dir /s /b D:\reconcile.py` (April run folder) · `dir /s /b "D:\Desktop Data\salary 25-26"` (2025-26 tree).
+Open the 2025-26 folder instantly: `explorer "D:\Desktop Data\salary 25-26\CORRECTED SALARY 25-26 (M13 FINAL)_20260626_020401 (1)\CORRECTED SALARY 25-26 (M13 FINAL)_20260626_020401\ESI_WASHING_REALLOCATED"`
 
 ---
 
