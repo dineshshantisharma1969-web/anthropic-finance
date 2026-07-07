@@ -114,6 +114,22 @@ needed.
 
 ---
 
+## 24/7 operation — the PC is NOT needed for queries
+
+Confirmed setup (2026-07): the user's n8n is **cloud-hosted** (the food-log bot
+answers with the PC off). Query path:
+
+    Phone (Telegram) → Telegram servers → n8n Cloud → Google Sheet → reply
+
+The PC and Command Prompt are only needed for **one monthly job**: rebuilding
+`Salary_Exceptions_Summary.xlsx` after a new month is reconciled, and
+re-uploading it to the Google Sheet. Between refreshes, queries work any time —
+PC off, no command prompt.
+
+One n8n rule to remember: a Telegram bot token can only drive **one** active
+n8n workflow. Don't reuse the food-bot's token — create a **new bot** with
+@BotFather for salary queries (2 minutes, free).
+
 ## Two honest limits
 
 - **The bot only answers what's in the summary table.** It's not scanning raw
