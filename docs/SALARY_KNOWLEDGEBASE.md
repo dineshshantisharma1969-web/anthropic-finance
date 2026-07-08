@@ -1,7 +1,8 @@
 # 🧠 SALARY KNOWLEDGEBASE — ISPL (Impressions Services)
 
 **The single entry point for all salary / PF / ESI reconciliation knowledge.**
-Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
+Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
+(FY2024-25 Maharashtra added on `claude/maharashtra-aisss-salary-validation-v1v0sz`)
 
 > **How to use this file:** Start here. Every source file, verified number, methodology
 > rule, known discrepancy and rerun procedure is indexed below. When a new month is
@@ -15,7 +16,8 @@ Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliatio
 |---|---|
 | **FY2025-26** — 12 monthly payrolls, reconciled + M13 annual true-up | ✅ Closed & verified |
 | **FY2026-27 April** — reconciled (M12/M15 final) | ✅ PF verified · ⚠️ action list open |
-| ~19–21k employees/month, pan-India, multi-site | |
+| **FY2024-25 Maharashtra (AISSS)** — 12 monthly PF reconciliations, West-only ECR | ✅ PF verified (all checks 0) · ⚠️ ESI pending (local run) |
+| ~19–21k employees/month pan-India (ISPL); ~1.75k/month Maharashtra-only | |
 
 **The three Golden Rules (never violated):**
 1. `Σ REVISED_PF = ECR_PF` — salary PF must equal EPFO-filed ECR, per employee.
@@ -39,6 +41,18 @@ Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliatio
 | M13+CL/Bonus merged Gross | 4,65,25,22,768 |
 | M13+CL merged Net Payable | 3,19,40,63,202 |
 | Bonus / Leave encashment | 2,77,73,882 / 4,42,61,081 |
+
+### FY2024-25 Maharashtra (AISSS) — PF reconciliation (West-only ECR, all checks 0)
+| Anchor | ₹ |
+|---|--:|
+| REVISED_PF = ECR_PF_CAPPED (min ₹1,800), gap **0**, 21,551/21,551 rows exact | **3,02,29,684** |
+| Original salary PF (employee EE) | 3,25,22,667 |
+| ECR PF filed (West + DMART, matched) | 3,06,22,338 |
+| Above-₹1,800 statutory cap surplus | 3,57,385 |
+| Secondary multi-site duplicate ECR (moved to primary) | 35,269 |
+| PF parked in OTHER DEDUCTION (net-neutral) | 22,92,983 |
+| Not-in-ECR employee-months (PF zeroed & parked) | 1,306 |
+| **West-only verification** | 0 dual-region empcodes · 0 South leakage (Apr/Oct/Jan end-to-end vs raw challan) |
 
 ### April 2026 (M12/M15 FINAL — footed row-by-row from the full 21,152-row sheet)
 | Anchor | ₹ |
@@ -67,6 +81,10 @@ Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliatio
 | `april-2026/dashboard_April2026.html` | April-26 dashboard |
 | `april-2026/ACTION_NEEDED_April2026.csv` | **The 4,974 open action rows** (sorted by excess, with reasons) |
 | `april-2026/SUMMARY_April2026.csv` + build scripts | Summary + builders |
+| `maharashtra-fy2024-25/CHECKS_AND_BALANCES_Maharashtra_FY2024-25.md` | **Maharashtra FY24-25 PF checks** (all 0 violations, West-only) |
+| `maharashtra-fy2024-25/corrected_monthly/CORRECTED_<MONTH>.csv` (×12) | **The corrected monthly PF sheets** (per employee) |
+| `maharashtra-fy2024-25/Maharashtra_PF_Corrected_Monthly_FY2024-25.xlsx` | Combined workbook (SUMMARY+CHECKS+RULE_STATS+12 tabs) |
+| `maharashtra-fy2024-25/reconcile_mh.py` + `SUMMARY/RULE_STATS/CHECKS csv` | Reproducible builder + summaries |
 
 ### B. In Google Drive (dinesh@impressionsgroup.in)
 | Folder / file | Drive ID | Contains |
@@ -92,6 +110,13 @@ Last updated: 2026-07-04 · Maintained on branch `claude/pf-salary-reconciliatio
 | **MONTHLY SALARY FINAL DATA FOR 2025-26** | `1LiA13hSSNdDh3O0JsiANzCcDTGWONiS2` | Monthly final data |
 | **ECR PF 2025-26** | `1YsX0QjjOSRYrhkFDPrEl95oJBQN1Thsp` | Filed ECR files |
 | `Salary_Master_With_Summary_CORRECTED_v2.xlsm` | `1zGtlj2NZM7zY56BMYlp0PCfYdmFZSCyC` | Salary master workbook |
+| **MAHARASHTRA ASSSIS DATA 24-25** (FY2024-25 Maharashtra) | `13Q9wUiqy4UMwc-0VWi8EEtF3fDSbC2wc` | Maharashtra salary/PF/ESIC/challan source data |
+| ├─ `Salary_vs_ECR_PF_EE_Maharashtra_2024-25.xlsx` | `16yIgE9sVtxwM957hX5jExmca5KHOj7M1` | **Reconciliation basis** — per-employee salary-PF vs ECR-PF, 12 monthly tabs |
+| ├─ `PF CONSOLIDATED (CHALLAN+DMART+PF_EE) MAHARASHTRA 24-25` | `1DF8zGcEhH7gJcIYc5N2_Uyy8ijCCy9zc` | 12 monthly ECR files + `00 SUMMARY` |
+| ├─ `CHALLAN DATA (WEST & SOUTH) 2024-25` | `1nwd3u3RXagBiBAWs4L3sHCKJM0QajBxb` | **Raw West+South challan** (use West/Maharashtra rows only) + DMART |
+| ├─ `ESIC DATA 24-25 MAHARASHTRA` (Mumbai subfolders) | `1Dxa4nFpXlAzxE46aQ218zDvXsVt8js3H` | ESI Future-register source (for the ESI pass) |
+| ├─ `EMPLOYEE SALARY DETAILS 24-25 WITH PF` (gsheet, >10 MB) | `1P7MIqiWKlPcVk4udl_8XBnBgeHcItxSdLmEsqbPeKXw` | Full salary sheet (local run — exceeds connector cap) |
+| └─ `Salary comb 2024-25.xlsx` (224 MB) | `1xBpQXiS3K00ePA3Xqg4UlhcdpGRBvqbI` | Full combined salary source (local run only) |
 
 Open any ID via: `https://drive.google.com/file/d/<ID>/view` (files) or `/drive/folders/<ID>` (folders).
 
@@ -133,6 +158,9 @@ Run locally (files >10 MB exceed the Drive-connector download cap). To rebuild t
 | 5 | Jan-26/Feb-26 gross ≈ 2× other months (possible double/bonus run) — net ties; verify before statutory use | 🟡 Documented |
 | 6 | M13+CL merged net vs Tally salary payable Δ ₹14,634 (~0.0005%) | 🟢 Immaterial |
 | 7 | 2 M13 exceptions (DA alone > ECR/0.12; basic clamped) — in `PF_M13_Exceptions_Review.xlsx` | 🟢 Documented |
+| 8 | **Maharashtra FY24-25: ESI reconciliation pending** — needs full salary sheet ESI columns (>10 MB, local run) against `ESIC DATA 24-25 MAHARASHTRA`. PF side complete. | 🟡 Open (local) |
+| 9 | Maharashtra FY24-25: ₹3,57,385 ECR filed **above the ₹1,800 EE cap** (991 emp-months) — capped to statutory ₹1,800 in the corrected sheets; surplus is a documented reconciling item, not filed as EE PF. | 🟢 Documented |
+| 10 | Maharashtra FY24-25: 10 not-in-ECR daily-wage rows at exactly ₹15,000/month (₹500×30) — at-ceiling boundary, cannot be pushed strictly above ₹15k; documented exception. | 🟢 Documented |
 
 ---
 
