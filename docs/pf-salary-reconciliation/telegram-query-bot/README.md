@@ -177,3 +177,17 @@ across 13 months every run; only the DB login fails during the incident.
    `python load_to_postgres.py --in "<FY25-26 folder>" "<April-26 folder>" --fy 2025 --host aws-0-ap-southeast-1.pooler.supabase.com --port 5432 --user postgres.tmjdhakaondusmvcmdmg --password PW --dbname postgres`
    → expect `DONE — 256,276 rows now in 'salary_rows'`.
 4. Import `n8n_salary_sql_bot.json`, set Postgres (same creds) + OpenAI + Telegram credentials, activate → ask-anything SQL bot live.
+
+### Update (2026-07-08) — 2nd Supabase project, still blocked by the incident
+Created a fresh project **ISPLSALARY** (ref `rgfhqghwkiqwhwxjatsc`, region ap-northeast-2)
+after the 1st one (created during the outage) kept failing auth. The new one ALSO
+returns `password authentication failed` despite a confirmed password — consistent
+with the pooler routing for a brand-new project not being active yet while Supabase's
+incident is still in "monitoring" (their status page: monitoring for ~1-2 days).
+
+New project pooler details (session): host `aws-1-ap-northeast-2.pooler.supabase.com`,
+port `5432`, user `postgres.rgfhqghwkiqwhwxjatsc`, dbname `postgres`.
+
+RESUME: once Supabase status is fully green, either wait ~10 min after project creation
+for pooler routing, or spin a fresh project on a healthy day; then run the login test →
+loader → import n8n_salary_sql_bot.json (creds = same pooler details + chosen password).
