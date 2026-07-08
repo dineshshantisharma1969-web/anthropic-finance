@@ -1,5 +1,23 @@
 # Corrected FULL salary sheet — LOCAL run (Maharashtra FY2024-25)
 
+Two scripts (run on your PC — the salary workbook is >10 MB so it can't be processed in the assistant):
+
+| Script | Needs | Does |
+|---|---|---|
+| **`match_summary_to_salary.py`** | **only the salary sheet** | Verifies the published summary ties to your actual salary sheet — prints MATCH/DIFF per month, writes `SALARY_VS_SUMMARY_MATCH.xlsx`. **Run this first.** |
+| `reconcile_full_salary.py` | salary sheet + comparison workbook + ESIC register | Writes the corrected salary workbook with all `REVISED_*` + audit columns. |
+
+## STEP 1 — match the summary to your salary sheet (fastest, needs nothing else)
+```bash
+pip install pandas openpyxl
+python match_summary_to_salary.py --salary "D:\path\to\Salary comb 2024-25.xlsx"
+```
+It totals PF/ESI/gross/net per month from the real sheet and compares the PF total to the summary
+(expected values are embedded). You'll see `MATCH` on each month if the summary and the salary sheet
+agree. If any month says `DIFF`, send me the month + the two numbers and I'll trace it.
+
+## STEP 2 — write the corrected full salary workbook
+
 `reconcile_full_salary.py` writes the corrected Maharashtra full salary workbook by applying the
 pf-salary-reconciliation skill (PF + ESI) to **your actual salary sheet**.
 
