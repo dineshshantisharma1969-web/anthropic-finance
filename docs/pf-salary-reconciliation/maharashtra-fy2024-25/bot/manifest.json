@@ -1,0 +1,103 @@
+{
+  "dataset": "Maharashtra AISSS FY2024-25 PF reconciliation",
+  "branch": "claude/n8n-food-log-meal-timing-Ezdh1",
+  "raw_base": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25",
+  "row_key": "EMP CODE",
+  "name_col": "NAME",
+  "columns": [
+    "EMP CODE",
+    "NAME",
+    "DESIGNATION",
+    "EPF NO",
+    "UAN NO",
+    "SITE NAME",
+    "BRANCH",
+    "M/DAYS (divisor)",
+    "NORMALDAYS (W/DAYS)",
+    "NCP",
+    "ORIG_BASIC(+DA)",
+    "GROSS",
+    "ORIG_PF (salary EE)",
+    "ECR_PF (EE, filed)",
+    "ECR_PF_CAPPED (min 1800)",
+    "ABOVE_1800_SURPLUS",
+    "PF SOURCE",
+    "RULE_APPLIED",
+    "REVISED_PF",
+    "REVISED_BASIC(+DA)",
+    "ADJ_WORKING_DAYS",
+    "PF_DIFF_PARKED_IN_OTHER_DED",
+    "12% OF REVISED_BASIC",
+    "DIFF (12% vs REVISED_PF)",
+    "BD_MONTHLY_PROJECTION",
+    "REMARK"
+  ],
+  "months": {
+    "APR-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_APR-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/APR-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/APR-24_below15k_partdays_ecr0.csv"
+    },
+    "MAY-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_MAY-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/MAY-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/MAY-24_below15k_partdays_ecr0.csv"
+    },
+    "JUN-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_JUN-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/JUN-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/JUN-24_below15k_partdays_ecr0.csv"
+    },
+    "JUL-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_JUL-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/JUL-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/JUL-24_below15k_partdays_ecr0.csv"
+    },
+    "AUG-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_AUG-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/AUG-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/AUG-24_below15k_partdays_ecr0.csv"
+    },
+    "SEP-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_SEP-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/SEP-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/SEP-24_below15k_partdays_ecr0.csv"
+    },
+    "OCT-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_OCT-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/OCT-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/OCT-24_below15k_partdays_ecr0.csv"
+    },
+    "NOV-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_NOV-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/NOV-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/NOV-24_below15k_partdays_ecr0.csv"
+    },
+    "DEC-24": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_DEC-24.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/DEC-24_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/DEC-24_below15k_partdays_ecr0.csv"
+    },
+    "JAN-25": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_JAN-25.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/JAN-25_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/JAN-25_below15k_partdays_ecr0.csv"
+    },
+    "FEB-25": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_FEB-25.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/FEB-25_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/FEB-25_below15k_partdays_ecr0.csv"
+    },
+    "MAR-25": {
+      "corrected": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/corrected_monthly/CORRECTED_MAR-25.csv",
+      "gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/MAR-25_below15k_FULLdays_GAP_ecr0.csv",
+      "gap_part_days": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/MAR-25_below15k_partdays_ecr0.csv"
+    }
+  },
+  "year_files": {
+    "summary_partVSfull": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/SUMMARY_below15k_ecr0_partVSfull_FY2024-25.csv",
+    "year_gap_full_attendance": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/queries/YEAR_full_attendance_GAP_ecr0_FY2024-25.csv",
+    "annual_summary_xlsx": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/Maharashtra_PF_Summary_FY2024-25.xlsx",
+    "gap_book_xlsx": "https://raw.githubusercontent.com/dineshshantisharma1969-web/anthropic-finance/claude/n8n-food-log-meal-timing-Ezdh1/docs/pf-salary-reconciliation/maharashtra-fy2024-25/Maharashtra_PF_Coverage_Gap_Book_FY2024-25.xlsx"
+  }
+}
