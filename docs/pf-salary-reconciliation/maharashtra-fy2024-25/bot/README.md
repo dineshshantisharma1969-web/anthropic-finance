@@ -9,8 +9,24 @@ when the n8n workflow feeds the model a **fixed slice** of data (one file / one 
 
 | File | Use |
 |---|---|
+| **`bot_MONTHLY_SUMMARY_FY2024-25.csv`** | **The summary-bot data source.** 13-row month-wise summary (all 12 months + total, incl. May-24). Import this into the Google Sheet the "Read Salary Summary" node reads. Fixes "May-24 not available" for summary/totals questions. |
+| `bot_dataset_below15k_ecr0_ALLMONTHS.csv` | 889-row all-months below-₹15k / ECR-PF=0 detail (for gap queries, if you want that class too). |
 | `manifest.json` | Month → raw-file URLs (corrected sheet, gap-full, gap-part) for all 12 months + year files. Load once; look up by month key. |
-| `month_router.js` | Drop-in **n8n Code node**: parses the month from the Telegram text ("May", "May-24", "May 2024", "05/2024", "2024005") → canonical key `MAY-24` + the exact URL to fetch. |
+| `month_router.js` | Drop-in **n8n Code node**: parses the month from the Telegram text ("May", "May-24", "May 2024", "05/2024", "2024005") → canonical key `MAY-24` + the exact URL to fetch (for the fetch-per-month architecture). |
+
+## Summary-bot quick fix (matches the current workflow)
+
+The bot's flow is **Telegram → Read Salary Summary (Google Sheet) → Bundle Rows → AI Answerer → Send Reply**.
+It answers from whatever is in that one Google Sheet. To make **every month** answerable:
+
+1. Open the Google Sheet the **"Read Salary Summary"** node reads.
+2. **File → Import → Upload** `bot_MONTHLY_SUMMARY_FY2024-25.csv` → **Replace current sheet**.
+3. Done — no workflow change. The sheet now has all 12 months (incl. May-24), so summary/totals
+   questions for any month work.
+
+Columns: `MONTH, EMPLOYEES, MATCHED_IN_ECR, NOT_IN_ECR, ORIG_SALARY_PF, ECR_PF_FILED,
+REVISED_PF_=_ECR_CAPPED, PF_GAP, ABOVE_1800_SURPLUS, PF_PARKED_OTHER_DED,
+BELOW15K_ECR0_TOTAL, BELOW15K_ECR0_FULLATT_GAP`.
 
 ## Recommended n8n flow
 
