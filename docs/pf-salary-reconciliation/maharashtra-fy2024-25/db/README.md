@@ -47,6 +47,29 @@ UNION ALL
 SELECT fy, emp_code, month, revised_pf FROM <your_25_26_table> WHERE emp_code = '20031508';
 ```
 
+## Cross-year queries (24-25 + 25-26)
+
+The FY2025-26 data is a **different table with different column names** (ISPL v4 format —
+`EMPCODE, FULLNAME, MONTH, BRANCHNAME, "GROSS AMT", REVISED_PF, ECR_PF, "ESIC.1", RULE_APPLIED,
+REVISED_NET_PAYABLE`). Column mapping to this table:
+
+| Common | Maharashtra 24-25 | 25-26 |
+|---|---|---|
+| employee | `emp_code` | `EMPCODE` |
+| name | `name` | `FULLNAME` |
+| month | `month` | `MONTH` |
+| branch | `branch` | `BRANCHNAME` |
+| gross | `gross` | `GROSS AMT` |
+| revised PF | `revised_pf` | `REVISED_PF` |
+| ECR PF | `ecr_pf_capped` | `ECR_PF` |
+| revised ESI | `esi_emp` | `ESIC.1` |
+| rule | `pf_rule` | `RULE_APPLIED` |
+
+**`cross_year_queries.sql`** in this folder has: a STEP-0 introspection query (returns the 25-26
+table name + exact column names), a harmonised `v_salary_all_years` view (two variants — verbatim
+vs normalised column names, pick per STEP 0), and ready cross-year example queries. Run STEP 0
+once, fill the 25-26 table name into the view, and both years query as one.
+
 ## Notes
 - `fy = '2024-25'` on every row — the discriminator to filter/union against 25-26.
 - ESI columns are populated where the employee is in the filed ESIC register; the ~91 ESIC-only
