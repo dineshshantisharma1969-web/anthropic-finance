@@ -16,7 +16,7 @@ Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliatio
 |---|---|
 | **FY2025-26** — 12 monthly payrolls, reconciled + M13 annual true-up | ✅ Closed & verified |
 | **FY2026-27 April** — reconciled (M12/M15 final) | ✅ PF verified · ⚠️ action list open |
-| **FY2024-25 Maharashtra (AISSS)** — 12 monthly PF reconciliations, West-only ECR | ✅ PF verified (all checks 0) · ⚠️ ESI pending (local run) |
+| **FY2024-25 Maharashtra (AISSS)** — 12 monthly PF + ESI reconciliations, West-only | ✅ PF verified (all checks 0) · ✅ ESI verified (filed ₹1.08 Cr, 750 coverage gaps flagged) |
 | ~19–21k employees/month pan-India (ISPL); ~1.75k/month Maharashtra-only | |
 
 **The three Golden Rules (never violated):**
@@ -53,6 +53,19 @@ Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliatio
 | PF parked in OTHER DEDUCTION (net-neutral) | 22,92,983 |
 | Not-in-ECR employee-months (PF zeroed & parked) | 1,306 |
 | **West-only verification** | 0 dual-region empcodes · 0 South leakage (Apr/Oct/Jan end-to-end vs raw challan) |
+
+### FY2024-25 Maharashtra (AISSS) — ESI reconciliation (filed ESIC register, West-only)
+| Anchor | ₹ |
+|---|--:|
+| ESIC wages (12 months) | 27,00,69,345 |
+| ESI employee @ 0.75% (filed) | **20,34,384** |
+| ESI employer @ 3.25% (filed) | 87,77,254 |
+| ESI total deposited | **1,08,11,638** |
+| Register employee-months / unique emps | 18,261 / 2,855 |
+| Statutory checks (0.75% / 3.25% / West-only) | pass (2 rounding cases ≤ ₹1.5) |
+| **ESI coverage gaps** (salary gross ≤ ₹21k, not filed) | **750 emp-months** |
+| Above-₹21,000 rows (period continuation) | 690 |
+| Source: `Maharashtra ESIC Working 24-25 (Dinesh Sir).xlsx` | Drive `1f3Cw2cFoZi3ZLPvMYMR9zbhfyadtIncQ` |
 
 ### April 2026 (M12/M15 FINAL — footed row-by-row from the full 21,152-row sheet)
 | Anchor | ₹ |
@@ -158,7 +171,7 @@ Run locally (files >10 MB exceed the Drive-connector download cap). To rebuild t
 | 5 | Jan-26/Feb-26 gross ≈ 2× other months (possible double/bonus run) — net ties; verify before statutory use | 🟡 Documented |
 | 6 | M13+CL merged net vs Tally salary payable Δ ₹14,634 (~0.0005%) | 🟢 Immaterial |
 | 7 | 2 M13 exceptions (DA alone > ECR/0.12; basic clamped) — in `PF_M13_Exceptions_Review.xlsx` | 🟢 Documented |
-| 8 | **Maharashtra FY24-25: ESI reconciliation pending** — needs full salary sheet ESI columns (>10 MB, local run) against `ESIC DATA 24-25 MAHARASHTRA`. PF side complete. | 🟡 Open (local) |
+| 8 | **Maharashtra FY24-25: ESI reconciliation DONE** — filed ESIC register validated (₹1,08,11,638; 0.75%/3.25% hold; West-only). Open: **750 ESI coverage gaps** (gross ≤ ₹21k, not filed) + 690 above-ceiling (period continuation). Row-level salary-ESI edits (E1–E4) still need the full salary sheet locally. | 🟡 Coverage gaps open |
 | 9 | Maharashtra FY24-25: ₹3,57,385 ECR filed **above the ₹1,800 EE cap** (991 emp-months) — capped to statutory ₹1,800 in the corrected sheets; surplus is a documented reconciling item, not filed as EE PF. | 🟢 Documented |
 | 10 | Maharashtra FY24-25: 10 not-in-ECR daily-wage rows at exactly ₹15,000/month (₹500×30) — at-ceiling boundary, cannot be pushed strictly above ₹15k; documented exception. | 🟢 Documented |
 
