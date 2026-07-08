@@ -9,6 +9,7 @@ per-employee salary-vs-ECR comparison workbook.
 | File | What it is |
 |---|---|
 | `Maharashtra_PF_Summary_FY2024-25.xlsx` | **Formatted annual Summary sheet** — month-wise table, reconciliation bridge, rule stats, checks status (one page) |
+| `Maharashtra_PF_Coverage_Gap_Book_FY2024-25.xlsx` | **Year-wide PF coverage-gap book** — below-₹15k & ECR=0 employees; SUMMARY + branch pivot, `GAP_FULL_ATTENDANCE` (332 review candidates), `ALL_BELOW15K_ECR0` (889). Built by `build_gapbook.py` |
 | `CHECKS_AND_BALANCES_Maharashtra_FY2024-25.md` | Full checks report — Golden Rules, statutory caps, integrity checks, month-wise summary, rule stats |
 | `Maharashtra_PF_Corrected_Monthly_FY2024-25.xlsx` | Combined workbook: SUMMARY + CHECKS + RULE_STATS + 12 corrected monthly tabs |
 | `corrected_monthly/CORRECTED_<MONTH>.csv` | The 12 corrected monthly sheets (one row per employee) |
