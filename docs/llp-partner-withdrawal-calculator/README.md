@@ -15,7 +15,8 @@ tax against staying a Pvt Ltd (salary + dividend).
 
 | File | What it is |
 |---|---|
-| `index.html` | **The calculator** — open in any browser, no network needed. Firm inputs + per-partner (capital, slab) inputs, LLP firm split, Section 40(b) cap, per-partner take-home, and an LLP-vs-Pvt-Ltd side-by-side. |
+| `index.html` | **The calculator** — open in any browser, no network needed. Firm + per-partner inputs, LLP firm split, Section 40(b) cap, per-partner take-home, a **12-month cash-flow** of drawings vs the bank balance, a **conversion-vs-liquidation** one-time-cost comparison, and an LLP-vs-Pvt-Ltd side-by-side. |
+| `liquidation-vs-conversion.md` | **Decision note** — statutory conversion (Sec 47(xiiib)) vs liquidate-then-form-LLP: conditions, the deemed-dividend / Sec 46(2) capital-gains / stamp-duty tax hit of liquidating, and how partners withdraw afterwards. Reference for your CA. |
 | `README.md` | This file. |
 
 ## The four ways a partner takes money out of an LLP
@@ -51,6 +52,15 @@ tax against staying a Pvt Ltd (salary + dividend).
 **Pvt Ltd side (comparison)** — same salary drawn; residual profit taxed at the
 corporate rate (default Sec 115BAA, 25.168%), distributed as dividend, taxed again at
 the shareholder's marginal rate.
+
+**Monthly cash-flow** — spreads the annual drawings across Apr→Mar: remuneration monthly,
+interest & profit share either monthly or as a March lump, LLP tax via advance-tax
+instalments (15/45/75/100%) or evenly. Flags any month the bank balance goes negative.
+
+**Conversion vs liquidation** — the one-time cost of *winding up the company first*:
+deemed dividend on reserves (Sec 2(22)(c)), capital gains on shares (Sec 46(2) @ 12.5%),
+corporate tax on asset realisation, and stamp duty — versus ~₹0 for the statutory
+conversion. See `liquidation-vs-conversion.md` for the full write-up.
 
 **Worked example** — two equal partners (₹1 cr book profit, ₹25 L capital each @ 12%,
 optimise mode, both at 31.2%, 115BAA company):

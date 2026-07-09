@@ -140,6 +140,55 @@ h3{font-size:13px;margin:16px 0 8px;color:var(--acc2)}
  </div>
 
  <div class="card">
+  <h2>Monthly cash-flow — LLP bank account (Apr &rarr; Mar)</h2>
+  <div class="hint">What each partner can pull from the account month by month, and the running bank
+    balance so you never overdraw. Amounts leaving the account are <b>gross</b> — each partner pays their
+    own income tax from their personal account.</div>
+  <div class="pcols" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="field"><label>Opening LLP bank balance (1 Apr)</label>
+      <div class="rupee"><input id="openbal" type="number" value="0" step="100000"></div></div>
+    <div class="field"><label>Interest &amp; profit-share drawing</label>
+      <select id="cadence">
+        <option value="monthly">Draw evenly every month</option>
+        <option value="yearend" selected>Draw at year-end (March)</option>
+      </select>
+      <div class="sm">Remuneration is always drawn monthly. Profit share is only known after year-end.</div></div>
+    <div class="field"><label>LLP tax set-aside</label>
+      <select id="taxmode">
+        <option value="adv" selected>Advance-tax instalments (15/45/75/100%)</option>
+        <option value="even">Spread evenly (1/12 per month)</option>
+      </select>
+      <div class="sm">When the firm's own income tax leaves the account.</div></div>
+  </div>
+  <div class="scroll"><table id="cftbl"></table></div>
+  <div class="note-box" id="cfnote"></div>
+ </div>
+
+ <div class="card">
+  <h2>Route comparison: Statutory conversion vs. Liquidate-then-form-LLP</h2>
+  <div class="hint">The one-time tax of <b>winding up the company</b> and starting a fresh LLP, versus the
+    (usually tax-neutral) statutory conversion under Sec 47(xiiib). Enter the company's position below.</div>
+  <div class="pcols" style="grid-template-columns:1fr 1fr">
+    <div class="field"><label>Accumulated profits / reserves (deemed-dividend base, Sec 2(22)(c))</label>
+      <div class="rupee"><input id="reserves" type="number" value="5000000" step="100000"></div></div>
+    <div class="field"><label>Total value distributed to shareholders on liquidation</label>
+      <div class="rupee"><input id="distrib" type="number" value="7000000" step="100000"></div>
+      <div class="sm">Money + market value of assets received by both shareholders.</div></div>
+    <div class="field"><label>Original cost of shares (Sec 46(2) deduction)</label>
+      <div class="rupee"><input id="sharecost" type="number" value="1000000" step="100000"></div></div>
+    <div class="field"><label>Company-level capital gain on realising assets (if any)</label>
+      <div class="rupee"><input id="corpgain" type="number" value="0" step="100000"></div>
+      <div class="sm">Gain if the company sells assets for cash before distributing — taxed at the corporate rate.</div></div>
+    <div class="field"><label>Immovable / asset value moving to the new LLP (stamp duty base)</label>
+      <div class="rupee"><input id="assetval" type="number" value="0" step="100000"></div></div>
+    <div class="field"><label>Stamp duty rate on that transfer</label>
+      <input id="stamprate" type="number" value="6" step="0.5" min="0"><div class="sm">% — state-specific (e.g. ~5-7% Maharashtra).</div></div>
+  </div>
+  <div class="scroll"><table id="liqtbl"></table></div>
+  <div class="note-box" id="liqnote"></div>
+ </div>
+
+ <div class="card">
   <h2>Side-by-side: LLP vs. Pvt Ltd (same book profit, same salary drawn)</h2>
   <div class="hint">"Total tax" = every rupee of tax at entity + both owners. "In owners' hands" = combined
     cash reaching the two partners/shareholders after all tax.</div>
@@ -321,9 +370,78 @@ function calc(){
    : `On these inputs the Pvt Ltd route is cheaper by ${inr(-saving)} — usually the concessional 115BAA rate
       with a low dividend payout beating the LLP's flat 30%. Try shifting more drawing into deductible
       remuneration/interest.`;
+
+  // ---------- Monthly cash-flow (Apr -> Mar) ----------
+  const MON=["Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan","Feb","Mar"];
+  const cadence=$('cadence').value, taxmode=$('taxmode').value;
+  let bal=+$('openbal').value||0;
+  // advance-tax cumulative 15/45/75/100 -> instalment months Jun(2),Sep(5),Dec(8),Mar(11)
+  const advFrac=[0,0,0.15,0,0,0.30,0,0,0.30,0,0,0.25];
+  let rows="", totIn=0,totTax=0,totA=0,totB=0, everNeg=false;
+  for(let m=0;m<12;m++){
+    const cashIn=P/12;
+    const llpTaxM = taxmode==='adv' ? tLLP*advFrac[m] : tLLP/12;
+    // remuneration monthly; interest+profit share per cadence
+    let drawA=remA/12, drawB=remB/12;
+    if(cadence==='monthly'){drawA+=intA/12+psA/12;drawB+=intB/12+psB/12;}
+    else if(m===11){drawA+=intA+psA;drawB+=intB+psB;}
+    bal += cashIn - llpTaxM - drawA - drawB;
+    totIn+=cashIn;totTax+=llpTaxM;totA+=drawA;totB+=drawB;
+    const low = bal<-1; if(low)everNeg=true;
+    rows+=`<tr><td>${MON[m]}</td><td>${inr(cashIn)}</td><td>${inr(llpTaxM)}</td>
+      <td>${inr(drawA)}</td><td>${inr(drawB)}</td>
+      <td style="color:${low?'var(--fail)':'var(--ink)'}">${inr(bal)}</td></tr>`;
+  }
+  $('cftbl').innerHTML=`
+   <thead><tr><th>Month</th><th>Cash profit in</th><th>LLP tax out</th>
+     <th>Partner A draw</th><th>Partner B draw</th><th>Closing bank</th></tr></thead>
+   <tbody>${rows}
+   <tr class="total"><td>Year</td><td>${inr(totIn)}</td><td>${inr(totTax)}</td>
+     <td>${inr(totA)}</td><td>${inr(totB)}</td><td>${inr(bal)}</td></tr></tbody>`;
+
+  const regA=remA/12+(cadence==='monthly'?(intA+psA)/12:0);
+  $('cfnote').innerHTML = everNeg
+   ? `<b style="color:var(--fail)">Cash-flow warning:</b> the account dips below zero in at least one month — the
+      drawings/tax outrun the cash coming in. Reduce interim drawings, add opening balance, or move interest &amp;
+      profit share to year-end.`
+   : `Regular monthly draw available to <b>each partner</b>: about ${inr(remA/12)} of remuneration`+
+     (cadence==='monthly'?` + ${inr((intA+psA)/12)} interest &amp; profit share = <b>${inr(regA)}/month</b>.`
+      :`, with interest &amp; profit share (${inr(intA+psA)} each) taken as a lump in March.`)+
+     ` The account stays positive all year (closing ${inr(bal)}).`;
+
+  // ---------- Liquidation vs conversion ----------
+  const reserves=+$('reserves').value||0, distrib=+$('distrib').value||0;
+  const sharecost=+$('sharecost').value||0, corpgain=+$('corpgain').value||0;
+  const assetval=+$('assetval').value||0, stamprate=(+$('stamprate').value||0)/100;
+  const avgRate=(prA+prB)/2;
+  const deemedDivTax = reserves*avgRate;                          // slab, split 50:50 same avg
+  const capGain = Math.max(0, (distrib-reserves) - sharecost);
+  const ltcgTax = capGain*0.125;                                  // 12.5% LTCG, post 23-Jul-2024
+  const corpTaxReal = corpgain*corpRate;
+  const stampDuty = assetval*stamprate;
+  const liqTotal = deemedDivTax+ltcgTax+corpTaxReal+stampDuty;
+
+  $('liqtbl').innerHTML=`
+   <thead><tr><th>One-time exit cost</th><th>Liquidate + new LLP</th><th>Statutory conversion</th></tr></thead><tbody>
+   <tr><td>Deemed dividend on reserves &mdash; Sec 2(22)(c) @ ${(avgRate*100).toFixed(1)}%</td>
+     <td>${inr(deemedDivTax)}</td><td><span class="pill p-ok">Nil</span></td></tr>
+   <tr><td>Capital gains on shares &mdash; Sec 46(2) @ 12.5%<span class="foot"> (gain ${inr(capGain)})</span></td>
+     <td>${inr(ltcgTax)}</td><td><span class="pill p-ok">Nil</span></td></tr>
+   <tr><td>Corporate tax on realising assets @ ${(corpRate*100).toFixed(2)}%</td>
+     <td>${inr(corpTaxReal)}</td><td><span class="pill p-ok">Nil</span></td></tr>
+   <tr><td>Stamp duty on asset transfer @ ${(stamprate*100)}%</td>
+     <td>${inr(stampDuty)}</td><td><span class="pill p-ok">Usually exempt</span></td></tr>
+   <tr class="total"><td>TOTAL one-time tax/duty to exit</td><td>${inr(liqTotal)}</td><td>~₹0*</td></tr>
+   </tbody>`;
+  $('liqnote').innerHTML = `Liquidating first costs roughly <b style="color:var(--fail)">${inr(liqTotal)}</b> in
+    one-time tax &amp; duty that the statutory conversion avoids &mdash; plus carry-forward losses and MAT credit
+    <b>lapse</b>, and the LLP starts with a fresh PAN/GST and new contracts. <span class="foot">*Conversion has
+    nominal filing/professional cost only, assuming Sec 47(xiiib) conditions are met.</span>`;
 }
 
-['profit','introte','remmode','remman','capA','capB','rateA','rateB','corp'].forEach(id=>{
+['profit','introte','remmode','remman','capA','capB','rateA','rateB','corp',
+ 'openbal','cadence','taxmode','reserves','distrib','sharecost','corpgain','assetval','stamprate'
+].forEach(id=>{
   $(id).addEventListener('input',calc);$(id).addEventListener('change',calc);
 });
 calc();
