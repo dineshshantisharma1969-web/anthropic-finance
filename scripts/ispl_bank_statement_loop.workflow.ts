@@ -51,7 +51,8 @@ const keepBankFile = node({
           { leftValue: expr('{{ $json.name }}'), rightValue: 'ICICI', operator: { type: 'string', operation: 'contains' } },
           { leftValue: expr('{{ $json.name }}'), rightValue: 'DBS', operator: { type: 'string', operation: 'contains' } },
           { leftValue: expr('{{ $json.name }}'), rightValue: 'KOTAK', operator: { type: 'string', operation: 'contains' } },
-          { leftValue: expr('{{ $json.name }}'), rightValue: 'HDFC', operator: { type: 'string', operation: 'contains' } }
+          { leftValue: expr('{{ $json.name }}'), rightValue: 'HDFC', operator: { type: 'string', operation: 'contains' } },
+          { leftValue: expr('{{ $json.name }}'), rightValue: 'IDFC', operator: { type: 'string', operation: 'contains' } }
         ]
       }
     }
@@ -114,6 +115,7 @@ const parseTxns = node({
         "let bank='UNKNOWN';\n" +
         "if (cq('Tran. Id')||cq('S.N.')) bank='ICICI 039951000005';\n" +
         "else if (cq('Sl. No.')||cq('Dr / Cr')) bank='KOTAK (KKBK0000195)';\n" +
+        "else if (cq('Particulars')) bank='IDFC 10221675468';\n" +
         "else if (cq('Transaction Date')) bank='HDFC 57500000129944';\n" +
         "else if (cq('Date')||flat.includes('858200061542')) bank='DBS 858200061542';\n" +
         "const today = $now.setZone('Asia/Kolkata').toFormat('yyyy-LL-dd');\n" +
@@ -142,6 +144,9 @@ const parseTxns = node({
         "} else if(bank.startsWith('KOTAK')){\n" +
         "  const h = rows.findIndex(r => String(r[0]).trim()==='Sl. No.' || r.some(c=>String(c).includes('Dr / Cr')));\n" +
         "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const dc=String(r[6]||'').trim().toUpperCase(); if(dc!=='DR'&&dc!=='CR') continue; const date=mdy(r[2])||mdy(r[1]); const desc=String(r[3]||'').trim(); const amt=num(r[5]); if(amt==='') continue; const ref=(String(r[4]||'').trim()||'KOT')+'-'+date+'-'+amt; const type=dc==='CR'?'RECEIPT':'PAYMENT'; const m=modeOf(desc); const party=(m==='NEFT'||m==='RTGS')?partyNeft(desc):''; const ib=isInter(desc,type,party); out.push(rec(date,date,desc.slice(0,200),party,m,ref,type, dc==='DR'?amt:'', dc==='CR'?amt:'', ib)); }\n" +
+        "} else if(bank.startsWith('IDFC')){\n" +
+        "  const h = rows.findIndex(r => String(r[0]).trim()==='Transaction Date' && r.some(c=>String(c).trim()==='Particulars'));\n" +
+        "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const d0=String(r[0]||'').trim(); if(!/\\d/.test(d0)) continue; const date=normDate(r[0]); const vdate=normDate(r[1]); const desc=String(r[2]||'').trim(); if(!desc) continue; const chq=String(r[3]||'').trim(); const dr=num(r[4]); const cr=num(r[5]); if(dr==='' && cr==='') continue; const type= cr!=='' ? 'RECEIPT':'PAYMENT'; const m=modeOf(desc); const parts=desc.split('/'); let ref=chq; if(!ref && (m==='RTGS'||m==='NEFT'||m==='IMPS') && parts.length>=2) ref=parts[1].trim(); if(!ref) ref=date+'-'+(dr||cr); let party=''; if((m==='RTGS'||m==='NEFT'||m==='IMPS') && parts.length>=3) party=parts[2].trim().slice(0,60); else if(desc.toUpperCase().indexOf('CHQ DEP')>-1 && parts.length>=5) party=parts[4].trim().slice(0,60); const ib=isInter(desc,type,party); out.push(rec(date,vdate,desc.slice(0,200),party,m,ref,type,dr,cr,ib)); }\n" +
         "} else if(bank.startsWith('HDFC')){\n" +
         "  const h = rows.findIndex(r => String(r[0]).trim()==='Transaction Date' && r.some(c=>String(c).toLowerCase().includes('debit')));\n" +
         "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const dc=String(r[3]||'').trim().toUpperCase(); if(dc!=='C'&&dc!=='D') continue; const desc=String(r[1]||'').trim(); const amt=num(r[2]); if(amt==='') continue; const date=dmy(r[5])||dmy(r[0]); const ref=(String(r[4]||'').trim()||'HDF')+'-'+date+'-'+amt; const type=dc==='C'?'RECEIPT':'PAYMENT'; const m=modeOf(desc); const party=(m==='NEFT'||m==='RTGS')?partyNeft(desc):''; const ib=isInter(desc,type,party); out.push(rec(date,date,desc.slice(0,200),party,m,ref,type, dc==='D'?amt:'', dc==='C'?amt:'', ib)); }\n" +
