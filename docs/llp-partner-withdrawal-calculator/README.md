@@ -59,6 +59,12 @@ instalments (15/45/75/100%) or evenly. Flags any month the bank balance goes neg
 A **Download CSV** button exports the month-by-month table (raw numbers, Excel-ready) for
 your CA.
 
+**Capital withdrawal** — how much contributed capital partners can pull out **tax-free**
+(return of capital is not income). Gated by three tests the panel checks: the LLP
+agreement must permit it, the LLP must stay solvent (capital − liabilities), and — if the
+capital came from a converted company's **reserves** — the Sec 47(xiiib) **36-month lock**
+(withdrawing within 3 years breaches tax-neutrality and makes the whole conversion taxable).
+
 **Conversion vs liquidation** — the one-time cost of *winding up the company first*:
 deemed dividend on reserves (Sec 2(22)(c)), capital gains on shares (Sec 46(2) @ 12.5%),
 corporate tax on asset realisation, and stamp duty — versus ~₹0 for the statutory

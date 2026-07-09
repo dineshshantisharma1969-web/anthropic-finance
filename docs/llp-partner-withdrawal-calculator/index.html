@@ -170,6 +170,32 @@ padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
  </div>
 
  <div class="card">
+  <h2>Capital withdrawal — how much can partners pull out tax-free</h2>
+  <div class="hint">Returning your <b>own</b> contributed capital is not income (no tax, no TDS) — but it's
+    gated by the LLP agreement, solvency, and the Sec 47(xiiib) 3-year lock if the capital came from a
+    converted company's reserves.</div>
+  <div class="pcols" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="field"><label>Total partner capital-account balance</label>
+      <div class="rupee"><input id="cwCapital" type="number" value="80000000" step="1000000"></div></div>
+    <div class="field"><label>LLP liabilities / creditors to keep covered</label>
+      <div class="rupee"><input id="cwLiab" type="number" value="0" step="1000000"></div>
+      <div class="sm">Cash that must stay in to keep the LLP solvent.</div></div>
+    <div class="field"><label>Does the LLP agreement permit capital withdrawal?</label>
+      <select id="cwAgree"><option value="yes">Yes</option><option value="no">No — silent / prohibited</option></select></div>
+    <div class="field"><label>Source of this capital</label>
+      <select id="cwSource">
+        <option value="own">Partners' own fresh funds (already taxed)</option>
+        <option value="conv" selected>Converted company reserves (post Pvt Ltd&rarr;LLP)</option>
+      </select></div>
+    <div class="field"><label>Months since conversion</label>
+      <input id="cwMonths" type="number" value="0" step="1" min="0">
+      <div class="sm">Sec 47(xiiib) locks payouts from accumulated profits for 36 months.</div></div>
+  </div>
+  <div class="scroll"><table id="cwtbl"></table></div>
+  <div class="note-box" id="cwnote"></div>
+ </div>
+
+ <div class="card">
   <h2>Route comparison: Statutory conversion vs. Liquidate-then-form-LLP</h2>
   <div class="hint">The one-time tax of <b>winding up the company</b> and starting a fresh LLP, versus the
     (usually tax-neutral) statutory conversion under Sec 47(xiiib). Enter the company's position below.</div>
@@ -448,10 +474,47 @@ function calc(){
     one-time tax &amp; duty that the statutory conversion avoids &mdash; plus carry-forward losses and MAT credit
     <b>lapse</b>, and the LLP starts with a fresh PAN/GST and new contracts. <span class="foot">*Conversion has
     nominal filing/professional cost only, assuming Sec 47(xiiib) conditions are met.</span>`;
+
+  // ---------- Capital withdrawal ----------
+  const cwCap=+$('cwCapital').value||0, cwLiab=+$('cwLiab').value||0;
+  const agree=$('cwAgree').value==='yes', source=$('cwSource').value, months=+$('cwMonths').value||0;
+  const solvencyFree=Math.max(0,cwCap-cwLiab);
+  const locked = source==='conv' && months<36;
+  let withdrawable, pill, msg;
+  if(!agree){
+    withdrawable=0; pill='<span class="pill p-warn">Blocked — amend agreement</span>';
+    msg=`<b style="color:var(--rev)">The LLP agreement must permit it first.</b> Pass a supplementary
+      agreement allowing withdrawal/reduction of capital and file Form 3 — until then, tax-free capital
+      withdrawal is not available.`;
+  } else if(locked){
+    withdrawable=0; pill='<span class="pill p-warn">Locked '+(36-months)+' more months</span>';
+    msg=`<b style="color:var(--fail)">Sec 47(xiiib) lock:</b> this capital came from the converted company's
+      reserves. Paying partners from accumulated profits within <b>36 months</b> of conversion breaches the
+      tax-neutrality condition and makes the <b>entire conversion taxable as capital gains</b>, and the sum can
+      be taxed in partners' hands. <b>${36-months} months</b> to go — do not withdraw until then, and take your
+      CA's sign-off even after.`;
+  } else {
+    withdrawable=solvencyFree; pill='<span class="pill p-ok">Tax-free</span>';
+    msg=`Up to <b style="color:var(--ok)">${inr(withdrawable)}</b> can be returned as capital &mdash;
+      <b>${inr(withdrawable/2)} per partner</b> (50:50), <b>no tax, no TDS</b>. `+
+      (cwLiab>0?`₹${(cwLiab/10000000).toFixed(2)} cr is held back to keep the LLP solvent. `:``)+
+      (source==='conv'?`Even past the 36-month lock, confirm with your CA that this isn't recharacterised as a
+        payout of accumulated profits.`:`This is the partners' own money — cleanest route.`);
+  }
+  $('cwtbl').innerHTML=`
+   <thead><tr><th>Capital withdrawal</th><th>Amount</th></tr></thead><tbody>
+   <tr><td>Total capital-account balance</td><td>${inr(cwCap)}</td></tr>
+   <tr class="sub"><td>&minus; Liabilities to keep covered (solvency)</td><td>${inr(cwLiab)}</td></tr>
+   <tr><td>Solvency-limited free capital</td><td>${inr(solvencyFree)}</td></tr>
+   <tr class="total"><td>Tax-free withdrawable now ${pill}</td><td>${inr(withdrawable)}</td></tr>
+   <tr class="sub"><td>&nbsp;&nbsp;Per partner (50:50)</td><td>${inr(withdrawable/2)}</td></tr>
+   </tbody>`;
+  $('cwnote').innerHTML=msg;
 }
 
 ['profit','introte','remmode','remman','capA','capB','rateA','rateB','corp',
- 'openbal','cadence','taxmode','reserves','distrib','sharecost','corpgain','assetval','stamprate'
+ 'openbal','cadence','taxmode','reserves','distrib','sharecost','corpgain','assetval','stamprate',
+ 'cwCapital','cwLiab','cwAgree','cwSource','cwMonths'
 ].forEach(id=>{
   $(id).addEventListener('input',calc);$(id).addEventListener('change',calc);
 });
