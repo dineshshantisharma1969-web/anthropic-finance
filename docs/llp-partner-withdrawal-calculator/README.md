@@ -1,0 +1,76 @@
+# LLP Partner Withdrawal &amp; Tax Calculator
+
+An interactive, self-contained calculator for a **Pvt Ltd &rarr; LLP** conversion: it
+models how partners draw money out of an LLP (remuneration + interest on capital +
+profit share), applies the tax at each level, and compares the total tax against
+staying a Pvt Ltd (salary + dividend).
+
+## What it answers
+
+> After converting, how should partners split their drawings, and how much tax do
+> we actually save versus the company route?
+
+## Files
+
+| File | What it is |
+|---|---|
+| `index.html` | **The calculator** — open in any browser, no network needed. Live inputs, LLP breakdown, Section 40(b) cap build-up, and an LLP-vs-Pvt-Ltd side-by-side. |
+| `README.md` | This file. |
+
+## The four ways a partner takes money out of an LLP
+
+| Route | Taxable to partner? | Deductible for LLP? |
+|---|---|---|
+| **Share of profit** | No — exempt u/s **10(2A)** | (already taxed in the LLP) |
+| **Remuneration / salary** (working partners) | Yes — slab | Yes — within **Sec 40(b)** cap |
+| **Interest on capital** | Yes — slab | Yes — up to **12% p.a.** |
+| **Drawings / capital withdrawal** | No — it's your own capital | n/a |
+
+## Why an LLP usually beats a Pvt Ltd for owner payouts
+
+- A company pays corporate tax, **then** dividends are taxed *again* in the
+  shareholder's hands — double taxation.
+- In an LLP the profit share is **tax-free** once distributed (taxed only once, at
+  the LLP), and remuneration + interest are **deductible**, shrinking the taxable base.
+- No dividend distribution tax / DDH.
+
+## How the model works
+
+**LLP side**
+1. `Interest on capital = capital × min(rate, 12%)` — deductible.
+2. `Book profit (for 40(b)) = profit − interest`.
+3. `Max deductible remuneration` per Section 40(b) (FY 2024-25 onwards): higher of
+   &#8377;3,00,000 or 90% on the first &#8377;6,00,000 of book profit, then 60% on the balance.
+4. `LLP taxable income = book profit − allowed remuneration` (any remuneration above
+   the cap is disallowed and stays taxable).
+5. `LLP tax = 30% + 12% surcharge (if income > ₹1 cr) + 4% cess`.
+6. `Profit share = profit − interest − remuneration − LLP tax` → **tax-free** to partners.
+7. Remuneration + interest are taxed at the partners' marginal slab.
+
+**Pvt Ltd side (comparison)** — same salary drawn; residual profit taxed at the
+corporate rate (default Sec 115BAA, 25.168%), distributed as dividend, taxed again at
+the shareholder's marginal rate.
+
+**Worked example** (₹1 cr book profit, ₹50 L capital @ 12%, optimise mode, 31.2% partner
+rate, 115BAA company):
+
+| | LLP | Pvt Ltd |
+|---|---|---|
+| Total tax (entity + owner) | **₹31.20 L** | ₹37.40 L |
+| In owners' hands | **₹68.80 L** | ₹62.60 L |
+
+→ LLP saves **₹6.20 L** of tax and puts **₹6.20 L** more in partners' hands on the
+same profit.
+
+## Assumptions &amp; caveats
+
+- **Planning tool, not tax advice** — confirm every figure with your CA.
+- Section 40(b) limits, the 115BAA rate, surcharge slabs and cess are as understood for
+  **FY 2025-26 (AY 2026-27)**; these change — re-verify current-year numbers.
+- Remuneration &amp; interest are deductible **only if authorised and quantified in the LLP
+  agreement**.
+- The comparison ignores MAT/AMT, TDS timing, and state-specific items.
+- **Tax-neutral conversion under Sec 47(xiiib)** (turnover/asset thresholds, 50%
+  profit-share continuity for 5 years, no payout from accumulated profits for 3 years)
+  is a separate test — breaching it triggers capital-gains tax on the conversion itself.
+  Not modelled here.
