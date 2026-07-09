@@ -54,6 +54,10 @@ border-radius:8px;padding:12px 14px;font-size:13px;color:var(--mut);margin-top:6
 .chk-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
 .chk-row:last-child{border:0}.chk-row .k{color:var(--mut)}
 h3{font-size:13px;margin:16px 0 8px;color:var(--acc2)}
+.btn{background:var(--acc);color:#06101f;border:1px solid var(--acc);border-radius:8px;
+padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.rowend{display:flex;justify-content:flex-end;margin:0 0 12px}
 </style></head>
 <body>
 <header>
@@ -160,6 +164,7 @@ h3{font-size:13px;margin:16px 0 8px;color:var(--acc2)}
       </select>
       <div class="sm">When the firm's own income tax leaves the account.</div></div>
   </div>
+  <div class="rowend"><button class="btn" id="dlcsv">&#8595; Download CSV</button></div>
   <div class="scroll"><table id="cftbl"></table></div>
   <div class="note-box" id="cfnote"></div>
  </div>
@@ -377,7 +382,7 @@ function calc(){
   let bal=+$('openbal').value||0;
   // advance-tax cumulative 15/45/75/100 -> instalment months Jun(2),Sep(5),Dec(8),Mar(11)
   const advFrac=[0,0,0.15,0,0,0.30,0,0,0.30,0,0,0.25];
-  let rows="", totIn=0,totTax=0,totA=0,totB=0, everNeg=false;
+  let rows="", totIn=0,totTax=0,totA=0,totB=0, everNeg=false, cfRows=[];
   for(let m=0;m<12;m++){
     const cashIn=P/12;
     const llpTaxM = taxmode==='adv' ? tLLP*advFrac[m] : tLLP/12;
@@ -388,10 +393,16 @@ function calc(){
     bal += cashIn - llpTaxM - drawA - drawB;
     totIn+=cashIn;totTax+=llpTaxM;totA+=drawA;totB+=drawB;
     const low = bal<-1; if(low)everNeg=true;
+    cfRows.push([MON[m],Math.round(cashIn),Math.round(llpTaxM),Math.round(drawA),Math.round(drawB),Math.round(bal)]);
     rows+=`<tr><td>${MON[m]}</td><td>${inr(cashIn)}</td><td>${inr(llpTaxM)}</td>
       <td>${inr(drawA)}</td><td>${inr(drawB)}</td>
       <td style="color:${low?'var(--fail)':'var(--ink)'}">${inr(bal)}</td></tr>`;
   }
+  window.CF={
+    meta:{P:Math.round(P),tLLP:Math.round(tLLP),cadence,taxmode,openbal:+$('openbal').value||0},
+    rows:cfRows,
+    tot:[Math.round(totIn),Math.round(totTax),Math.round(totA),Math.round(totB),Math.round(bal)]
+  };
   $('cftbl').innerHTML=`
    <thead><tr><th>Month</th><th>Cash profit in</th><th>LLP tax out</th>
      <th>Partner A draw</th><th>Partner B draw</th><th>Closing bank</th></tr></thead>
@@ -443,6 +454,30 @@ function calc(){
  'openbal','cadence','taxmode','reserves','distrib','sharecost','corpgain','assetval','stamprate'
 ].forEach(id=>{
   $(id).addEventListener('input',calc);$(id).addEventListener('change',calc);
+});
+
+function csvEsc(v){v=String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+$('dlcsv').addEventListener('click',()=>{
+  const d=window.CF; if(!d)return;
+  const cadTxt=d.meta.cadence==='monthly'?'Interest & profit share drawn monthly':'Interest & profit share drawn at year-end (March)';
+  const taxTxt=d.meta.taxmode==='adv'?'Advance-tax instalments (15/45/75/100%)':'LLP tax spread evenly (1/12 per month)';
+  const L=[
+    ['LLP Monthly Cash-Flow (Apr-Mar) — two partners, 50:50'],
+    ['All amounts in INR. Amounts leaving the account are gross; partners pay personal tax separately.'],
+    ['Book profit (before rem & interest)',d.meta.P],
+    ['LLP tax (annual)',d.meta.tLLP],
+    ['Opening bank balance (1 Apr)',d.meta.openbal],
+    [cadTxt],[taxTxt],
+    [],
+    ['Month','Cash profit in','LLP tax out','Partner A draw','Partner B draw','Closing bank'],
+    ...d.rows,
+    ['Year total',...d.tot]
+  ];
+  const csv=L.map(r=>r.map(csvEsc).join(',')).join('\r\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='llp-monthly-cashflow.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 });
 calc();
 </script>

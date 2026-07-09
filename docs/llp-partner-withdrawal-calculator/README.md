@@ -56,6 +56,8 @@ the shareholder's marginal rate.
 **Monthly cash-flow** — spreads the annual drawings across Apr→Mar: remuneration monthly,
 interest & profit share either monthly or as a March lump, LLP tax via advance-tax
 instalments (15/45/75/100%) or evenly. Flags any month the bank balance goes negative.
+A **Download CSV** button exports the month-by-month table (raw numbers, Excel-ready) for
+your CA.
 
 **Conversion vs liquidation** — the one-time cost of *winding up the company first*:
 deemed dividend on reserves (Sec 2(22)(c)), capital gains on shares (Sec 46(2) @ 12.5%),
