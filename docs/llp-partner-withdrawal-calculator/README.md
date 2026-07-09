@@ -1,9 +1,10 @@
 # LLP Partner Withdrawal &amp; Tax Calculator
 
-An interactive, self-contained calculator for a **Pvt Ltd &rarr; LLP** conversion: it
-models how partners draw money out of an LLP (remuneration + interest on capital +
-profit share), applies the tax at each level, and compares the total tax against
-staying a Pvt Ltd (salary + dividend).
+An interactive, self-contained calculator for a **Pvt Ltd &rarr; LLP** conversion,
+set up for **two partners on an equal (50:50) profit-sharing ratio**. It models how
+each partner draws money out of an LLP (remuneration + interest on capital + profit
+share), applies the tax at the firm and each partner's level, and compares the total
+tax against staying a Pvt Ltd (salary + dividend).
 
 ## What it answers
 
@@ -14,7 +15,7 @@ staying a Pvt Ltd (salary + dividend).
 
 | File | What it is |
 |---|---|
-| `index.html` | **The calculator** — open in any browser, no network needed. Live inputs, LLP breakdown, Section 40(b) cap build-up, and an LLP-vs-Pvt-Ltd side-by-side. |
+| `index.html` | **The calculator** — open in any browser, no network needed. Firm inputs + per-partner (capital, slab) inputs, LLP firm split, Section 40(b) cap, per-partner take-home, and an LLP-vs-Pvt-Ltd side-by-side. |
 | `README.md` | This file. |
 
 ## The four ways a partner takes money out of an LLP
@@ -51,20 +52,23 @@ staying a Pvt Ltd (salary + dividend).
 corporate rate (default Sec 115BAA, 25.168%), distributed as dividend, taxed again at
 the shareholder's marginal rate.
 
-**Worked example** (₹1 cr book profit, ₹50 L capital @ 12%, optimise mode, 31.2% partner
-rate, 115BAA company):
+**Worked example** — two equal partners (₹1 cr book profit, ₹25 L capital each @ 12%,
+optimise mode, both at 31.2%, 115BAA company):
 
 | | LLP | Pvt Ltd |
 |---|---|---|
-| Total tax (entity + owner) | **₹31.20 L** | ₹37.40 L |
-| In owners' hands | **₹68.80 L** | ₹62.60 L |
+| Total tax (entity + both owners) | **₹31.20 L** | ₹37.40 L |
+| In owners' hands (combined) | **₹68.80 L** | ₹62.60 L |
+| Each partner takes home | **₹34.40 L** | ₹31.30 L |
 
-→ LLP saves **₹6.20 L** of tax and puts **₹6.20 L** more in partners' hands on the
-same profit.
+→ LLP saves **₹6.20 L** of tax and puts **₹6.20 L** more in the partners' hands on the
+same profit — about **₹3.10 L extra per partner**.
 
 ## Assumptions &amp; caveats
 
 - **Planning tool, not tax advice** — confirm every figure with your CA.
+- Two partners, **equal 50:50** profit-sharing ratio; both treated as working partners.
+  Total remuneration is capped at the firm-level Section 40(b) limit and split 50:50.
 - Section 40(b) limits, the 115BAA rate, surcharge slabs and cess are as understood for
   **FY 2025-26 (AY 2026-27)**; these change — re-verify current-year numbers.
 - Remuneration &amp; interest are deductible **only if authorised and quantified in the LLP

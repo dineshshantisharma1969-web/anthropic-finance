@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>LLP Partner Withdrawal &amp; Tax Calculator</title>
+<title>LLP Partner Withdrawal &amp; Tax Calculator — 2 Partners</title>
 <style>
 :root{--bg:#0d1117;--panel:#161b22;--panel2:#1c2230;--ink:#e6edf3;--mut:#8b949e;
 --line:#2d333b;--ok:#3fb950;--rev:#d29922;--fail:#f85149;--acc:#58a6ff;--acc2:#bc8cff}
@@ -28,10 +28,13 @@ h1{margin:0;font-size:20px}
 .field label{display:block;color:var(--mut);font-size:12px;margin-bottom:5px}
 .field input,.field select{width:100%;background:var(--panel2);color:var(--ink);
 border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px}
-.field .rupee{position:relative}
-.field .rupee input{padding-left:22px}
-.field .rupee::before{content:"\20B9";position:absolute;left:9px;top:8px;color:var(--mut)}
-.field .sm{font-size:11px;color:var(--mut);margin-top:3px}
+.rupee{position:relative}.rupee input{padding-left:22px}
+.rupee::before{content:"\20B9";position:absolute;left:9px;top:8px;color:var(--mut)}
+.sm{font-size:11px;color:var(--mut);margin-top:3px}
+.pcols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.pcols{grid-template-columns:1fr}}
+.pbox{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.pbox h4{margin:0 0 10px;font-size:13px;color:var(--acc2)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
 th:first-child,td:first-child{text-align:left;white-space:normal}
@@ -47,19 +50,17 @@ tr.sub td{color:var(--mut)}
 .note-box{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--acc);
 border-radius:8px;padding:12px 14px;font-size:13px;color:var(--mut);margin-top:6px}
 .note-box b{color:var(--ink)}
-.check{display:flex;gap:8px;align-items:center;font-size:12.5px;padding:5px 0}
-.disc{font-size:12px;color:var(--mut);line-height:1.6}
-.disc b{color:var(--rev)}
+.disc{font-size:12px;color:var(--mut);line-height:1.6}.disc b{color:var(--rev)}
 .chk-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
-.chk-row:last-child{border:0}
-.chk-row .k{color:var(--mut)}
+.chk-row:last-child{border:0}.chk-row .k{color:var(--mut)}
 h3{font-size:13px;margin:16px 0 8px;color:var(--acc2)}
 </style></head>
 <body>
 <header>
 <h1>LLP Partner Withdrawal &amp; Tax Calculator</h1>
-<div class="sub">Post-conversion (Pvt Ltd &rarr; LLP) &middot; models the remuneration / interest-on-capital /
-profit-share split and the total tax vs. the Pvt&nbsp;Ltd dividend route &middot; FY&nbsp;2025-26 rules</div>
+<div class="sub">Two partners &middot; equal (50:50) profit-sharing ratio &middot; post Pvt&nbsp;Ltd&rarr;LLP conversion
+&middot; models remuneration / interest-on-capital / profit-share and total tax vs. the Pvt&nbsp;Ltd route
+&middot; FY&nbsp;2025-26</div>
 </header>
 <div class="wrap">
 
@@ -67,86 +68,90 @@ profit-share split and the total tax vs. the Pvt&nbsp;Ltd dividend route &middot
 
  <div class="grid2">
   <div class="card">
-   <h2>Inputs</h2>
-   <div class="hint">Everything recalculates live. Amounts in &#8377;.</div>
+   <h2>Firm inputs</h2>
+   <div class="hint">Everything recalculates live. Amounts in &#8377;. Profit share is fixed 50:50.</div>
 
    <div class="field"><label>Book profit <b>before</b> partner remuneration &amp; interest (annual)</label>
      <div class="rupee"><input id="profit" type="number" value="10000000" step="100000"></div>
-     <div class="sm">Net profit under the head PGBP, before deducting anything paid to partners.</div>
+     <div class="sm">Net profit under PGBP, before anything paid to partners.</div>
    </div>
 
-   <div class="field"><label>Total partner capital contribution (for interest on capital)</label>
-     <div class="rupee"><input id="capital" type="number" value="5000000" step="100000"></div>
-   </div>
-
-   <div class="field"><label>Interest rate on capital (max 12% p.a. is deductible)</label>
+   <div class="field"><label>Interest rate on capital (max 12% p.a. deductible)</label>
      <input id="introte" type="number" value="12" step="0.5" min="0" max="12">
-     <div class="sm">Anything above 12% is disallowed for the LLP. Capped at 12% here.</div>
    </div>
 
-   <div class="field"><label>Remuneration to working partners</label>
+   <div class="field"><label>Total working-partner remuneration</label>
      <select id="remmode">
        <option value="opt">Optimise — take the full Section 40(b) deductible cap</option>
-       <option value="man">Set manually</option>
+       <option value="man">Set manually (total)</option>
        <option value="zero">Zero (take everything as profit share)</option>
      </select>
+     <div class="sm">Total is split 50:50 between the two working partners.</div>
    </div>
    <div class="field" id="manwrap" style="display:none">
-     <label>Manual remuneration amount</label>
+     <label>Manual total remuneration</label>
      <div class="rupee"><input id="remman" type="number" value="3000000" step="100000"></div>
    </div>
 
-   <h3>Partner-level tax</h3>
-   <div class="field"><label>Partners' effective marginal rate on remuneration &amp; interest</label>
-     <select id="prate">
-       <option value="0">Nil — total income within basic exemption</option>
-       <option value="5.2">5.2% (5% slab + cess)</option>
-       <option value="20.8">20.8% (20% slab + cess)</option>
-       <option value="31.2" selected>31.2% (30% slab + cess)</option>
-       <option value="35.88">35.88% (30% + 10% surcharge + cess)</option>
-       <option value="39">39% (30% + 15% surcharge + cess, new regime cap)</option>
-       <option value="42.744">42.744% (30% + 37% surcharge + cess, old regime)</option>
-     </select>
-     <div class="sm">Profit share is exempt u/s 10(2A); only remuneration &amp; interest are taxed here.</div>
+   <h3>Per-partner details</h3>
+   <div class="pcols">
+     <div class="pbox"><h4>Partner A</h4>
+       <div class="field"><label>Capital contributed</label>
+         <div class="rupee"><input id="capA" type="number" value="2500000" step="100000"></div></div>
+       <div class="field"><label>Marginal tax rate (rem + interest)</label>
+         <select id="rateA" class="prate"></select></div>
+     </div>
+     <div class="pbox"><h4>Partner B</h4>
+       <div class="field"><label>Capital contributed</label>
+         <div class="rupee"><input id="capB" type="number" value="2500000" step="100000"></div></div>
+       <div class="field"><label>Marginal tax rate (rem + interest)</label>
+         <select id="rateB" class="prate"></select></div>
+     </div>
    </div>
+   <div class="sm">Profit share is exempt u/s 10(2A) for both — only remuneration &amp; interest are taxed at these rates.</div>
 
    <h3>Comparison basis (Pvt Ltd)</h3>
    <div class="field"><label>Company tax regime</label>
      <select id="corp">
        <option value="25.168" selected>Sec 115BAA concessional — 25.168%</option>
-       <option value="26">25% + surcharge/cess (turnover &le; &#8377;400 cr, income &le; &#8377;1 cr)</option>
-       <option value="29.12">25% + 12% surcharge + cess (income &gt; &#8377;10 cr) = 29.12%</option>
+       <option value="26">25% + surcharge/cess (income &le; &#8377;1 cr) — 26%</option>
+       <option value="29.12">25% + 12% surcharge + cess (income &gt; &#8377;10 cr) — 29.12%</option>
      </select>
-     <div class="sm">Assumes owners draw the <b>same</b> salary in both structures; residual profit is
-       paid out as dividend and taxed again in shareholders' hands at the partner rate above.</div>
+     <div class="sm">Assumes each owner draws the <b>same</b> salary as their LLP rem+interest; residual
+       profit is paid out as dividend (50:50) and taxed again at each shareholder's rate.</div>
    </div>
   </div>
 
   <div class="card">
-   <h2>LLP structure — where the money goes</h2>
-   <div class="hint">Book profit split three ways, with tax at each level.</div>
+   <h2>LLP — firm-level split</h2>
+   <div class="hint">Book profit split three ways, with tax at the firm level.</div>
    <div class="scroll"><table id="llptbl"></table></div>
 
    <h2 style="margin-top:20px">Section 40(b) remuneration cap</h2>
    <div class="scroll"><table id="cap40b"></table></div>
-
    <div class="note-box" id="capnote"></div>
   </div>
  </div>
 
  <div class="card">
-  <h2>Side-by-side: LLP vs. Pvt Ltd (same book profit, same drawings extracted)</h2>
-  <div class="hint">"Total tax" = every rupee of tax at entity + owner level. "In owners' hands" = what
-    actually reaches the partners/shareholders after all taxes.</div>
+  <h2>Per-partner take-home (LLP)</h2>
+  <div class="hint">What each partner draws and keeps after their own tax. Profit share is tax-free.</div>
+  <div class="scroll"><table id="ptbl"></table></div>
+ </div>
+
+ <div class="card">
+  <h2>Side-by-side: LLP vs. Pvt Ltd (same book profit, same salary drawn)</h2>
+  <div class="hint">"Total tax" = every rupee of tax at entity + both owners. "In owners' hands" = combined
+    cash reaching the two partners/shareholders after all tax.</div>
   <div class="scroll"><table id="cmp"></table></div>
   <div class="foot" id="cmpfoot"></div>
  </div>
 
  <div class="card">
   <h2>The four withdrawal routes in an LLP</h2>
-  <div class="chk-row"><span class="k"><b>Share of profit</b> — your slice of LLP profit per the LLP agreement</span>
+  <div class="chk-row"><span class="k"><b>Share of profit</b> — each partner's 50% slice per the LLP agreement</span>
     <span class="pill p-ok">Exempt u/s 10(2A)</span></div>
-  <div class="chk-row"><span class="k"><b>Remuneration / salary</b> — for working partners, must be authorised &amp; quantified in the LLP agreement</span>
+  <div class="chk-row"><span class="k"><b>Remuneration / salary</b> — for working partners, authorised &amp; quantified in the LLP agreement</span>
     <span class="pill p-warn">Taxable (slab) · deductible for LLP</span></div>
   <div class="chk-row"><span class="k"><b>Interest on capital</b> — on capital contributed, deductible up to 12% p.a.</span>
     <span class="pill p-warn">Taxable (slab) · deductible for LLP</span></div>
@@ -154,109 +159,95 @@ profit-share split and the total tax vs. the Pvt&nbsp;Ltd dividend route &middot
     <span class="pill p-acc">Not income — your own money</span></div>
   <div class="note-box" style="margin-top:14px">
     <b>Why the LLP usually wins:</b> a company pays corporate tax and then dividends are taxed
-    <i>again</i> in the shareholder's hands (double taxation). In an LLP, once the profit is taxed
-    at the LLP level, the profit share is <b>tax-free</b> when distributed — and remuneration +
-    interest are <b>deductible</b>, shrinking the LLP's taxable base. There is no DDH / dividend tax.
+    <i>again</i> in each shareholder's hands (double taxation). In an LLP, once profit is taxed at the
+    firm level, the profit share is <b>tax-free</b> when distributed — and remuneration + interest are
+    <b>deductible</b>, shrinking the LLP's taxable base. No dividend tax.
   </div>
  </div>
 
  <div class="card">
   <h2>Assumptions &amp; disclaimer</h2>
   <div class="disc">
-   <p><b>This is a planning model, not tax advice.</b> Validate every figure with your CA before acting.</p>
+   <p><b>Planning model, not tax advice.</b> Validate every figure with your CA before acting.</p>
    <ul>
-    <li>LLP tax rate: <b>30%</b> + 12% surcharge (if total income &gt; &#8377;1 cr) + 4% cess.</li>
-    <li>Section 40(b) remuneration cap (FY&nbsp;2024-25 onwards, per Finance Act 2024): on the first
-        &#8377;6,00,000 of book profit &mdash; higher of &#8377;3,00,000 or 90%; on the balance &mdash; 60%.
-        <i>Confirm current-year limits.</i></li>
-    <li>"Book profit" for 40(b) = profit before remuneration but <b>after</b> deducting partner interest.</li>
+    <li>Two partners, <b>equal 50:50</b> profit-sharing ratio; both treated as working partners.</li>
+    <li>LLP tax: <b>30%</b> + 12% surcharge (if income &gt; &#8377;1 cr) + 4% cess.</li>
+    <li>Section 40(b) cap (FY&nbsp;2024-25 onwards): on first &#8377;6,00,000 of book profit — higher of
+        &#8377;3,00,000 or 90%; on the balance — 60%. <i>Firm-level cap; total remuneration split 50:50.</i></li>
+    <li>"Book profit" for 40(b) = profit before remuneration but <b>after</b> partner interest.</li>
     <li>Interest on capital deductible only up to <b>12% p.a.</b> and only if authorised in the LLP agreement.</li>
-    <li>Profit share is exempt in partners' hands u/s <b>10(2A)</b> (already taxed in the LLP).</li>
-    <li>Remuneration &amp; interest are taxed at the partners' <b>marginal slab</b> — set above; real tax
-        depends on each partner's total income.</li>
-    <li>The Pvt&nbsp;Ltd comparison assumes identical salary drawn, residual profit distributed as dividend,
-        dividend taxed at the same marginal rate. It ignores MAT/AMT, cess nuances, TDS timing, and
-        state-specific items.</li>
-    <li><b>Tax-neutral conversion (Sec 47(xiiib))</b> conditions are separate and strict &mdash; turnover/asset
-        thresholds, 50% profit-share continuity for 5 years, no payout from accumulated profits for 3 years.
-        Breach &rarr; capital-gains tax on conversion. Not modelled here.</li>
+    <li>Profit share exempt in partners' hands u/s <b>10(2A)</b>.</li>
+    <li>Remuneration &amp; interest taxed at each partner's <b>marginal slab</b> (set above).</li>
+    <li>Pvt&nbsp;Ltd comparison: identical salary drawn, residual profit distributed as dividend 50:50,
+        dividend taxed at each shareholder's rate. Ignores MAT/AMT, TDS timing, state items.</li>
+    <li><b>Tax-neutral conversion (Sec 47(xiiib))</b> is a separate strict test (turnover/asset thresholds,
+        50% profit-share continuity for 5 years, no payout from accumulated profits for 3 years). Breach
+        &rarr; capital-gains tax on conversion. Not modelled here.</li>
    </ul>
   </div>
  </div>
 
  <div class="foot">Self-contained &mdash; open in any browser, no network needed. Rules as understood for
-   FY&nbsp;2025-26 (AY&nbsp;2026-27). &copy; internal planning tool.</div>
+   FY&nbsp;2025-26 (AY&nbsp;2026-27).</div>
 </div>
 
 <script>
 const $=id=>document.getElementById(id);
-// Indian number format
 const inr=n=>{n=Math.round(n);const s=n<0?"-":"";n=Math.abs(n);
   let x=n.toString(),last3=x.length>3?x.slice(-3):x,rest=x.length>3?x.slice(0,-3):"";
   if(rest)rest=rest.replace(/\B(?=(\d{2})+(?!\d))/g,",")+",";
   return s+"₹"+rest+last3;};
 const cr=n=>"₹"+(n/10000000).toFixed(2)+" cr";
 
-function llpTax(income){
-  if(income<=0)return 0;
-  let base=income*0.30;
-  let sur=income>10000000?base*0.12:0;      // surcharge 12% above 1 cr
-  return (base+sur)*1.04;                     // + 4% cess
-}
-function cap40b(bookProfit){
-  // FY24-25+ limits
-  if(bookProfit<=0)return 300000;             // on loss/low profit, min 3L
-  let first=Math.min(bookProfit,600000);
-  let tier1=Math.max(300000,first*0.90);
-  let tier2=Math.max(0,bookProfit-600000)*0.60;
-  return tier1+tier2;
-}
+const RATES=[["0","Nil — within basic exemption"],["5.2","5.2% (5% + cess)"],
+  ["20.8","20.8% (20% + cess)"],["31.2","31.2% (30% + cess)"],
+  ["35.88","35.88% (30% + 10% surcharge + cess)"],["39","39% (30% + 15% surcharge + cess)"],
+  ["42.744","42.744% (30% + 37% surcharge + cess)"]];
+document.querySelectorAll('.prate').forEach((sel,i)=>{
+  RATES.forEach(([v,t])=>{let o=document.createElement('option');o.value=v;o.textContent=t;
+    if(v==="31.2")o.selected=true;sel.appendChild(o);});
+});
+
+function llpTax(income){if(income<=0)return 0;let base=income*0.30;
+  let sur=income>10000000?base*0.12:0;return (base+sur)*1.04;}
+function cap40b(bp){if(bp<=0)return 300000;let first=Math.min(bp,600000);
+  let t1=Math.max(300000,first*0.90);let t2=Math.max(0,bp-600000)*0.60;return t1+t2;}
 
 function calc(){
   const P=+$('profit').value||0;
-  const cap=+$('capital').value||0;
-  let ir=Math.min(12,Math.max(0,+$('introte').value||0));
-  $('introte').value=ir;
-  const interest=cap*ir/100;
-  const bookProfit=Math.max(0,P-interest);          // after interest, before remuneration
+  let ir=Math.min(12,Math.max(0,+$('introte').value||0));$('introte').value=ir;
+  const capA=+$('capA').value||0, capB=+$('capB').value||0;
+  const intA=capA*ir/100, intB=capB*ir/100, interest=intA+intB;
+  const bookProfit=Math.max(0,P-interest);
   const capRem=cap40b(bookProfit);
 
-  const mode=$('remmode').value;
-  $('manwrap').style.display=mode==='man'?'':'none';
+  const mode=$('remmode').value;$('manwrap').style.display=mode==='man'?'':'none';
   let rem;
-  if(mode==='opt')rem=capRem;
-  else if(mode==='zero')rem=0;
-  else rem=+$('remman').value||0;
-
-  const allowedRem=Math.min(rem,capRem);
-  const disallowed=Math.max(0,rem-capRem);
-  const llpTaxable=Math.max(0,bookProfit-allowedRem); // disallowed stays in taxable base
+  if(mode==='opt')rem=capRem; else if(mode==='zero')rem=0; else rem=+$('remman').value||0;
+  const allowedRem=Math.min(rem,capRem), disallowed=Math.max(0,rem-capRem);
+  const llpTaxable=Math.max(0,bookProfit-allowedRem);
   const tLLP=llpTax(llpTaxable);
-  const profitShare=Math.max(0,P-interest-rem-tLLP);  // tax-free cash to partners
+  const profitShare=Math.max(0,P-interest-rem-tLLP);   // tax-free, split 50:50
 
-  const pr=(+$('prate').value||0)/100;
-  const taxRemInt=(rem+interest)*pr;                  // partner tax on rem+interest
-  const partnerCash=rem+interest-taxRemInt+profitShare;
-  const totalTaxLLP=tLLP+taxRemInt;
-  const extracted=rem+interest+profitShare+ (0); // gross distributable pre partner-tax handled below
+  const prA=(+$('rateA').value||0)/100, prB=(+$('rateB').value||0)/100;
+  const remA=rem/2, remB=rem/2, psA=profitShare/2, psB=profitShare/2;
+  const taxA=(remA+intA)*prA, taxB=(remB+intB)*prB;
+  const cashA=remA+intA-taxA+psA, cashB=remB+intB-taxB+psB;
+  const totalTaxLLP=tLLP+taxA+taxB;
+  const partnerCash=cashA+cashB;
 
-  // ---- Pvt Ltd comparison: same salary drawn = rem+interest ----
-  const salary=rem+interest;
+  // Pvt Ltd: same salary drawn per owner = rem+interest for that owner
+  const salA=remA+intA, salB=remB+intB, salary=salA+salB;
   const coTaxable=Math.max(0,P-salary);
-  const corpRate=(+$('corp').value||0)/100;
-  const tCorp=coTaxable*corpRate;
-  const dividend=Math.max(0,coTaxable-tCorp);
-  const taxSalary=salary*pr;
-  const taxDiv=dividend*pr;
-  const totalTaxCo=tCorp+taxSalary+taxDiv;
-  const ownerCashCo=salary-taxSalary+dividend-taxDiv;
+  const corpRate=(+$('corp').value||0)/100, tCorp=coTaxable*corpRate;
+  const dividend=Math.max(0,coTaxable-tCorp), divA=dividend/2, divB=dividend/2;
+  const taxSalA=salA*prA, taxSalB=salB*prB, taxDivA=divA*prA, taxDivB=divB*prB;
+  const totalTaxCo=tCorp+taxSalA+taxSalB+taxDivA+taxDivB;
+  const ownerCashCo=salA-taxSalA+divA-taxDivA + salB-taxSalB+divB-taxDivB;
 
-  const saving=totalTaxCo-totalTaxLLP;
-  const extraHand=partnerCash-ownerCashCo;
+  const saving=totalTaxCo-totalTaxLLP, extraHand=partnerCash-ownerCashCo;
+  const effLLP=P>0?totalTaxLLP/P*100:0, effCo=P>0?totalTaxCo/P*100:0;
 
-  // ---- KPIs ----
-  const effLLP=P>0?(totalTaxLLP/P*100):0;
-  const effCo=P>0?(totalTaxCo/P*100):0;
   $('kpis').innerHTML=`
    <div class="kpi"><div class="lbl">Book profit modelled</div><div class="val">${cr(P)}</div>
      <div class="note">before partner rem/interest</div></div>
@@ -267,64 +258,72 @@ function calc(){
    <div class="kpi ${saving>=0?'good':'warn'}"><div class="lbl">Tax saved by LLP</div>
      <div class="val">${inr(saving)}</div><div class="note">extra in owners' hands: ${inr(extraHand)}</div></div>`;
 
-  // ---- LLP breakdown table ----
   $('llptbl').innerHTML=`
-   <thead><tr><th>Component</th><th>Amount</th><th>Tax treatment</th></tr></thead><tbody>
+   <thead><tr><th>Component</th><th>Amount</th><th>Treatment</th></tr></thead><tbody>
    <tr><td>Book profit before rem &amp; interest</td><td>${inr(P)}</td><td class="foot">&mdash;</td></tr>
-   <tr class="sub"><td>&minus; Interest on capital @ ${ir}%</td><td>${inr(interest)}</td><td>deductible</td></tr>
-   <tr class="sub"><td>&minus; Partner remuneration (allowed)</td><td>${inr(allowedRem)}</td><td>deductible</td></tr>
-   ${disallowed>0?`<tr class="sub"><td>&nbsp;&nbsp;(remuneration disallowed over 40(b) cap)</td><td>${inr(disallowed)}</td><td>added back</td></tr>`:''}
+   <tr class="sub"><td>&minus; Interest on capital @ ${ir}% (A+B)</td><td>${inr(interest)}</td><td>deductible</td></tr>
+   <tr class="sub"><td>&minus; Remuneration (allowed)</td><td>${inr(allowedRem)}</td><td>deductible</td></tr>
+   ${disallowed>0?`<tr class="sub"><td>&nbsp;&nbsp;(remuneration disallowed over cap)</td><td>${inr(disallowed)}</td><td>added back</td></tr>`:''}
    <tr><td>LLP taxable income</td><td>${inr(llpTaxable)}</td><td class="foot">&mdash;</td></tr>
    <tr class="sub"><td>&minus; LLP tax @ 30%+cess (+surcharge&gt;1cr)</td><td>${inr(tLLP)}</td><td>&mdash;</td></tr>
-   <tr class="total"><td>Profit share to partners (tax-free)</td><td>${inr(profitShare)}</td>
+   <tr class="total"><td>Profit share pool (50:50, tax-free)</td><td>${inr(profitShare)}</td>
      <td><span class="pill p-ok">exempt 10(2A)</span></td></tr>
    </tbody>`;
 
   $('cap40b').innerHTML=`
    <thead><tr><th>Section 40(b) cap build-up</th><th>Amount</th></tr></thead><tbody>
-   <tr><td>Book profit (for 40(b), after interest)</td><td>${inr(bookProfit)}</td></tr>
+   <tr><td>Book profit (after interest)</td><td>${inr(bookProfit)}</td></tr>
    <tr class="sub"><td>On first &#8377;6,00,000 &rarr; higher of &#8377;3,00,000 / 90%</td>
      <td>${inr(Math.max(300000,Math.min(bookProfit,600000)*0.90))}</td></tr>
    <tr class="sub"><td>On balance &rarr; 60%</td><td>${inr(Math.max(0,bookProfit-600000)*0.60)}</td></tr>
-   <tr class="total"><td>Max deductible remuneration</td><td>${inr(capRem)}</td></tr>
+   <tr class="total"><td>Max deductible remuneration (firm)</td><td>${inr(capRem)}</td></tr>
    </tbody>`;
 
   $('capnote').innerHTML = rem>capRem
-   ? `<b>Heads up:</b> your remuneration of ${inr(rem)} exceeds the 40(b) cap of ${inr(capRem)}. The excess
-      ${inr(disallowed)} is <b>disallowed</b> — the LLP gets no deduction for it, yet the partner is still
-      taxed on it. Keep remuneration at or below the cap.`
-   : `Remuneration of ${inr(rem)} is within the 40(b) deductible cap of ${inr(capRem)}. `+
-     (mode==='opt'?`<b>Optimise</b> mode has set it to the full cap.`:'');
+   ? `<b>Heads up:</b> total remuneration ${inr(rem)} exceeds the 40(b) cap of ${inr(capRem)}. The excess
+      ${inr(disallowed)} is <b>disallowed</b> — no LLP deduction, yet still taxed on the partners. Keep it at/below the cap.`
+   : `Total remuneration ${inr(rem)} is within the 40(b) cap of ${inr(capRem)}. `+
+     (mode==='opt'?`<b>Optimise</b> set it to the full cap.`:'');
 
-  // ---- Comparison table ----
+  $('ptbl').innerHTML=`
+   <thead><tr><th>Per partner</th><th>Partner A</th><th>Partner B</th></tr></thead><tbody>
+   <tr><td>Capital contributed</td><td>${inr(capA)}</td><td>${inr(capB)}</td></tr>
+   <tr><td>Remuneration (50%)</td><td>${inr(remA)}</td><td>${inr(remB)}</td></tr>
+   <tr><td>Interest on capital @ ${ir}%</td><td>${inr(intA)}</td><td>${inr(intB)}</td></tr>
+   <tr><td>Profit share (50%, tax-free)</td><td>${inr(psA)}</td><td>${inr(psB)}</td></tr>
+   <tr class="sub"><td>Gross drawings</td><td>${inr(remA+intA+psA)}</td><td>${inr(remB+intB+psB)}</td></tr>
+   <tr class="sub"><td>&minus; Partner tax @ ${(prA*100)}% / ${(prB*100)}% (on rem+int)</td>
+     <td>${inr(taxA)}</td><td>${inr(taxB)}</td></tr>
+   <tr class="total"><td>Take-home (after own tax)</td><td>${inr(cashA)}</td><td>${inr(cashB)}</td></tr>
+   </tbody>`;
+
   $('cmp').innerHTML=`
    <thead><tr><th>Line</th><th>LLP</th><th>Pvt Ltd (salary + dividend)</th></tr></thead><tbody>
    <tr><td>Book profit before owner drawings</td><td>${inr(P)}</td><td>${inr(P)}</td></tr>
-   <tr><td>Owner salary / remuneration + interest (deductible)</td><td>${inr(salary)}</td><td>${inr(salary)}</td></tr>
+   <tr><td>Owner salary / rem + interest (deductible)</td><td>${inr(salary)}</td><td>${inr(salary)}</td></tr>
    <tr><td>Entity taxable income</td><td>${inr(llpTaxable)}</td><td>${inr(coTaxable)}</td></tr>
    <tr><td>Entity tax</td><td>${inr(tLLP)}<span class="foot"> (30%+)</span></td>
      <td>${inr(tCorp)}<span class="foot"> (${(corpRate*100).toFixed(2)}%)</span></td></tr>
    <tr><td>Distributed to owners after entity tax</td>
      <td>${inr(profitShare)}<span class="foot"> profit share</span></td>
      <td>${inr(dividend)}<span class="foot"> dividend</span></td></tr>
-   <tr><td>Owner-level tax on that distribution</td>
-     <td><span class="pill p-ok">Nil (exempt)</span></td><td>${inr(taxDiv)}</td></tr>
-   <tr><td>Owner-level tax on salary / remuneration+interest</td>
-     <td>${inr(taxRemInt)}</td><td>${inr(taxSalary)}</td></tr>
-   <tr class="total"><td>TOTAL TAX (entity + owner)</td><td>${inr(totalTaxLLP)}</td><td>${inr(totalTaxCo)}</td></tr>
+   <tr><td>Owner tax on that distribution</td>
+     <td><span class="pill p-ok">Nil (exempt)</span></td><td>${inr(taxDivA+taxDivB)}</td></tr>
+   <tr><td>Owner tax on salary / rem+interest</td><td>${inr(taxA+taxB)}</td><td>${inr(taxSalA+taxSalB)}</td></tr>
+   <tr class="total"><td>TOTAL TAX (entity + both owners)</td><td>${inr(totalTaxLLP)}</td><td>${inr(totalTaxCo)}</td></tr>
    <tr class="total"><td>IN OWNERS' HANDS (after all tax)</td><td>${inr(partnerCash)}</td><td>${inr(ownerCashCo)}</td></tr>
    </tbody>`;
 
   $('cmpfoot').innerHTML = saving>=0
-   ? `The LLP route leaves <b style="color:var(--ok)">${inr(extraHand)}</b> more in the partners' hands and
-      pays <b style="color:var(--ok)">${inr(saving)}</b> less total tax on the same book profit &mdash;
+   ? `The LLP route leaves <b style="color:var(--ok)">${inr(extraHand)}</b> more in the two partners' hands
+      and pays <b style="color:var(--ok)">${inr(saving)}</b> less total tax on the same book profit —
       an effective-rate gap of ${(effCo-effLLP).toFixed(1)} percentage points.`
-   : `On these inputs the Pvt Ltd route is marginally cheaper by ${inr(-saving)} — usually because the
-      concessional 115BAA corporate rate plus a low dividend payout beats the LLP's flat 30%. Try shifting
-      more of the LLP drawing into deductible remuneration/interest.`;
+   : `On these inputs the Pvt Ltd route is cheaper by ${inr(-saving)} — usually the concessional 115BAA rate
+      with a low dividend payout beating the LLP's flat 30%. Try shifting more drawing into deductible
+      remuneration/interest.`;
 }
 
-['profit','capital','introte','remmode','remman','prate','corp'].forEach(id=>{
+['profit','introte','remmode','remman','capA','capB','rateA','rateB','corp'].forEach(id=>{
   $(id).addEventListener('input',calc);$(id).addEventListener('change',calc);
 });
 calc();
