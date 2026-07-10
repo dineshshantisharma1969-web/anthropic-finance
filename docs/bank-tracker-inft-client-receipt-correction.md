@@ -59,9 +59,13 @@ For each row set: **Auto Tag** (col L) = `Compliance Payment (SBI)` ·
 | 1885 | 2026-07-08 | DBS | 0858OI6008876855 | 1,60,00,000 |
 | | | | **Total** | **13,25,00,000** |
 
-> The IDFC row's narration reads "…IMPRESSIONS SERVICES PVT LTD **BIKRAM SINGH CHADHA**
-> SON/SBIN0004449" — it goes to the same SBI IFSC but the beneficiary name warrants a
-> confirmation that it is the compliance account and not a personal transfer.
+> **UPDATE 2026-07-10:** the IDFC row (`IDFBR62026070703563603`, ₹1 cr) was **confirmed by
+> the user as a payment to a director** (Bikram Singh Chadha), not an SBI compliance sweep.
+> It has been re-tagged `Director Payment` with Party Name "BIKRAM SINGH CHADHA (Director)"
+> (execution 6001). It remains a real payment (`Inter-Bank Excluded? = NO`), so the deficit
+> is unchanged at ₹24.71 cr; only the SBI-compliance bucket drops from ₹13.25 cr to ₹12.25 cr.
+> The loop classifier now carries a `DIRECTOR_NAMES` guard so future director payments are
+> tagged correctly and never counted as SBI compliance or inter-bank.
 
 ## Effect on July 1–10 headline numbers
 

@@ -161,6 +161,14 @@ const parseTxns = node({
         "  const h = rows.findIndex(r => String(r[0]).trim()==='Transaction Date' && r.some(c=>String(c).toLowerCase().includes('debit')));\n" +
         "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const dc=String(r[3]||'').trim().toUpperCase(); if(dc!=='C'&&dc!=='D') continue; const desc=String(r[1]||'').trim(); const amt=num(r[2]); if(amt==='') continue; const date=dmy(r[5])||dmy(r[0]); const ref=(String(r[4]||'').trim()||'HDF')+'-'+date+'-'+amt; const type=dc==='C'?'RECEIPT':'PAYMENT'; const m=modeOf(desc); const party=(m==='NEFT'||m==='RTGS')?partyNeft(desc):''; const ib=isInter(desc,type,party); out.push(rec(date,date,desc.slice(0,200),party,m,ref,type, dc==='D'?amt:'', dc==='C'?amt:'', ib)); }\n" +
         "}\n" +
+        // Director / related-party payments: a payment whose narration names a known director
+        // (e.g. an RTGS to the director's own account, which can route via the SBI IFSC and so
+        // looks like a compliance sweep) is a real outflow — NOT an SBI compliance payment and
+        // NOT an inter-bank transfer. Detect by director name and tag it distinctly; this
+        // post-pass overrides any earlier isInter/classify decision for these rows.
+        "const DIRECTOR_NAMES=['BIKRAM SINGH CHADHA'];\n" +
+        "function matchDirector(narr){ const u=(narr||'').toUpperCase(); for(const n of DIRECTOR_NAMES){ if(u.indexOf(n)>-1) return n; } return ''; }\n" +
+        "for (const o of out) { const j=o.json; if(String(j['Type'])==='PAYMENT'){ const dn=matchDirector(j['Narration']); if(dn){ j['Party Name']=dn+' (Director)'; j['Auto Tag']='Director Payment'; j['Inter-Bank Excluded?']='NO'; } } }\n" +
         // Txn Key = stable dedup key used by the Append-or-Update sheet write (LIVE workflow
         // hqrLbu8oBQxIURU3 matches on this column).
         "function normRefKey(s){ return String(s==null?'':s).toUpperCase().replace(/\\s+/g,'').replace(/\\.0$/,''); }\n" +
