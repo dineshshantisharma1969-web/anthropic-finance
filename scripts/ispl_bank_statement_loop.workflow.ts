@@ -161,6 +161,10 @@ const parseTxns = node({
         "  const h = rows.findIndex(r => String(r[0]).trim()==='Transaction Date' && r.some(c=>String(c).toLowerCase().includes('debit')));\n" +
         "  for(let i=h+1;i<rows.length;i++){ const r=rows[i]; const dc=String(r[3]||'').trim().toUpperCase(); if(dc!=='C'&&dc!=='D') continue; const desc=String(r[1]||'').trim(); const amt=num(r[2]); if(amt==='') continue; const date=dmy(r[5])||dmy(r[0]); const ref=(String(r[4]||'').trim()||'HDF')+'-'+date+'-'+amt; const type=dc==='C'?'RECEIPT':'PAYMENT'; const m=modeOf(desc); const party=(m==='NEFT'||m==='RTGS')?partyNeft(desc):''; const ib=isInter(desc,type,party); out.push(rec(date,date,desc.slice(0,200),party,m,ref,type, dc==='D'?amt:'', dc==='C'?amt:'', ib)); }\n" +
         "}\n" +
+        // Txn Key = stable dedup key used by the Append-or-Update sheet write (LIVE workflow
+        // hqrLbu8oBQxIURU3 matches on this column).
+        "function normRefKey(s){ return String(s==null?'':s).toUpperCase().replace(/\\s+/g,'').replace(/\\.0$/,''); }\n" +
+        "for (const o of out) { const j=o.json; j['Txn Key'] = j['Bank Account']+'|'+j['Date']+'|'+normRefKey(j['Reference No'])+'|'+String(Number(j['Debit'])||0)+'|'+String(Number(j['Credit'])||0); }\n" +
         "return out;\n"
     }
   },

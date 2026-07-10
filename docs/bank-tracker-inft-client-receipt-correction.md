@@ -1,5 +1,14 @@
 # One-time correction — July 2026 rows misclassified as inter-bank
 
+> **✅ APPLIED 2026-07-10 (evening).** All 15 rows were updated in the live sheet via the
+> one-off n8n workflow **ISPL One-off: July 2026 INFT + SBI Corrections** (`nAdoD8cpRDRuObsj`,
+> execution 5997), matching on `Txn Key`. The LIVE loop workflow (`hqrLbu8oBQxIURU3`) was
+> patched with both classifier fixes and republished (active version `b90c064b`). The
+> Dashboard (`tqYOP2Rvgc9kI43F`, execution 5998) and Client Receipts (`eMfGJ6cGzOt4VLaj`,
+> execution 5999) refreshes were run and verified: cumulative net July 1–10 now reads
+> **−₹24.71 cr** (receipts ₹16.59 cr / payments ₹41.30 cr). This document is kept as the
+> audit record; no further action needed.
+
 **Sheet:** [ISPL Bank Statement Tracker](https://docs.google.com/spreadsheets/d/1P76gniXRPX01Hhaizga1xxd-TjBT2-jMfHM_KGRtpRc/edit) · **Tab:** `July 2026`
 
 Two classifier defects (both fixed in `scripts/ispl_bank_statement_loop.workflow.ts` on
