@@ -69,7 +69,13 @@ Read the PDF/Excel attachment(s) and the email body. For each transaction captur
 ### Step 4 — Inter-Bank Filter (exclude internal transfers)
 Drop any line that is a movement between ISPL's own accounts. Exclude when **any** rule matches:
 
-1. Transfer between ISPL banks: **HDFC ↔ DBS ↔ SBI ↔ Axis**
+> **SBI exception (2026-07-10):** the SBI account `31024290656` (SBIN0004449) is used **only
+> for compliance payments** (GST / TDS / PF / ESI). Transfers **TO** it from any tracked
+> account are therefore real outflows — kept in Payments, tagged `Compliance Payment (SBI)`,
+> NOT excluded. Transfers **FROM** it into tracked accounts are WCDL/limit drawdowns
+> (funding, not income) and remain excluded.
+
+1. Transfer between ISPL banks: **HDFC ↔ DBS ↔ SBI ↔ Axis** (except payments *to* SBI — see box above)
 2. Narration contains `SWEEP`, `FD BOOKING`, `OD ACCOUNT`, or `INTERNAL`
 3. "Impressions Services" appears as **both** sender and receiver
 4. Self-transfer / own-account keywords
@@ -264,6 +270,7 @@ one durable mechanism:
 | 2026-06-30 | Monthly-reset config | — | Switched the loop + dashboard to **per-month tabs** so July starts afresh (see "Monthly reset" above). From 2026-07-01 data lands in tab `"Jul 2026"` and the Dashboard cumulative resets to ₹0. June to be cleared from the live sheet per instruction. Requires re-deploying both workflows in n8n. |
 | 2026-07-02 | Fixes deployed | — | Four fixes after the first live month-rollover — see **"Fixes (2026-07-02)"** below. |
 | 2026-07-10 | INFT client-receipt fix | — | ICICI `INF/INFT` credits are no longer blanket-excluded as inter-bank — see **"Fix (2026-07-10)"** below. 6 July rows (₹67,13,012 total: Snow White ×3, Elite Metaliks, Bengal Ultimate, Clinikally) need the one-time in-sheet correction listed in `docs/bank-tracker-inft-client-receipt-correction.md`. Requires re-deploying the loop workflow in n8n. |
+| 2026-07-10 | SBI compliance-payment fix | — | Payments **to** the SBI compliance account are no longer excluded as inter-bank (see the SBI exception box in Step 4); they stay in Payments tagged `Compliance Payment (SBI)`. 9 July rows (₹13.25 cr) need the one-time in-sheet correction — same doc as above. Corrected July 1–10 position: receipts ₹16.59 cr, payments ₹41.30 cr, deficit ₹24.71 cr. |
 
 ### Fixes (2026-07-02)
 1. **Month tab name is the FULL month** — `toFormat('LLLL yyyy')` → `"July 2026"`, `"August 2026"` (not the abbreviated `"Jul 2026"`; the live tab was created with the full name, so the abbreviation caused a "sheet not found").
@@ -286,6 +293,16 @@ The parser now extracts the counterparty from the INFT narration segments
 row when the party (or the TRFD/FUND rules) shows it is genuinely ISPL's own account.
 One-time correction of the six already-written July rows: see
 `docs/bank-tracker-inft-client-receipt-correction.md`.
+
+### Fix (2026-07-10) — payments to the SBI compliance account are real payments
+The SBI account `31024290656` (SBIN0004449) is used only for compliance payments
+(GST / TDS / PF / ESI), so the sweeps from DBS/IDFC into it are real outflows, not internal
+parking. The old filter excluded them as inter-bank, understating July 1–10 payments by
+**₹13.25 cr**. `isInter()` now keeps a PAYMENT whose narration carries the own name **and**
+STATE BANK / SBIN0, and `classify()` tags it `Compliance Payment (SBI)`. Receipts coming
+back **from** SBI into the tracked accounts (₹17.88 cr in July 1–10) are WCDL/limit
+drawdowns — funding, not income — and remain excluded. One-time correction of the nine
+already-written July rows: same doc as above.
 
 ### Review flags for 2026-06-16
 - **63 ICICI "CMS/<id>/<9-digit>" debits** are tagged `CMS Settlement / Review Required` — the

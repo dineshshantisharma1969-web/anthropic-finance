@@ -1,14 +1,18 @@
-# One-time correction — INFT client receipts wrongly excluded (July 2026)
+# One-time correction — July 2026 rows misclassified as inter-bank
 
 **Sheet:** [ISPL Bank Statement Tracker](https://docs.google.com/spreadsheets/d/1P76gniXRPX01Hhaizga1xxd-TjBT2-jMfHM_KGRtpRc/edit) · **Tab:** `July 2026`
 
-The daily loop excluded every ICICI `INF/INFT` credit as an inter-bank transfer because it
-hardcoded the party as ISPL's own account. Six of those credits are genuine client receipts
-(clients paying from their own ICICI accounts). The parser is fixed from 2026-07-10
-(`scripts/ispl_bank_statement_loop.workflow.ts`); the six rows already written to the sheet
-need this one-time edit.
+Two classifier defects (both fixed in `scripts/ispl_bank_statement_loop.workflow.ts` on
+2026-07-10) left 15 rows in the sheet with the wrong `Inter-Bank Excluded?` flag. Rows
+already written need the one-time edits below. Row numbers are as of 2026-07-10; if the
+loop has appended since, match on **Reference No** (column G). The Dashboard and Client
+Receipts tabs are rebuilt daily by the refresh workflows, so they pick up the corrections
+on their next 09:45/09:50 run — no manual edit needed there.
 
-## Rows to correct (match on Reference No, column G)
+## Correction 1 — INFT client receipts (6 rows, ₹67,13,012)
+
+The ICICI parser hardcoded the party of every `INF/INFT` (ICICI-to-ICICI) credit as ISPL's
+own account, excluding genuine client payments made from the client's own ICICI account.
 
 For each row set: **Party Name** (col E) as below · **Auto Tag** (col L) = `Client Receipt` ·
 **Inter-Bank Excluded?** (col M) = `NO`.
@@ -23,26 +27,51 @@ For each row set: **Party Name** (col E) as below · **Auto Tag** (col L) = `Cli
 | 1634 | 2026-07-08 | S37962726 | 1,67,012.00 | SNOW WHITE TECHNOLOG |
 | | | **Total** | **67,13,012.00** | |
 
-Row numbers are as of 2026-07-10; if the loop has appended since, match on Reference No.
-The Dashboard and Client Receipts tabs are rebuilt daily by the refresh workflows, so they
-pick up the corrections on their next 09:45/09:50 run — no manual edit needed there.
+## Correction 2 — payments to the SBI compliance account (9 rows, ₹13.25 cr)
+
+The SBI account `31024290656` (SBIN0004449) is used **only for compliance payments**
+(GST / TDS / PF / ESI), so sweeps into it are real outflows, not internal transfers.
+Receipts coming back **from** SBI (₹17.88 cr in July 1–10) are WCDL/limit drawdowns —
+funding — and correctly stay excluded.
+
+For each row set: **Auto Tag** (col L) = `Compliance Payment (SBI)` ·
+**Inter-Bank Excluded?** (col M) = `NO`.
+
+| Sheet row | Date | From account | Reference No | Debit ₹ |
+|-----------|------------|-----------|-----------|-------------:|
+| 62 | 2026-07-01 | DBS | 0811OP6176672079 | 1,50,00,000 |
+| 674 | 2026-07-06 | DBS | 0811OP6176967017 | 2,00,00,000 |
+| 675 | 2026-07-06 | DBS | 0811OP6176966982 | 3,00,00,000 |
+| 676 | 2026-07-06 | DBS | 0811OP6176966989 | 75,00,000 |
+| 1144 | 2026-07-07 | DBS | 0811OP6177069413 | 1,00,00,000 |
+| 1903 | 2026-07-07 | IDFC | IDFBR62026070703563603 | 1,00,00,000 |
+| 1883 | 2026-07-08 | DBS | 0858OI6008875984 | 1,00,00,000 |
+| 1884 | 2026-07-08 | DBS | 0858OI6008876856 | 1,40,00,000 |
+| 1885 | 2026-07-08 | DBS | 0858OI6008876855 | 1,60,00,000 |
+| | | | **Total** | **13,25,00,000** |
+
+> The IDFC row's narration reads "…IMPRESSIONS SERVICES PVT LTD **BIKRAM SINGH CHADHA**
+> SON/SBIN0004449" — it goes to the same SBI IFSC but the beneficiary name warrants a
+> confirmation that it is the compliance account and not a personal transfer.
 
 ## Effect on July 1–10 headline numbers
 
-| Metric | Before | After correction |
+| Metric | As displayed | After both corrections |
 |--------|-------:|------:|
 | Receipts MTD | ₹15.92 cr | ₹16.59 cr |
-| Payments MTD | ₹28.05 cr | ₹28.05 cr |
-| Cumulative deficit | ₹12.13 cr | ₹11.46 cr |
-| WCDL interest @7.9% p.a., Jul 1–10 | ₹1,17,066 | ₹1,08,034 |
-| Interest run-rate at current deficit | ₹26,254/day | ₹24,800/day |
+| Payments MTD | ₹28.05 cr | ₹41.30 cr |
+| Cumulative deficit | ₹12.13 cr | **₹24.71 cr** |
+| WCDL interest @7.9% p.a., Jul 1–10 | ₹1,17,066 | ₹2,40,136 |
+| Interest run-rate at current deficit | ₹26,254/day | ₹53,478/day (~₹16 lakh/month) |
+
+Funding of the corrected ₹24.71 cr deficit: **₹17.88 cr** WCDL/limit drawdowns from SBI
+into the tracked accounts + **~₹6.8 cr** drawdown of balances/OD in the tracked accounts.
 
 ## Deployment
 
 1. Re-deploy **ISPL Bank Statement Loop** (`Cv3IBhUaGD7DpHk7`) in n8n from
-   `scripts/ispl_bank_statement_loop.workflow.ts` so future INFT client receipts classify
-   correctly.
-2. Apply the six row edits above (n8n Google Sheets update matching on `Reference No`, or
+   `scripts/ispl_bank_statement_loop.workflow.ts` so future rows classify correctly.
+2. Apply the 15 row edits above (n8n Google Sheets update matching on `Reference No`, or
    manually in the sheet).
 3. Let the 09:45 Dashboard refresh / 09:50 Client Receipts run rebuild the summary tabs, or
    trigger them once manually.
