@@ -1,0 +1,182 @@
+{
+  "name": "Bill Photo → Calculations → WhatsApp (v1)",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-400, 0],
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Has Bill Photo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-180, 0],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "photo-or-image-doc",
+              "leftValue": "={{ !!($json.message?.photo || ($json.message?.document && ($json.message.document.mime_type || '').startsWith('image/'))) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Get Bill Photo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [60, -100],
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.photo ? $json.message.photo.last().file_id : $json.message.document.file_id }}",
+        "download": true
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Ask For Photo",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [60, 140],
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "📷 Please send a photo of the bill (as a photo or an image file). I'll read it, do the calculations and forward the summary to WhatsApp.",
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Extract Bill Data (AI Vision)",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [300, -100],
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "text": "You are a bill/receipt/invoice data extractor. Read the attached bill image and return ONLY valid JSON (no markdown, no commentary) with exactly this schema:\n{\n  \"merchant\": string|null,\n  \"bill_date\": string|null,\n  \"invoice_number\": string|null,\n  \"currency\": string|null,          // ISO code, e.g. \"INR\"\n  \"line_items\": [ { \"description\": string, \"quantity\": number|null, \"unit_price\": number|null, \"amount\": number|null } ],\n  \"subtotal\": number|null,          // printed subtotal, if shown\n  \"discount\": number|null,          // total discount as a positive number\n  \"taxes\": [ { \"name\": string, \"rate_percent\": number|null, \"amount\": number|null } ],   // e.g. CGST, SGST, IGST, VAT, service charge if taxed\n  \"other_charges\": [ { \"name\": string, \"amount\": number } ],  // delivery fee, packing, round-off etc.\n  \"grand_total\": number|null        // the final printed payable amount\n}\nRules: numbers must be plain numbers (no currency symbols, no thousands separators). Use null when a value is not visible. If quantity is missing assume it is 1. Put round-off adjustments in other_charges (negative amount if subtracted).",
+        "inputType": "base64",
+        "binaryPropertyName": "data",
+        "options": {
+          "detail": "high",
+          "maxTokens": 2000
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "Calculate Bill Totals",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [540, -100],
+      "parameters": {
+        "jsCode": "// ---------- 1. Parse the AI output into a bill object ----------\nconst aiOut = $input.first().json;\nconst raw = aiOut.content ?? aiOut.text ?? aiOut.message?.content ?? JSON.stringify(aiOut);\n\nlet bill;\nconst fenced = String(raw).match(/```(?:json)?\\s*([\\s\\S]*?)```/);\ntry {\n  bill = JSON.parse((fenced ? fenced[1] : String(raw)).trim());\n} catch (e) {\n  const braces = String(raw).match(/\\{[\\s\\S]*\\}/);\n  if (!braces) throw new Error('Could not parse bill JSON from AI output: ' + String(raw).slice(0, 300));\n  bill = JSON.parse(braces[0]);\n}\n\n// ---------- 2. Helpers ----------\nconst num = (v) => {\n  const n = typeof v === 'string' ? parseFloat(v.replace(/[^0-9.\\-]/g, '')) : Number(v);\n  return Number.isFinite(n) ? n : 0;\n};\nconst r2 = (n) => Math.round(n * 100) / 100;\nconst cur = !bill.currency || bill.currency === 'INR' ? '₹' : bill.currency + ' ';\nconst fmt = (n) => cur + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });\n\n// ---------- 3. Calculations ----------\nconst items = (bill.line_items || []).map((it) => {\n  const qty = num(it.quantity) || 1;\n  const rate = num(it.unit_price);\n  const amount = num(it.amount) || r2(qty * rate);\n  return { description: it.description || 'Item', qty, rate, amount };\n});\n\nconst itemsTotal = r2(items.reduce((s, i) => s + i.amount, 0));\nconst discount = Math.abs(num(bill.discount));\nconst taxes = (bill.taxes || []).map((t) => ({ name: t.name || 'Tax', rate: num(t.rate_percent), amount: num(t.amount) }));\nconst taxTotal = r2(taxes.reduce((s, t) => s + t.amount, 0));\nconst otherCharges = (bill.other_charges || []).map((c) => ({ name: c.name || 'Charge', amount: num(c.amount) }));\nconst otherTotal = r2(otherCharges.reduce((s, c) => s + c.amount, 0));\n\nconst computedTotal = r2(itemsTotal - discount + taxTotal + otherTotal);\nconst printedTotal = num(bill.grand_total);\nconst diff = r2(printedTotal - computedTotal);\nconst totalsMatch = Math.abs(diff) <= 1; // tolerate ₹1 round-off\nconst taxPctOfItems = itemsTotal > 0 ? r2((taxTotal / itemsTotal) * 100) : 0;\n\n// ---------- 4. Build the WhatsApp message ----------\nconst lines = [];\nlines.push(`🧾 *Bill Summary${bill.merchant ? ' — ' + bill.merchant : ''}*`);\nconst meta = [];\nif (bill.bill_date) meta.push('📅 ' + bill.bill_date);\nif (bill.invoice_number) meta.push('No: ' + bill.invoice_number);\nif (meta.length) lines.push(meta.join('  |  '));\nlines.push('');\nif (items.length) {\n  lines.push(`*Items (${items.length}):*`);\n  items.forEach((i, idx) => {\n    const qtyPart = i.qty !== 1 || i.rate ? ` — ${i.qty} × ${fmt(i.rate || (i.amount / i.qty))}` : '';\n    lines.push(`${idx + 1}. ${i.description}${qtyPart} = ${fmt(i.amount)}`);\n  });\n  lines.push('');\n}\nlines.push(`Items total: ${fmt(itemsTotal)}`);\nif (discount) lines.push(`Discount: -${fmt(discount)}`);\ntaxes.forEach((t) => lines.push(`${t.name}${t.rate ? ' @ ' + t.rate + '%' : ''}: ${fmt(t.amount)}`));\nif (taxes.length) lines.push(`Total tax: ${fmt(taxTotal)} (${taxPctOfItems}% of items)`);\notherCharges.forEach((c) => lines.push(`${c.name}: ${fmt(c.amount)}`));\nlines.push('');\nlines.push(`*Grand total (printed): ${fmt(printedTotal)}*`);\nlines.push(`Grand total (computed): ${fmt(computedTotal)}`);\nlines.push(totalsMatch ? '✅ Totals check out.' : `⚠️ MISMATCH of ${fmt(Math.abs(diff))} — printed total is ${diff > 0 ? 'HIGHER' : 'LOWER'} than the computed one. Please verify the bill.`);\n\nconst whatsappMessage = lines.join('\\n');\nconst telegramMessage = '✅ Bill processed and summary sent to WhatsApp.\\n\\n' + whatsappMessage.replace(/\\*/g, '');\n\n// ---------- 5. Output ----------\nreturn [{\n  json: {\n    merchant: bill.merchant,\n    bill_date: bill.bill_date,\n    invoice_number: bill.invoice_number,\n    items,\n    itemsTotal,\n    discount,\n    taxes,\n    taxTotal,\n    otherCharges,\n    printedTotal,\n    computedTotal,\n    difference: diff,\n    totalsMatch,\n    whatsappMessage,\n    telegramMessage\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Send to WhatsApp",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [780, -100],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "phoneNumberId": "YOUR_WHATSAPP_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "91XXXXXXXXXX",
+        "textBody": "={{ $json.whatsappMessage }}",
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "name": "Confirm on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1020, -100],
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $('Calculate Bill Totals').item.json.telegramMessage }}",
+        "additionalFields": {}
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          { "node": "Has Bill Photo?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Has Bill Photo?": {
+      "main": [
+        [
+          { "node": "Get Bill Photo", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Ask For Photo", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Bill Photo": {
+      "main": [
+        [
+          { "node": "Extract Bill Data (AI Vision)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Bill Data (AI Vision)": {
+      "main": [
+        [
+          { "node": "Calculate Bill Totals", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Calculate Bill Totals": {
+      "main": [
+        [
+          { "node": "Send to WhatsApp", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send to WhatsApp": {
+      "main": [
+        [
+          { "node": "Confirm on Telegram", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
