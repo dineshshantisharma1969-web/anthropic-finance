@@ -7,7 +7,8 @@
    - recomputes each line item (`quantity × unit price`) when the amount isn't printed,
    - sums items, subtracts discounts, adds each tax line (CGST/SGST/IGST etc.) and other charges,
    - computes the total tax as a % of the items total,
-   - **cross-checks the computed grand total against the printed grand total** and flags any mismatch bigger than ₹1 (round-off tolerance).
+   - **cross-checks the computed grand total against the printed grand total** and flags any mismatch bigger than ₹1 (round-off tolerance),
+   - **bifurcates the bill amount** between the four parties: **Kalpana 20%, Batra ji 25%, Jitender 25%, Joshi ji 30%** (rounding paise are absorbed by the largest share so the four shares always add up to exactly the bill total).
 4. The formatted summary is **sent to a WhatsApp number** via the WhatsApp Business Cloud API.
 5. The Telegram bot replies with the same summary as confirmation. If you send text (no image), the bot asks for a bill photo instead of failing.
 
@@ -79,6 +80,12 @@ Round off: ₹0.50
 Grand total (printed): ₹1,103.00
 Grand total (computed): ₹1,103.00
 ✅ Totals check out.
+
+Bifurcation of ₹1,103.00:
+Kalpana (20%): ₹220.60
+Batra ji (25%): ₹275.75
+Jitender (25%): ₹275.75
+Joshi ji (30%): ₹330.90
 ```
 
 If the printed total doesn't equal the computed one (beyond ₹1 round-off) the last line becomes:
@@ -86,6 +93,17 @@ If the printed total doesn't equal the computed one (beyond ₹1 round-off) the 
 
 ## Customising the calculations
 All arithmetic lives in the **Calculate Bill Totals** Code node:
+- **Bifurcation shares** — edit the `SPLIT` array (names and `pct` values; percentages should total 100):
+  ```js
+  const SPLIT = [
+    { name: 'Kalpana', pct: 20 },
+    { name: 'Batra ji', pct: 25 },
+    { name: 'Jitender', pct: 25 },
+    { name: 'Joshi ji', pct: 30 },
+  ];
+  ```
+  The split is applied to the printed grand total (falling back to the computed total if the printed
+  one is unreadable), and any rounding paise are added to the last entry so shares sum exactly.
 - **Round-off tolerance** — change `Math.abs(diff) <= 1`.
 - **Extra derived figures** (e.g. per-person split, tip %, category tagging) — compute them in
   section 3 of the code and append lines to the message in section 4.
