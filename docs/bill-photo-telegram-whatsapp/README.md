@@ -1,5 +1,10 @@
 # Automated workflow: Bill photo on Telegram → calculations → WhatsApp
 
+> **Deployed:** this workflow has been created in the n8n instance as
+> **"Bill Photo → Calculations → WhatsApp"** (workflow ID `kqFjqmPinNbD8LHp`,
+> https://kappulearnn8n.app.n8n.cloud/workflow/kqFjqmPinNbD8LHp).
+> The JSON in this folder is a reference copy for re-import/recovery.
+
 ## What it does
 1. **Trigger** — you (or anyone allowed to use the bot) send a **photo of a bill** to a Telegram bot.
 2. n8n downloads the photo and an **AI vision model reads the bill** — merchant, date, invoice number, every line item, discounts, GST/other taxes, charges, and the printed grand total.
