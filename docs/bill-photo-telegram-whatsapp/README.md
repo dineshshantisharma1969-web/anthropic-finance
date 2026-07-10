@@ -1,9 +1,17 @@
 # Automated workflow: Bill photo on Telegram → calculations → WhatsApp
 
-> **Deployed:** this workflow has been created in the n8n instance as
+> **Deployed & ACTIVE:** this workflow is live in the n8n instance as
 > **"Bill Photo → Calculations → WhatsApp"** (workflow ID `kqFjqmPinNbD8LHp`,
 > https://kappulearnn8n.app.n8n.cloud/workflow/kqFjqmPinNbD8LHp).
-> The JSON in this folder is a reference copy for re-import/recovery.
+>
+> **The deployed version delivers to WhatsApp via [Green API](https://green-api.com)**
+> (free Developer plan, instance `710722679958`, sender WhatsApp linked by QR),
+> NOT via the Meta WhatsApp Business Cloud node described below — Meta developer
+> registration was skipped as too cumbersome. The "Send to WhatsApp" node was replaced
+> with an HTTP Request node: `POST https://7107.api.greenapi.com/waInstance{idInstance}/sendMessage/{apiTokenInstance}`
+> with JSON body `{ chatId: "91XXXXXXXXXX@c.us", message: <bill summary> }`.
+> Green API free plan limit: max 3 distinct chats per month (unlimited messages).
+> The JSON in this folder is the original reference copy for re-import/recovery.
 
 ## What it does
 1. **Trigger** — you (or anyone allowed to use the bot) send a **photo of a bill** to a Telegram bot.
