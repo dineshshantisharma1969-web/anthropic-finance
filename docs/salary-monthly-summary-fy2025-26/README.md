@@ -4,8 +4,11 @@ Month-wise totals of the 12 monthly salary sheets (`*_M13_FINAL.xlsx`, sheet "Sa
 from Drive folder `ISPL SALARY AUDIT 25-26/fy2025-26/ESI_WASHING_REALLOCATED`.
 
 Column order follows the requested layout: **REVISED GROSS → REVISED GROSS NEW → all deduction
-columns → REVISED TOTAL DEDUCTION → REVISED NET PAYABLE → OT / FESTIVAL HOLIDAY / NATIONAL (PAID)
-HOLIDAY blocks (amount, ESIC, net).**
+columns → REVISED TOTAL DEDUCTION → REVISED NET PAYABLE → ORIGINAL NETPAYABLE → NET Δ → OT /
+FESTIVAL HOLIDAY / NATIONAL (PAID) HOLIDAY blocks (amount, ESIC, net).**
+
+The two `NET` proof columns confirm the sacrosanct rule: **REVISED NET PAYABLE equals the ORIGINAL
+NETPAYABLE (as paid to employees) to the rupee — NET Δ = ₹0 every month**, and ₹0 for the FY total.
 
 ## Files
 
@@ -40,8 +43,12 @@ and the temp copy was deleted. Orchestrated through the user's n8n instance
 
 ## Checks & balances
 
+- **Net payable preserved (golden rule):** `ORIGINAL NETPAYABLE − REVISED NET PAYABLE = ₹0` for
+  every month and for the FY total (₹293,29,89,494 = ₹293,29,89,494). All PF/ESI adjustments are
+  absorbed into the OTHER DEDUCTION plug, so what reached employees never changed.
 - `REVISED GROSS − REVISED TOTAL DEDUCTION` vs `REVISED NET PAYABLE`: within ±₹365/month
-  (stored-value rounding; consistent with the C2 tolerance in the reconciliation skill).
+  (stored-value rounding *inside* the revised block; consistent with the C2 tolerance in the
+  reconciliation skill — cosmetic, not a change to what was paid).
 - REVISED PF and REVISED NET PAYABLE totals for **all 12 months exactly match** the
   `PF_ESI_Reco_Summary_FY2025-26` produced in the morning session (e.g. Apr-25 PF ₹2,29,80,428 /
   NET ₹22,96,89,886 … Mar-26 PF ₹2,58,44,828 / NET ₹26,35,30,256).
@@ -56,6 +63,8 @@ and the temp copy was deleted. Orchestrated through the user's n8n instance
 | ESIC (REVISED) | ₹1,84,65,975 |
 | REVISED TOTAL DEDUCTION | ₹144,35,65,364 |
 | REVISED NET PAYABLE | ₹293,29,89,494 |
+| ORIGINAL NETPAYABLE | ₹293,29,89,494 |
+| NET Δ (Orig − Revised) | ₹0 |
 | NET OT | ₹11,78,54,765 |
 | FESTIVAL HOLIDAY NET | ₹41,63,785 |
 | NATIONAL/PAID HOLIDAY NET | ₹71,16,268 |
