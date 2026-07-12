@@ -107,8 +107,8 @@ tr.tot td{border-top:2px solid var(--ink);border-bottom:none;font-weight:700;col
     </div>
     <div class="card">
       <h2>Earnings mix, monthly</h2>
-      <p class="cap">Revised gross = basic + DA + attendance allowance (wage-code plug)</p>
-      <div class="legend"><span class="it"><span class="sw" style="background:var(--s1)"></span>Revised basic</span><span class="it"><span class="sw" style="background:var(--s2)"></span>Revised DA</span><span class="it"><span class="sw" style="background:var(--s3)"></span>Attendance allowance</span></div>
+      <p class="cap">Revised basic + revised DA + all allowance columns BW:DO of the salary sheet (HRA → festival holiday)</p>
+      <div class="legend"><span class="it"><span class="sw" style="background:var(--s1)"></span>Revised basic</span><span class="it"><span class="sw" style="background:var(--s2)"></span>Revised DA</span><span class="it"><span class="sw" style="background:var(--s3)"></span>Allowances (BW:DO)</span></div>
       <div id="ch-mix"></div>
     </div>
   </div>
@@ -156,7 +156,7 @@ tr.tot td{border-top:2px solid var(--ink);border-bottom:none;font-weight:700;col
 
   <div class="foot">
     Source: 12 × <i>*_M13_FINAL.xlsx</i> in Drive › ISPL SALARY AUDIT 25-26 › fy2025-26 › ESI_WASHING_REALLOCATED · column totals over all data rows.
-    Companion sheets: <i>Earnings_Deductions_Summary_FY2025-26</i> and <i>Monthly_Salary_Deductions_Summary_FY2025-26</i> (same folder).
+    Allowances block = columns BW:DO of each sheet (verified against the uploaded April file, exact match). Companion sheets: <i>Earnings_Deductions_Summary_FY2025-26</i> and <i>Monthly_Salary_Deductions_Summary_FY2025-26</i> (same folder).
     PF &amp; net totals reconcile exactly with PF_ESI_Reco_Summary (11-Jul-2026). Generated 12-Jul-2026.
   </div>
 </div>
@@ -171,6 +171,8 @@ const D = {
   basic:[211416551,209473186,199200144,205332249,200916392,204438669,204369750,203279779,213956102,214225091,212714442,217214033],
   da:[8218107,8731670,9203092,9465366,9706687,10103095,10700467,11257174,13147843,13286862,13838731,13820562],
   att:[146197433,146057004,146603417,129720116,133057688,129774119,140079580,130306315,138855752,165452143,168417220,174015778],
+  allow:[137606832,131246145,179601679,101401291,97011435,99086564,102796499,59897480,64584597,128171298,132660523,136220935],
+  earn:[357241490,349451001,388004915,316198906,307634514,313628328,317866716,274434433,291688542,355683251,359213696,367255530],
   pf:[22980428,22977657,23319453,23982900,23833745,24402372,24286578,23861498,25136852,25669090,25462898,25844828],
   esi:[1447434,1466653,1558822,1524007,1512147,1541389,1535460,1508310,1577611,1605107,1570879,1618156],
   otnet:[8609450,10226036,9308164,9166561,10216093,8988405,11095937,9875642,9918173,10809081,8978783,10662440],
@@ -220,6 +222,7 @@ const el=(n,at)=>{const e=document.createElementNS(NS,n);for(const k in at)e.set
   const tiles = [
     {hero:true,lbl:"Net payable, FY 2025-26",val:"₹"+cr(fyNet)+" cr",note:"paid to employees · preserved to the rupee through the audit",spark:D.net},
     {lbl:"Revised gross",val:"₹"+cr(fyGross)+" cr",note:"basic + DA + attendance alw"},
+    {lbl:"Allowances (BW:DO)",val:"₹"+cr(sum(D.allow))+" cr",note:"all 44 allowance heads, FY"},
     {lbl:"PF deducted",val:"₹"+cr(fyPF)+" cr",note:"= ECR filed, all 12 months"},
     {lbl:"ESIC deducted",val:"₹"+cr(fyESI)+" cr",note:"= Future sheet, employee side"},
     {lbl:"Net OT paid",val:"₹"+cr(fyOT)+" cr",note:"settled outside salary net"},
@@ -297,7 +300,7 @@ function xLabels(svg,X,H,pad,every=1){
   const Yv=v=>pad.t+(1-v/CR/hi)*(H-pad.t-pad.b);
   yTicks(svg,pad,W,H,v=>pad.t+(1-v/hi)*(H-pad.t-pad.b),[0,10,20,30,40],v=>"₹"+v+" cr");
   const band=(W-pad.l-pad.r)/12, bw=Math.min(24,band-8);
-  const cols=[["basic",css("--s1"),"Revised basic"],["da",css("--s2"),"Revised DA"],["att",css("--s3"),"Attendance alw"]];
+  const cols=[["basic",css("--s1"),"Revised basic"],["da",css("--s2"),"Revised DA"],["allow",css("--s3"),"Allowances (BW:DO)"]];
   M.forEach((m,i)=>{
     const x=pad.l+band*i+(band-bw)/2;
     let acc=0;
@@ -313,8 +316,8 @@ function xLabels(svg,X,H,pad,every=1){
     hit.addEventListener("pointermove",e=>showTip(e.clientX,e.clientY,m,[
       [css("--s1"),"Revised basic","₹"+cr(D.basic[i])+" cr"],
       [css("--s2"),"Revised DA","₹"+cr(D.da[i])+" cr"],
-      [css("--s3"),"Attendance alw","₹"+cr(D.att[i])+" cr"],
-      [css("--ink"),"Revised gross","₹"+cr(D.gross[i])+" cr"]]));
+      [css("--s3"),"Allowances (BW:DO)","₹"+cr(D.allow[i])+" cr"],
+      [css("--ink"),"Total earnings","₹"+cr(D.earn[i])+" cr"]]));
     hit.addEventListener("pointerleave",hideTip);
     svg.appendChild(hit);
     const t=el("text",{x:x+bw/2,y:H-pad.b+16,"text-anchor":"middle"});
@@ -437,7 +440,7 @@ function xLabels(svg,X,H,pad,every=1){
 /* ---------- table ---------- */
 (function(){
   const tb=document.getElementById("tbl");
-  const cols=["Month","Rows","Revised basic","Revised DA","Attend. alw","Revised gross","PF","ESIC","Total deduction","Net payable","Net OT"];
+  const cols=["Month","Rows","Revised basic","Revised DA","Allowances (BW:DO)","Total earnings","Revised gross","PF","ESIC","Total deduction","Net payable","Net OT"];
   const tr=document.createElement("tr");
   for(const c of cols){const th=document.createElement("th");th.textContent=c;tr.appendChild(th);}
   tb.appendChild(tr);
@@ -446,11 +449,11 @@ function xLabels(svg,X,H,pad,every=1){
   };
   M.forEach((m,i)=>{
     const r=document.createElement("tr");
-    put(r,[m,D.rows[i].toLocaleString("en-IN"),inr(D.basic[i]),inr(D.da[i]),inr(D.att[i]),inr(D.gross[i]),inr(D.pf[i]),inr(D.esi[i]),inr(D.totded[i]),inr(D.net[i]),inr(D.otnet[i])],[0,5,9]);
+    put(r,[m,D.rows[i].toLocaleString("en-IN"),inr(D.basic[i]),inr(D.da[i]),inr(D.allow[i]),inr(D.earn[i]),inr(D.gross[i]),inr(D.pf[i]),inr(D.esi[i]),inr(D.totded[i]),inr(D.net[i]),inr(D.otnet[i])],[0,6,10]);
     tb.appendChild(r);
   });
   const r=document.createElement("tr"); r.className="tot";
-  put(r,["Total FY 2025-26",sum(D.rows).toLocaleString("en-IN"),inr(sum(D.basic)),inr(sum(D.da)),inr(sum(D.att)),inr(sum(D.gross)),inr(sum(D.pf)),inr(sum(D.esi)),inr(sum(D.totded)),inr(sum(D.net)),inr(sum(D.otnet))],[0,5,9]);
+  put(r,["Total FY 2025-26",sum(D.rows).toLocaleString("en-IN"),inr(sum(D.basic)),inr(sum(D.da)),inr(sum(D.allow)),inr(sum(D.earn)),inr(sum(D.gross)),inr(sum(D.pf)),inr(sum(D.esi)),inr(sum(D.totded)),inr(sum(D.net)),inr(sum(D.otnet))],[0,6,10]);
   tb.appendChild(r);
 })();
 </script>
