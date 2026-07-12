@@ -20,6 +20,8 @@ NETPAYABLE (as paid to employees) to the rupee — NET Δ = ₹0 every month**, 
 | `Source_Mapping_FY2025-26.csv` | Which source column fed each summary figure, per month |
 | `AllColumns_Detail_FY2025-26.csv` | Sum of every numeric column of every monthly sheet |
 | `month_column_sums_raw.json` | Raw per-month headers + column sums (audit trail) |
+| `Earnings_Deductions_Summary_FY2025-26.xlsx` / `.csv` | Earnings-side summary: revised basic + DA + every allowance column, then the full deduction block, net-payable proof |
+| `dashboard_FY2025-26.html` | Interactive audit dashboard (also published as a Claude artifact) |
 
 A Google-Sheet copy (`Monthly_Salary_Deductions_Summary_FY2025-26`) lives in the same Drive folder
 as the monthly files.
