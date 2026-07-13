@@ -61,7 +61,7 @@ and the temp copy was deleted. Orchestrated through the user's n8n instance
 |---|---|
 | REVISED GROSS | ₹437,65,52,661 |
 | REVISED GROSS NEW | ₹376,68,66,693 |
-| PF (REVISED) | ₹29,17,58,299 |
+| PF (REVISED = filed ECR, per employee; June corrected copy) | ₹29,17,54,961 |
 | ESIC (REVISED) | ₹1,84,65,975 |
 | REVISED TOTAL DEDUCTION | ₹144,35,65,364 |
 | REVISED NET PAYABLE | ₹293,29,89,494 |

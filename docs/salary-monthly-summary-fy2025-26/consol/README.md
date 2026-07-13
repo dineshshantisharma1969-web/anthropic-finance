@@ -22,3 +22,13 @@ PT/LWF/etc. sub-columns exist inside the block only in Apr–Jun-25 sheets (blan
 Method: per month, a temp converted Google Sheet copy was slimmed server-side
 (batchUpdate deleteDimension) to the keep-columns, exported as CSV (<10 MB), merged with pandas;
 temp copies deleted. Originals untouched.
+
+## PF basis (final, 13-Jul-2026 IST)
+
+**Salary-sheet PF = filed ECR PF, per employee, all 12 months** — verified against the merged ECR
+FORMAT challan files. Headline: Apr-25 ₹2,29,80,428 … FY ₹29,17,54,961 (after the June corrected
+copy `June_M13_FINAL_PF-ECR-CORRECTED`: −₹4,196 unremitted PF removed, +₹858 BISWAJIT DHAR added;
+net payable unchanged). The earlier matched figure (Apr ₹2,29,58,913 / FY ₹29,11,52,447) was the
+**02-Jul pre-fix snapshot**, superseded by the 03-Jul `Fix-RevisedPF-M13` apply run that pulled
+ECR-paid Back-Office-group employees' PF into the sheets. Bridge to total ECR EE (₹29,55,70,456,
+ties to the EPF challan register to the rupee) is on the PF_Tieout tab.
