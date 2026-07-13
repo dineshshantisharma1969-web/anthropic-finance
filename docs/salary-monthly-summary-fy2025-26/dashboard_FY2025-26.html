@@ -116,9 +116,9 @@ tr.tot td{border-top:2px solid var(--ink);border-bottom:none;font-weight:700;col
   <div class="eyebrow">Statutory &amp; deductions</div>
   <div class="grid">
     <div class="card">
-      <h2>PF &amp; ESIC deducted, monthly</h2>
-      <p class="cap">Employee-side revised PF and ESIC (₹ cr) — both match the filed ECR / Future-sheet totals</p>
-      <div class="legend"><span class="it"><span class="ln" style="border-color:var(--s1)"></span>PF (revised)</span><span class="it"><span class="ln" style="border-color:var(--s2)"></span>ESIC (revised)</span></div>
+      <h2>PF &amp; ESIC, monthly</h2>
+      <p class="cap">PF = as per ECR (matched EE basis); ESIC = revised, matches Future sheet. See PF tie-out for the bridge to the sheet column sum.</p>
+      <div class="legend"><span class="it"><span class="ln" style="border-color:var(--s1)"></span>PF (as per ECR)</span><span class="it"><span class="ln" style="border-color:var(--s2)"></span>ESIC (revised)</span></div>
       <div id="ch-pfesi"></div>
     </div>
     <div class="card">
@@ -157,7 +157,7 @@ tr.tot td{border-top:2px solid var(--ink);border-bottom:none;font-weight:700;col
   <div class="foot">
     Source: 12 × <i>*_M13_FINAL.xlsx</i> in Drive › ISPL SALARY AUDIT 25-26 › fy2025-26 › ESI_WASHING_REALLOCATED · column totals over all data rows.
     Allowances block = columns BW:DO of each sheet (verified against the uploaded April file, exact match). Companion sheets: <i>Earnings_Deductions_Summary_FY2025-26</i> and <i>Monthly_Salary_Deductions_Summary_FY2025-26</i> (same folder).
-    PF &amp; net totals reconcile exactly with PF_ESI_Reco_Summary (11-Jul-2026). Generated 12-Jul-2026.
+    PF headline = ECR matched-EE basis (PF_ESI_Reco_Summary); salary-sheet PF column sum ₹29,17,58,299 — bridge in the PF tie-out. Net totals reconcile exactly. Generated 12-Jul-2026.
   </div>
 </div>
 <div class="tip" id="tip" role="status"></div>
@@ -173,7 +173,7 @@ const D = {
   att:[146197433,146057004,146603417,129720116,133057688,129774119,140079580,130306315,138855752,165452143,168417220,174015778],
   allow:[137606832,131246145,179601679,101401291,97011435,99086564,102796499,59897480,64584597,128171298,132660523,136220935],
   earn:[357241490,349451001,388004915,316198906,307634514,313628328,317866716,274434433,291688542,355683251,359213696,367255530],
-  pf:[22980428,22977657,23319453,23982900,23833745,24402372,24286578,23861498,25136852,25669090,25462898,25844828],
+  pf:[22958913,22934599,23286229,23945106,23810262,24352924,24230628,23801945,25077553,25587803,25411450,25755035],
   esi:[1447434,1466653,1558822,1524007,1512147,1541389,1535460,1508310,1577611,1605107,1570879,1618156],
   otnet:[8609450,10226036,9308164,9166561,10216093,8988405,11095937,9875642,9918173,10809081,8978783,10662440],
   rows:[19161,19328,18934,19163,19428,19206,19785,19297,19800,20364,19862,20749],
@@ -223,7 +223,7 @@ const el=(n,at)=>{const e=document.createElementNS(NS,n);for(const k in at)e.set
     {hero:true,lbl:"Net payable, FY 2025-26",val:"₹"+cr(fyNet)+" cr",note:"paid to employees · preserved to the rupee through the audit",spark:D.net},
     {lbl:"Revised gross",val:"₹"+cr(fyGross)+" cr",note:"basic + DA + attendance alw"},
     {lbl:"Allowances (BW:DO)",val:"₹"+cr(sum(D.allow))+" cr",note:"all 44 allowance heads, FY"},
-    {lbl:"PF deducted",val:"₹"+cr(fyPF)+" cr",note:"= ECR filed, all 12 months"},
+    {lbl:"PF (as per ECR)",val:"₹"+cr(fyPF)+" cr",note:"matched EE basis · sheet col sum ₹29.18 cr"},
     {lbl:"ESIC deducted",val:"₹"+cr(fyESI)+" cr",note:"= Future sheet, employee side"},
     {lbl:"Net OT paid",val:"₹"+cr(fyOT)+" cr",note:"settled outside salary net"},
     {lbl:"Avg rows / month",val:avgRows.toLocaleString("en-IN"),note:"peak "+Math.max(...D.rows).toLocaleString("en-IN")+" in Mar-26"}
@@ -347,7 +347,7 @@ function xLabels(svg,X,H,pad,every=1){
     const i=Math.max(0,Math.min(11,Math.round((fx-pad.l)/((W-pad.l-pad.r)/11))));
     hair.setAttribute("x1",X(i)); hair.setAttribute("x2",X(i)); hair.setAttribute("visibility","visible");
     showTip(e.clientX,e.clientY,M[i],[
-      [css("--s1"),"PF (revised)",inr(D.pf[i])],
+      [css("--s1"),"PF (as per ECR)",inr(D.pf[i])],
       [css("--s2"),"ESIC (revised)",inr(D.esi[i])]]);
   });
   svg.addEventListener("pointerleave",()=>{hair.setAttribute("visibility","hidden");hideTip();});
@@ -440,7 +440,7 @@ function xLabels(svg,X,H,pad,every=1){
 /* ---------- table ---------- */
 (function(){
   const tb=document.getElementById("tbl");
-  const cols=["Month","Rows","Revised basic","Revised DA","Allowances (BW:DO)","Total earnings","Revised gross","PF","ESIC","Total deduction","Net payable","Net OT"];
+  const cols=["Month","Rows","Revised basic","Revised DA","Allowances (BW:DO)","Total earnings","Revised gross","PF (ECR)","ESIC","Total deduction","Net payable","Net OT"];
   const tr=document.createElement("tr");
   for(const c of cols){const th=document.createElement("th");th.textContent=c;tr.appendChild(th);}
   tb.appendChild(tr);
