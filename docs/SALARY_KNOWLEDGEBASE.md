@@ -1,8 +1,9 @@
 # 🧠 SALARY KNOWLEDGEBASE — ISPL (Impressions Services)
 
 **The single entry point for all salary / PF / ESI reconciliation knowledge.**
-Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
-(FY2024-25 Maharashtra added on `claude/maharashtra-aisss-salary-validation-v1v0sz`)
+Last updated: 2026-07-16 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
+(FY2024-25 Maharashtra added on `claude/maharashtra-aisss-salary-validation-v1v0sz`;
+May-25 M13 full row-level audit added on `claude/pf-salary-reconciliation-ookqvj`)
 
 > **How to use this file:** Start here. Every source file, verified number, methodology
 > rule, known discrepancy and rerun procedure is indexed below. When a new month is
@@ -67,6 +68,18 @@ Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliatio
 | Above-₹21,000 rows (period continuation) | 690 |
 | Source: `Maharashtra ESIC Working 24-25 (Dinesh Sir).xlsx` | Drive `1f3Cw2cFoZi3ZLPvMYMR9zbhfyadtIncQ` |
 
+### May 2025 — M13 FINAL full row-level audit (2026-07-16, 19,327 rows, 100% coverage)
+| Anchor | ₹ |
+|---|--:|
+| NETPAYABLE = REVISED_NET (drift **0**) | **23,21,02,234** |
+| REVISED_PF = ECR_PF (gap **0**, per-employee 0 across 17,681 emp) | **2,29,77,657** |
+| REVISED_ESIC = ESIC-as-per-Future (14,976 emp, 0 gaps) | 14,66,653 |
+| Result: 19 PASS · 8 REVIEW · **1 FAIL** (28 checks) | see `fy2025-26/CHECKS_AND_BALANCES_May2025_M13.md` |
+| **M6 FAIL: 3,310 rows** — ADJ_DAYS too low for BD projection ≤ ₹15k (all fixable, target ≤ 31) | 🔴 fix before filing-grade |
+| Above-₹1,800-cap ECR rows (B+D>15k structural) / ESI period-continuation rows | 1,499 / 672 (documented) |
+| C-MW basic-head below rate floor (6,374/6,800 still ≥ floor at gross) | 6,800 rows — policy decision |
+| M17/M18 worklists re-verified exact: recovery 3,713 (97 HIGH ₹10.87L) · ESI enroll 350 · WageCode 1,097 | ✅ ties to May25_WORKLIST |
+
 ### April 2026 (M12/M15 FINAL — footed row-by-row from the full 21,152-row sheet)
 | Anchor | ₹ |
 |---|--:|
@@ -98,6 +111,8 @@ Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliatio
 | `maharashtra-fy2024-25/corrected_monthly/CORRECTED_<MONTH>.csv` (×12) | **The corrected monthly PF sheets** (per employee) |
 | `maharashtra-fy2024-25/Maharashtra_PF_Corrected_Monthly_FY2024-25.xlsx` | Combined workbook (SUMMARY+CHECKS+RULE_STATS+12 tabs) |
 | `maharashtra-fy2024-25/reconcile_mh.py` + `SUMMARY/RULE_STATS/CHECKS csv` | Reproducible builder + summaries |
+| `fy2025-26/CHECKS_AND_BALANCES_May2025_M13.md` | **May-25 M13 full row-level audit** (19 PASS · 8 REVIEW · 1 FAIL) |
+| `fy2025-26/may25_checks.py` + `may25_check_results.json` + `May25_M13_check_violations.xlsx` | Check engine + results + violation rows (incl. the 3,310 M6 rows) |
 
 ### B. In Google Drive (dinesh@impressionsgroup.in)
 | Folder / file | Drive ID | Contains |
@@ -174,6 +189,9 @@ Run locally (files >10 MB exceed the Drive-connector download cap). To rebuild t
 | 8 | **Maharashtra FY24-25: ESI reconciliation DONE** — filed ESIC register validated (₹1,08,11,638; 0.75%/3.25% hold; West-only). Open: **750 ESI coverage gaps** (gross ≤ ₹21k, not filed) + 690 above-ceiling (period continuation). Row-level salary-ESI edits (E1–E4) still need the full salary sheet locally. | 🟡 Coverage gaps open |
 | 9 | Maharashtra FY24-25: ₹3,57,385 ECR filed **above the ₹1,800 EE cap** (991 emp-months) — capped to statutory ₹1,800 in the corrected sheets; surplus is a documented reconciling item, not filed as EE PF. | 🟢 Documented |
 | 10 | Maharashtra FY24-25: 10 not-in-ECR daily-wage rows at exactly ₹15,000/month (₹500×30) — at-ceiling boundary, cannot be pushed strictly above ₹15k; documented exception. | 🟢 Documented |
+| 11 | **May-25 M13: 3,310 rows fail Rule M6** (BD projection > ₹15k on ECR rows; ADJ_DAYS too low). Fix = skill Step-6 day adjustment, feasible ≤ 31 days for every row. Other months likely affected — rerun M6 check year-wide. | 🔴 **OPEN — fix in sheet** |
+| 12 | May-25 M13: C-MW min-wage floor vs M13 ECR-benchmark tension — 6,800 rows below floor in the *basic head* (only 426 below at gross level). Pick a policy (floor-wins vs ECR-benchmark) and apply to all 12 months. | 🟡 Decision needed |
+| 13 | May-25 M13: 1,499 above-₹1,800-cap ECR rows (B+D>15k structural) + 672 ESI period-continuation rows (gross>21k, ESI=0.75% ties Future) + 468 fractional ADJ_DAYS + 199 implausible projections. | 🟢 Documented / cosmetic |
 
 ---
 

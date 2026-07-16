@@ -1,0 +1,164 @@
+{
+ "G1": {
+  "desc": "Golden 1: per-employee SUM(REVISED_PF) = SUM(ECR_PF)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": "total gap Rs.0; employees=17,681"
+ },
+ "G3": {
+  "desc": "Golden 3: NET unchanged per row (REVISED_NET = NETPAYABLE, +/-1)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "G2": {
+  "desc": "Golden 2: SUM(REVISED_ESIC) vs ESIC-as-per-Future",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": "REVISED_ESIC Rs.1,466,653 vs Future Rs.1,466,656.53 (diff Rs.-3.53)"
+ },
+ "C1": {
+  "desc": "OTHER_DEDUCTION >= 0 (+/-1)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "C2": {
+  "desc": "REVISED_NET = REVISED_GROSS - REVISED_TOTAL_DED (+/-1)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "C3": {
+  "desc": "REVISED_PF = 12% x (REVISED_BASIC+REVISED_DA) (+/-1, PF>0 rows)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": "scope 16,688 rows"
+ },
+ "C4": {
+  "desc": "ESIC.1 = 0.75% x REVISED_GROSS_NEW(final) \u2014 informational",
+  "violations": 0,
+  "severity": "INFO",
+  "note": "strict 14,976 / relaxed 0 of 14,976 ESI rows (relaxation expected where ESI pinned to Future)"
+ },
+ "C5": {
+  "desc": "REVISED_ATTENDANCE_ALLOWANCE >= 0",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "C6": {
+  "desc": "REVISED_TOTAL_DED >= 0",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "C7": {
+  "desc": "REVISED_GROSS = REVISED_BASIC+DA+ATT_ALW (+/-1)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "C8": {
+  "desc": "|REVISED_NET - NETPAYABLE| <= 1 (same as G3, total drift)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": "total drift Rs.0.00"
+ },
+ "C9": {
+  "desc": "ADJ_WORKING_DAYS in [1,31] and integer (active rows)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "C9i": {
+  "desc": "ADJ_WORKING_DAYS integer (C-INT)",
+  "violations": 468,
+  "severity": "REVIEW",
+  "note": "fractional day counts (day-tinker residue)"
+ },
+ "C10": {
+  "desc": "PF>0 => REVISED_BASIC+DA <= 15,001",
+  "violations": 1499,
+  "severity": "REVIEW",
+  "note": "1,499 of these have ECR filed above the Rs.1,800 cap (PF=ECR held; structural, cannot satisfy ceiling without breaking Golden Rule 1)"
+ },
+ "M6": {
+  "desc": "Rule M6 / C10-hard: ECR_PF>0 => (B+D) x 31/ADJ_DAYS <= 15,000.5",
+  "violations": 3310,
+  "severity": "FAIL",
+  "note": "day-adjust fixable (send back through Step 6: ADJ_DAYS = ceil((B+D)x31/15000)); plus 1,499 structural above-ceiling-ECR rows counted under C10"
+ },
+ "C11": {
+  "desc": "PF=0 => BD projection > 15K (self-consistency)",
+  "violations": 0,
+  "severity": "REVIEW",
+  "note": ""
+ },
+ "C12": {
+  "desc": "ESI>0 => REVISED_GROSS_NEW(final) <= 21,001",
+  "violations": 672,
+  "severity": "REVIEW",
+  "note": "672 of these are exact 0.75% x gross and tie to the Future register \u2014 ESI contribution-period continuation (statutory), not book errors"
+ },
+ "C13": {
+  "desc": "ESI=0 => gross projection > 21K (self-consistency)",
+  "violations": 0,
+  "severity": "REVIEW",
+  "note": ""
+ },
+ "CAP": {
+  "desc": "ECR_PF <= REVISED_PF per row (ECR cap rule)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": ""
+ },
+ "C-MW": {
+  "desc": "REVISED_BASIC >= (BASIC/NORMALDAYS) x ADJ_DAYS - 0.5 (PF>0 rows)",
+  "violations": 6800,
+  "severity": "REVIEW",
+  "note": "scope 16,688 rows"
+ },
+ "PROJ": {
+  "desc": "Stored MONTHLY_GROSS_PROJECTION vs recompute from RGN(final) & ADJ",
+  "violations": 0,
+  "severity": "INFO",
+  "note": "12,377 rows drift >Rs.5 (documented v3 limitation \u2014 recomputed values used for checks)"
+ },
+ "IMPL": {
+  "desc": "IMPLAUSIBLE_PROJECTION: recomputed gross projection > Rs.1,00,000",
+  "violations": 199,
+  "severity": "REVIEW",
+  "note": "ballooning low-ADJ projections"
+ },
+ "E-SEC": {
+  "desc": "Multi-site: ESI carried on more than one row of an employee",
+  "violations": 0,
+  "severity": "REVIEW",
+  "note": "secondary rows should carry ESI 0"
+ },
+ "E-AGG": {
+  "desc": "Per-employee SUM(ESIC.1) = ESIC-as-per-Future (matched employees, +/-1)",
+  "violations": 0,
+  "severity": "FAIL",
+  "note": "14,976 matched employees; max per-emp gap Rs.0.49"
+ },
+ "M18-REC": {
+  "desc": "M17/M18 recovery review (excess vs expected pay, cash-capped)",
+  "violations": 3713,
+  "severity": "REVIEW",
+  "note": "HIGH(>Rs.10k): 97 rows Rs.1,087,266; total pool Rs.9,443,240; cleared 15,061 of 18,774 scanned"
+ },
+ "M18-ESI": {
+  "desc": "M18c ESI enrollment needed (exempt but full-month rate <= 21k)",
+  "violations": 350,
+  "severity": "REVIEW",
+  "note": "4% exposure Rs.210,745/month"
+ },
+ "M18-WC": {
+  "desc": "Wage Code 50% check (BASIC+DA >= 50% of CTC)",
+  "violations": 1097,
+  "severity": "REVIEW",
+  "note": "65 severe <30%; shortfall Rs.2,880,664/month"
+ }
+}
