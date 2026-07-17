@@ -1,7 +1,7 @@
 # 🧠 SALARY KNOWLEDGEBASE — ISPL (Impressions Services)
 
 **The single entry point for all salary / PF / ESI reconciliation knowledge.**
-Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
+Last updated: 2026-07-17 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
 (FY2024-25 Maharashtra added on `claude/maharashtra-aisss-salary-validation-v1v0sz`)
 
 > **How to use this file:** Start here. Every source file, verified number, methodology
@@ -98,6 +98,7 @@ Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliatio
 | `maharashtra-fy2024-25/corrected_monthly/CORRECTED_<MONTH>.csv` (×12) | **The corrected monthly PF sheets** (per employee) |
 | `maharashtra-fy2024-25/Maharashtra_PF_Corrected_Monthly_FY2024-25.xlsx` | Combined workbook (SUMMARY+CHECKS+RULE_STATS+12 tabs) |
 | `maharashtra-fy2024-25/reconcile_mh.py` + `SUMMARY/RULE_STATS/CHECKS csv` | Reproducible builder + summaries |
+| `wage-code-50pct/REPORT_50pct_CTC_Dec25-Mar26_V2.md` + `SUMMARY_...csv` | **50% CTC rule check Dec-25→Mar-26 (V2 sheets)** — 11,662 violating emp-months, Σ diff ₹18.41 Cr |
 
 ### B. In Google Drive (dinesh@impressionsgroup.in)
 | Folder / file | Drive ID | Contains |
@@ -130,6 +131,7 @@ Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliatio
 | ├─ `ESIC DATA 24-25 MAHARASHTRA` (Mumbai subfolders) | `1Dxa4nFpXlAzxE46aQ218zDvXsVt8js3H` | ESI Future-register source (for the ESI pass) |
 | ├─ `EMPLOYEE SALARY DETAILS 24-25 WITH PF` (gsheet, >10 MB) | `1P7MIqiWKlPcVk4udl_8XBnBgeHcItxSdLmEsqbPeKXw` | Full salary sheet (local run — exceeds connector cap) |
 | └─ `Salary comb 2024-25.xlsx` (224 MB) | `1xBpQXiS3K00ePA3Xqg4UlhcdpGRBvqbI` | Full combined salary source (local run only) |
+| **SALARY FOLDER 2025-26 / M13_FINAL_EXTRACTED** | `1848k7zbPRPRlsp3G9iK_6CG6Ldgs9tV3` | **Dec–Mar M13 FINAL V2 workbooks + 50% CTC outputs** — `<Month>_V2_50pct_CTC_{ALL,VIOLATIONS}.csv` + `_SUMMARY.json` per month (Dec/Jan/Feb/Mar) |
 
 Open any ID via: `https://drive.google.com/file/d/<ID>/view` (files) or `/drive/folders/<ID>` (folders).
 
@@ -158,6 +160,8 @@ python reconcile.py --salary <sheet>.xlsx --ecr <FORMAT-*.xlsx ...> \
 ```
 Run locally (files >10 MB exceed the Drive-connector download cap). To rebuild the repo summaries/dashboards: `python3 docs/pf-salary-reconciliation/build.py` (and `april-2026/build_apr26.py`).
 
+**Big-file workaround (no local PC needed):** for workbooks over the 10 MB connector cap, copy-convert them to a native Google Sheet via the Drive API from n8n, read only the needed columns with Sheets `values:batchGet`, and compute/emit results in a single Code node (see `wage-code-50pct/REPORT_50pct_CTC_Dec25-Mar26_V2.md` §"How it was produced").
+
 ---
 
 ## 5. Known discrepancies & open items
@@ -174,6 +178,7 @@ Run locally (files >10 MB exceed the Drive-connector download cap). To rebuild t
 | 8 | **Maharashtra FY24-25: ESI reconciliation DONE** — filed ESIC register validated (₹1,08,11,638; 0.75%/3.25% hold; West-only). Open: **750 ESI coverage gaps** (gross ≤ ₹21k, not filed) + 690 above-ceiling (period continuation). Row-level salary-ESI edits (E1–E4) still need the full salary sheet locally. | 🟡 Coverage gaps open |
 | 9 | Maharashtra FY24-25: ₹3,57,385 ECR filed **above the ₹1,800 EE cap** (991 emp-months) — capped to statutory ₹1,800 in the corrected sheets; surplus is a documented reconciling item, not filed as EE PF. | 🟢 Documented |
 | 10 | Maharashtra FY24-25: 10 not-in-ECR daily-wage rows at exactly ₹15,000/month (₹500×30) — at-ceiling boundary, cannot be pushed strictly above ₹15k; documented exception. | 🟢 Documented |
+| 11 | **Wage-code 50% CTC check Dec-25→Mar-26 (V2 sheets)**: 11,662 violating employee-months (13.7–15.2%/month), Σ (CTC − basic − DA) on violators ₹18.41 Cr, restructuring gap (excess over 50%) ₹6.67 Cr. Employee-wise CSVs in Drive `SALARY FOLDER 2025-26/M13_FINAL_EXTRACTED/<Month>_V2_50pct_CTC_{ALL,VIOLATIONS}.csv`; repo report `wage-code-50pct/`. CTC basis — FAQ-adjusted remuneration view (July pack) clears many rows. | 🔴 **OPEN — restructuring decision** |
 
 ---
 
