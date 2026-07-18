@@ -25,6 +25,7 @@ A practitioner-oriented, section-wise reference to the **Central Goods and Servi
 | [6. Assessment, Audit, Demands & Recovery](gst-act-06-assessment-audit-demands.md) | Self/provisional/best-judgment assessment, audit, s.73/74/74A demands, recovery | 59–84 |
 | [7. Appeals, Offences & Miscellaneous](gst-act-07-appeals-offences-misc.md) | Liability in special cases, advance ruling, appeals, GSTAT, penalties, transitional, misc | 85–174 |
 | [8. Schedules & Rate Structure](gst-act-08-schedules-and-rates.md) | Schedules I–III, rate slabs, manpower-supply specifics | Sch. I–III |
+| [News & Updates](gst-it-news-updates.md) | Rolling GST/IT news digest from ET, Taxguru, ClearTax & courts + standing source list | — |
 
 ## How to move these pages into the GitHub Wiki
 
