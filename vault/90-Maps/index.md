@@ -14,8 +14,9 @@ Start here. See [[README]] for how the vault is organised.
 ## By domain
 
 - **[[MOC-Salary]]** — PF / ESI / wage-code reconciliation (richest area today)
-- **[[MOC-GST]]** — GST law, rules, notices (scaffold — fill from `00-Inbox/`)
-- **[[MOC-Income-Tax]]** — Income Tax law, rules, notices (scaffold)
+- **[[MOC-GST]]** — GST law, rules, notices (tracker: 34 cases, ₹60.71 Cr)
+- **[[MOC-Income-Tax]]** — Income Tax notices (AY2015-16 → AY2023-24 survey/search)
+- **[[telegram-query-bots]]** — ask GST / IT / Salary from Telegram
 
 ## By lifecycle (folders)
 
