@@ -1,0 +1,8 @@
+# Obsidian ephemeral UI state — machine-specific, not worth versioning
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+
+# OS cruft
+.DS_Store
+Thumbs.db
