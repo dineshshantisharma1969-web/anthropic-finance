@@ -75,9 +75,9 @@ Jharkhand, Karnataka, Kerala, Maharashtra, Rajasthan, Telangana, UP, West Bengal
 
 ## Linked
 
-- **Source file (uploaded to vault):** `_attachments/GST_notice_tracker_AKDash_2026-07-17.xlsx`
+- **Source file (uploaded to vault):** `_attachments/GST_notice_tracker_AKDash_2026-07-18.xlsx`
   — AK Dash's master copy (Drive `1ySb1_B2z7YOjMchvn8lxZWNqpuqbprK5`, the file the GST query bot
-  reads live), snapshot as at modified 17-Jul-2026.
+  reads live), snapshot as at modified 18-Jul-2026 14:07.
 - Rules/law: [[MOC-GST]] · [[10-Law/GST/README]]
 - Reply drafts in Drive: "GST REPLY_ISPL HAR-2022-23.docx", "REPLY TO GST HARYANA-ADT-2023-24",
   "Reply to GST TN-2023-24.docx", "REPLY TO DELHI GST-2020-21.docx".
