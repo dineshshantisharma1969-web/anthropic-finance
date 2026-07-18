@@ -57,6 +57,7 @@ flowchart LR
 
 | Channel | What | ID / location |
 |---|---|---|
+| HTML | **Unified Compliance Dashboard** (GST + IT + Salary, live-generated) | [[compliance-dashboard]] · Drive `1wa3WacHXVm6dFVBcikXqxrPUpsT8I9k0` |
 | HTML | Salary FY25-26 dashboard | `docs/pf-salary-reconciliation/dashboard.html` |
 | Sheet | Live pivot tabs (month / state / PF tie-out) | inside `PIVOT_FY202526_LIVE_LINKED` |
 | Telegram | GST / IT / Salary query bots | [[telegram-query-bots]] |
@@ -64,16 +65,11 @@ flowchart LR
 
 ---
 
-## What's missing (the build roadmap)
+## Build roadmap
 
-The pipeline exists but the **④ dashboard layer is domain-siloed** (salary HTML, GST xlsx dashboard,
-no IT dashboard). The capstone is a **unified dashboard generator**:
-
-1. **Consolidate** — one processing step that reads all three ③ stores.
-2. **Generate** — emit a single self-contained `COMPLIANCE_DASHBOARD.html` (GST exposure, IT
-   proposed additions, salary/PF/ESI liabilities, upcoming due dates) — one page, always current.
-3. **Refresh** — one-shot n8n run (or scheduled) that regenerates it into Drive + vault.
-
-> Next step candidates: (a) build the unified dashboard generator; (b) add a data-source
-> auto-registry that lists new Drive files into ① automatically; (c) extend the IT bot to
-> live-read like the GST bot. See chat for sequencing.
+- ✅ **Unified dashboard generator** — built. One n8n workflow reads all three ③ stores and
+  regenerates a single `COMPLIANCE_DASHBOARD.html` on each run → [[compliance-dashboard]].
+- ⬜ **Schedule** the generator (Schedule trigger) so the page auto-refreshes daily.
+- ⬜ **IT live-read** — make the IT block read from Drive like GST (currently a snapshot).
+- ⬜ **Data-source auto-registry** — list new Drive files into ① automatically.
+- ⬜ **Due-date calendar alerts** across GST + IT (Telegram / Google Calendar).

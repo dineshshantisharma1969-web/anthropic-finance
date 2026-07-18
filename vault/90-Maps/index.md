@@ -17,6 +17,7 @@ whole pipeline (sources → process → consolidated → dashboards) as one cont
 - **[[MOC-Salary]]** — PF / ESI / wage-code reconciliation (richest area today)
 - **[[MOC-GST]]** — GST law, rules, notices (tracker: 34 cases, ₹60.71 Cr)
 - **[[MOC-Income-Tax]]** — Income Tax notices (AY2015-16 → AY2023-24 survey/search)
+- **[[compliance-dashboard]]** — unified GST + IT + Salary dashboard (live-generated)
 - **[[telegram-query-bots]]** — ask GST / IT / Salary from Telegram
 
 ## By lifecycle (folders)
