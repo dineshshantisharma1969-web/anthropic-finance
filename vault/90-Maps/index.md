@@ -9,7 +9,8 @@ created: 2026-07-18
 
 # 🧭 Vault Index
 
-Start here. See [[README]] for how the vault is organised.
+Start here. See [[README]] for how the vault is organised, and **[[ARCHITECTURE]]** for the
+whole pipeline (sources → process → consolidated → dashboards) as one control panel.
 
 ## By domain
 
