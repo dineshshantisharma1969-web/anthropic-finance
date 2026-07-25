@@ -89,6 +89,7 @@ Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliatio
 | `CHECKS_AND_BALANCES_FY2025-26.md` | Full-year checks report (7 PASS · 5 REVIEW · 0 FAIL) |
 | `SUMMARY_FY2025-26.csv` · `M13_RULE_STATS_FY2025-26.csv` | Month-wise summary + M13 rule stats |
 | `dashboard.html` | Interactive FY25-26 dashboard (self-contained, open in browser) |
+| `Payroll_Summary_With_Pivot_FY2025-26.xlsx` | **Payroll summary workbook + pivot** — Summary-By-Month, live State×Month pivot (SUMIFS), tidy pivot source, PF reco. Net anchor 2,932,971,946; FY revised PF 291,754,961. Built by `build_payroll_pivot_xw.py` |
 | `reconciliation_data.json` · `build.py` | Data + reproducible builder |
 | `april-2026/CHECKS_AND_BALANCES_April2026.md` | April-26 checks (5 PASS · 1 REVIEW) |
 | `april-2026/dashboard_April2026.html` | April-26 dashboard |
