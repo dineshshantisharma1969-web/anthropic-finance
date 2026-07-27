@@ -105,6 +105,57 @@ row(ws,['DRIFT  (Revised − Original)',REVNET-NET,'','','Golden Rule 3 — net 
     bold=True,fill=OKF if abs(REVNET-NET)<1 else BADF)
 ws.freeze_panes='A3'
 
+# ================= MAIN DETAIL (all 21,152 rows) =================
+ws=sheet('Detail (all rows)',[14,26,16,15,9,9,11,11,11,11,11,11,11,10,11,11,11,11,13,13,13,13,13,18,14,13])
+HEAD=['EMPCODE','FULLNAME','SITESTATE','PF NO','DIV DAYS','NORM DAYS','FIXED_BASIC','FIXED_DA',
+      'BASIC','DA','PF WAGES','PF (as paid)','ECR PF (merged)','PF GAP','REVISED_PF',
+      'ESI WAGES','ESIC','REVISED_ESIC','FUTURE_ESI','ESI GAP','OTHER DED','REVISED_OTHER_DED',
+      'GROSS AMT','REVISED_GROSS_NEW','NETPAYABLE','REVISED_NET','NET DIFF','RULE_APPLIED',
+      'ECR MATCH','M16 FLAG']
+ws.append(HEAD)
+for i in range(1,len(HEAD)+1):
+    c=ws.cell(1,i); c.font=H2; c.fill=SUB; c.border=B
+    c.alignment=Alignment(wrap_text=True,vertical='center')
+ws.row_dimensions[1].height=30
+for i in range(1,len(HEAD)+1):
+    ws.column_dimensions[get_column_letter(i)].width = 26 if i==2 else (18 if i in (3,28,29,30) else 13)
+
+for r in sal:
+    c=code(r['EMPCODE'])
+    e=ecr.get(c)
+    pf=num(r['PF']); rp=num(r['REVISED_PF'])
+    # ECR is per employee; attribute it to the anchor row so the gap column is meaningful
+    is_anchor = r['RULE_APPLIED']=='PF_ANCHOR'
+    ecr_show = e if (e is not None and is_anchor) else ('' if e is None else 0)
+    gap = (e-rev_by[c]) if (e is not None and is_anchor) else ''
+    ws.append([c, r['FULLNAME'], r['SITESTATE'], r['PF_NO'],
+               num(r['SITEDIVISIONDAYS']), num(r['NORMALDAYS']),
+               num(r['FIXED_BASIC']), num(r['FIXED_DA']), num(r['BASIC']), num(r['DA']),
+               num(r['PF_WAGES']), pf, ecr_show, gap, rp,
+               num(r['ESI_WAGES']), num(r['ESIC']), num(r['REVISED_ESIC']),
+               num(r['FUTURE_ESI']), num(r['FUTURE_ESI'])-num(r['REVISED_ESIC']),
+               num(r['OTHER_DEDUCTION']), num(r['REVISED_OTHER_DED']),
+               num(r['GROSS_AMT']), num(r['REVISED_GROSS_NEW']),
+               num(r['NETPAYABLE']), num(r['REVISED_NET_PAYABLE']),
+               num(r['REVISED_NET_PAYABLE'])-num(r['NETPAYABLE']),
+               r['RULE_APPLIED'], ('matched' if c in ecr else 'not in ECR'), r['RECON_FLAG_M16']])
+last=ws.max_row
+for col in range(5,28):
+    L=get_column_letter(col)
+    for rr in range(2,last+1):
+        ws.cell(rr,col).number_format = M2 if col in (18,19,20,22,24,26,27) else M
+# totals strip on top
+ws.insert_rows(1)
+tot=['TOTAL','','','','','','','','','','',PF_PAID,MATCHED_ECR,0,PF_REV,
+     T('ESI_WAGES'),T('ESIC'),T('REVISED_ESIC'),T('FUTURE_ESI'),T('FUTURE_ESI')-T('REVISED_ESIC'),
+     T('OTHER_DEDUCTION'),T('REVISED_OTHER_DED'),T('GROSS_AMT'),T('REVISED_GROSS_NEW'),
+     NET,REVNET,0,f'{len(sal):,} rows','','']
+for i,v in enumerate(tot,1):
+    c=ws.cell(1,i); c.value=v; c.font=Font(bold=True); c.fill=TOTF; c.border=B
+    if isinstance(v,(int,float)): c.number_format=M2 if i in (18,19,20,22,24,26,27) else M
+ws.freeze_panes='C3'
+ws.auto_filter.ref=f'A2:{get_column_letter(len(HEAD))}{ws.max_row}'
+
 # ================= PF =================
 ws=sheet('PF Reconciliation',[40,16,18,18,40])
 title(ws,'A. PROVIDENT FUND — merge of PF files, then match to salary sheet',5)

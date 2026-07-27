@@ -89,7 +89,14 @@ ceiling binds — it does not bind for these employees.
 
 | File | What |
 |---|---|
-| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 7 sheets: Summary · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · Checks (14 PASS / 4 REVIEW) · Exceptions |
+| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 8 sheets: Summary · **Detail (all 21,152 rows)** · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · Checks (14 PASS / 4 REVIEW) · Exceptions |
+
+**`Detail (all rows)`** is the main working sheet — one row per salary row (21,152), 30 columns,
+frozen panes + autofilter, with a totals strip pinned at row 1. Carries PF as paid, the merged
+ECR PF, PF gap, REVISED_PF, the ESI trio (ESIC / REVISED_ESIC / FUTURE_ESI + gap), other
+deduction before/after, gross before/after, net before/after, the rule applied, and whether the
+employee matched the ECR. ECR PF is attributed to the employee's `PF_ANCHOR` row so the gap
+column reads true per employee rather than double-counting across multi-site rows.
 | `ECR_MERGED_April2026.csv` | merged per-employee ECR — 18,639 rows, EE 2,55,59,370, incl. `SITE_NAME` / `LOCATION` / `IS_BACK_OFFICE` |
 | `merge_ecr.py` | merges any `FORMAT*APRIL*2026*.xlsx` dropped beside it; auto-detects header row (STEAGE has a blank leading row), dedupes per file, ties each to its footer |
 | `build_recon.py` | builds the workbook from `ECR_MERGED_April2026.csv` + `SALARY_extract.csv` |
