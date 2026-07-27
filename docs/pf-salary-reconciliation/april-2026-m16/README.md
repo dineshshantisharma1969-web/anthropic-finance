@@ -105,11 +105,33 @@ KOLKATA 10 (₹1,436) · REGISTER 2 (₹175).
 `ESIC AS PER FUTURE` ties **exactly** to `REVISED_ESIC`, so the ₹37,736 is the
 Future_ESI-vs-Revised item carried forward from the June run — still open.
 
-**Employee-wise difference detail** is on the `ESI Diff (emp-wise)` sheet — 13,139
-employees, one row each, with `ESIC paid` / `ESIC as per Future` / `DIFF DR−GK`,
-`REVISED_ESIC` / `Future_ESI` / `DIFF GJ−GI`, and `merged filed ESI` / `DIFF filed−paid`.
-Headline differences: **DR − GK = ₹11,74,219.38** across 12,613 employees (paid > Future
-on 12,612 of them), **GJ − GI = ₹37,736**, **filed − paid = ₹20,345.61**.
+### Employee-wise difference detail
+
+**A first attempt compared salary ESIC (col DR) against `ESIC AS PER FUTURE` (col GK) and
+produced a ₹11,74,219 "difference" across 12,613 employees. That comparison is not
+meaningful and has been withdrawn** — col GK is populated on only **3,571 of the 16,993
+rows** that carry an ESIC deduction (21%), so comparing it against a fully-populated
+column makes nearly everyone look different. 12,193 of those 12,613 were simply
+"GK is blank", and 11,681 of *those* did in fact have ESI filed for them.
+
+The sheet now compares **ESIC deducted in the salary sheet vs ESI actually filed**
+(the merged register + Future + regional files), which is the comparison that
+reconciles. Four plain-language buckets, netting to the ₹20,345.61 gap:
+
+| Bucket | Employees | ₹ (filed − deducted) | Meaning |
+|---|--:|--:|---|
+| **A** — deducted in salary but **not filed anywhere** | 512 | −43,630.00 | file it, or refund the employee |
+| **B** — filed, but employee **not on the salary sheet** | 316 | +20,046.00 | mostly Future-managed (287) |
+| **C** — filed **more** than deducted | 4,426 | +89,073.00 | employee under-deducted |
+| **D** — deducted **more** than filed | 1,639 | −45,143.39 | over-deducted, or a filing is missing |
+| match exactly (not listed) | 12,778 | 0 | nothing to do |
+| **NET** | **19,671 seen** | **20,345.61** | ties to the ESI gap |
+
+`ESI Diff — summary` shows the four buckets; `ESI Diff (emp-wise)` lists the 6,893
+employees one row each, colour-coded by bucket, with a *WHY this employee is here*
+column in plain words and a how-to-read note pinned at the top. The salary sheet's own
+Future columns are retained at the far right, labelled `[ref]`, with a warning not to
+read a blank GK as "Future filed nothing".
 
 ## Net payable — Golden Rule 3
 
@@ -143,7 +165,7 @@ ceiling binds — it does not bind for these employees.
 
 | File | What |
 |---|---|
-| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 11 sheets: Summary · **Detail (all 21,152 rows)** · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · **ESI Merge & Match** · **ESI Diff (emp-wise)** · **ESI Not-Paid (50)** · Checks (17 PASS / 8 REVIEW) · Exceptions |
+| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 12 sheets: Summary · **Detail (all 21,152 rows)** · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · **ESI Merge & Match** · **ESI Diff — summary** · **ESI Diff (emp-wise)** · **ESI Not-Paid (50)** · Checks (17 PASS / 8 REVIEW) · Exceptions |
 
 **`Detail (all rows)`** is the main working sheet — one row per salary row (21,152), 30 columns,
 frozen panes + autofilter, with a totals strip pinned at row 1. Carries PF as paid, the merged

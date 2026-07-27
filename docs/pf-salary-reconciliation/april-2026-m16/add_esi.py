@@ -132,43 +132,93 @@ row(ws, ['FUTURE_ESI − REVISED_ESIC', T('FUTURE_ESI') - T('REVISED_ESIC'), '',
 ws.freeze_panes = 'A3'
 
 # ============ ESI Diff — employee-wise ============
-ws = sheet('ESI Diff (emp-wise)', [13, 26, 17, 9, 13, 13, 13, 13, 13, 13, 13, 15, 15])
-title(ws, 'ESI DIFFERENCES — employee-wise, for investigation', 13)
-HEAD = ['EMPCODE', 'FULLNAME', 'SITESTATE', 'ROWS', 'ESIC (paid, DR)',
-        'ESIC AS PER FUTURE (GK)', 'DIFF  DR − GK', 'REVISED_ESIC (GI)',
-        'FUTURE_ESI (GJ)', 'DIFF  GJ − GI', 'MERGED ESI (filed)',
-        'DIFF  filed − paid', 'ESI SOURCE']
-hdr(ws, HEAD)
+ws = sheet('ESI Diff (emp-wise)', [13, 27, 17, 46, 15, 15, 15, 15, 8, 14, 14])
+title(ws, 'ESI DIFFERENCES — one row per employee, for investigation', 11)
+NOTE = [
+ 'WHAT THIS COMPARES:  ESIC actually deducted in the April salary sheet   vs   ESI actually FILED '
+ '(the merged ESIC register + Future FR sheet + 5 regional files).',
+ 'Read the WHY column first — it says in plain words why each employee is here. '
+ 'Positive difference = filed more than deducted. Negative = deducted more than filed.',
+ 'Employees where filed = deducted exactly are NOT listed (12,778 of them). '
+ 'The differences below add up to the ₹20,345.61 overall gap.',
+ 'The last two columns are the salary sheet\'s own Future columns, shown only for reference — '
+ 'col GK is populated on just 21% of rows, so do NOT read a blank there as "Future filed nothing".']
+for t in NOTE:
+    ws.append([t]); r = ws.max_row
+    ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
+    c = ws.cell(r, 1); c.fill = PatternFill('solid', fgColor='FFF2CC'); c.border = B
+    c.alignment = Alignment(wrap_text=True, vertical='top'); ws.row_dimensions[r].height = 26
+ws.append([])
+
+HEAD = ['EMPCODE', 'NAME', 'STATE / BRANCH', 'WHY this employee is here',
+        'ESIC deducted in salary ₹', 'ESI actually FILED ₹', 'DIFFERENCE (filed − deducted) ₹',
+        'Filed where', 'Salary rows', '[ref] ESIC as per Future (GK)', '[ref] Future_ESI (GJ)']
+CATS = {
+ 'A': 'A — Deducted in salary but NOT filed anywhere  → recover / file',
+ 'B': 'B — Filed, but employee is not on the salary sheet at all',
+ 'C': 'C — Filed MORE than was deducted  → under-deducted from employee',
+ 'D': 'D — Deducted MORE than was filed  → over-deducted / under-filed'}
 rows_out = []
 for c in sorted(S | E):
-    b = by.get(c)
-    paid = b['esic'] if b else 0.0
-    gk = b['gk'] if b else 0.0
-    rev = b['rev'] if b else 0.0
-    fut = b['fut'] if b else 0.0
+    bb = by.get(c)
+    paid = bb['esic'] if bb else 0.0
     filed = esi.get(c, 0.0)
-    d1 = paid - gk; d2 = fut - rev; d3 = filed - paid
-    if abs(d1) < 0.005 and abs(d2) < 0.005 and abs(d3) < 0.005: continue
-    rows_out.append([c, (b['name'] if b else ename.get(c, '')),
-                     (b['state'] if b else ebr.get(c, '')), (b['rows'] if b else 0),
-                     paid, gk, d1, rev, fut, d2, filed, d3,
-                     esrc.get(c, 'not in ESI files' if not b else '')])
-rows_out.sort(key=lambda x: -abs(x[6]))
-for v in rows_out:
-    r = row(ws, v, nf=5)
-    for cc in (7, 10, 12):
-        if isinstance(v[cc - 1], (int, float)) and abs(v[cc - 1]) > 0.005:
-            ws.cell(r, cc).fill = WARN
-ws.insert_rows(2)
-tot = ['TOTAL', f'{len(rows_out):,} employees', '', '',
+    diff = filed - paid
+    if abs(diff) < 0.005: continue
+    if c not in E:   k = 'A'
+    elif c not in S: k = 'B'
+    elif filed > paid: k = 'C'
+    else: k = 'D'
+    rows_out.append([c, (bb['name'] if bb else ename.get(c, '')),
+                     (bb['state'] if bb else ebr.get(c, '')), CATS[k],
+                     paid, filed, diff, esrc.get(c, '— not in any ESI file —'),
+                     (bb['rows'] if bb else 0),
+                     (bb['gk'] if bb else 0.0), (bb['fut'] if bb else 0.0), k])
+rows_out.sort(key=lambda x: (x[11], -abs(x[6])))
+
+tot = ['TOTAL', f'{len(rows_out):,} employees with a difference', '',
+       'these differences net to the overall ESI gap',
        sum(v[4] for v in rows_out), sum(v[5] for v in rows_out), sum(v[6] for v in rows_out),
-       sum(v[7] for v in rows_out), sum(v[8] for v in rows_out), sum(v[9] for v in rows_out),
-       sum(v[10] for v in rows_out), sum(v[11] for v in rows_out), '']
-for i, v in enumerate(tot, 1):
-    c = ws.cell(2, i); c.value = v; c.font = Font(bold=True); c.fill = TOTF; c.border = B
-    if isinstance(v, (int, float)): c.number_format = M2
-ws.freeze_panes = 'C4'
-ws.auto_filter.ref = f'A3:{get_column_letter(len(HEAD))}{ws.max_row}'
+       '', '', sum(v[9] for v in rows_out), sum(v[10] for v in rows_out)]
+ws.append(tot); tr = ws.max_row
+for i in range(1, 12):
+    cc = ws.cell(tr, i); cc.font = Font(bold=True); cc.fill = TOTF; cc.border = B
+    if isinstance(tot[i-1], (int, float)): cc.number_format = M2
+hdr(ws, HEAD)
+CATFILL = {'A': PatternFill('solid', fgColor='FFC7CE'), 'B': PatternFill('solid', fgColor='FFEB9C'),
+           'C': PatternFill('solid', fgColor='DDEBF7'), 'D': PatternFill('solid', fgColor='FCE4D6')}
+for v in rows_out:
+    k = v.pop()
+    r = row(ws, v, nf=5)
+    ws.cell(r, 4).fill = CATFILL[k]
+    ws.cell(r, 7).font = Font(bold=True)
+ws.freeze_panes = 'C9'
+ws.auto_filter.ref = f'A8:{get_column_letter(11)}{ws.max_row}'
+
+# --- small summary-by-category sheet so the 4 buckets are visible at a glance ---
+ws2 = sheet('ESI Diff — summary', [56, 12, 20, 60])
+title(ws2, 'ESI differences — the four buckets', 4)
+ws2.append([])
+hdr(ws2, ['Bucket', 'Employees', '₹ (filed − deducted)', 'What it means / what to do'])
+MEAN = {
+ 'A': 'ESIC was deducted from the employee but no ESI was filed for them anywhere. '
+      'Either file it, or refund the employee.',
+ 'B': 'ESI was filed for someone who never appears on the April salary sheet '
+      '(mostly Future-managed staff, 287 of the 316).',
+ 'C': 'ESI filed exceeds what was deducted — the employee was under-deducted.',
+ 'D': 'More was deducted than was filed — either over-deducted, or a filing is missing.'}
+agg = defaultdict(lambda: [0, 0.0])
+for v in rows_out:
+    k = v[3][0]; agg[k][0] += 1; agg[k][1] += v[6]
+for k in ['A', 'B', 'C', 'D']:
+    r = row(ws2, [CATS[k], agg[k][0], agg[k][1], MEAN[k]], nf=2)
+    ws2.cell(r, 1).fill = CATFILL[k]
+row(ws2, ['Match exactly — not listed', len(S | E) - len(rows_out), 0.0,
+          'filed = deducted, nothing to do'], fill=OKF)
+row(ws2, ['Total employees seen (salary ∪ ESI filing)', len(S | E), '', ''])
+row(ws2, ['NET = overall ESI gap', '', sum(agg[k][1] for k in 'ABCD'),
+          'ties to the filed-minus-paid gap on ESI Merge & Match'], bold=True, fill=TOTF)
+ws2.freeze_panes = 'A3'
 
 # ============ ESI Not-Paid ============
 ws = sheet('ESI Not-Paid (50)', [13, 26, 34, 18, 16, 22, 11, 13])
@@ -203,7 +253,7 @@ chk('ESIC deducted but no ESI filing', '0',
 chk('Matched employees where filed != paid', '0', f'{sum(1 for c in M if abs(esi[c]-by[c]["esic"])>0.005):,}', False)
 
 order = ['Summary', 'Detail (all rows)', 'PF Reconciliation', 'ESI Reconciliation',
-         'ESI Merge & Match', 'ESI Diff (emp-wise)', 'ESI Not-Paid (50)',
+         'ESI Merge & Match', 'ESI Diff — summary', 'ESI Diff (emp-wise)', 'ESI Not-Paid (50)',
          'Net Payable Reconciliation', 'ECR-Only (250)', 'Checks', 'Exceptions']
 wb._sheets = [wb[s] for s in order if s in wb.sheetnames] + \
              [s for s in wb._sheets if s.title not in order]
