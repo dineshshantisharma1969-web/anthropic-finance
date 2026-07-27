@@ -187,8 +187,14 @@ row(ws,['TOTAL',len(sal),'','',''],bold=True,fill=TOTF)
 ws.freeze_panes='A3'
 
 # ================= ESI =================
-ws=sheet('ESI Reconciliation',[46,20,20,52])
-title(ws,'B. ESI — salary vs revised vs Future register',4)
+ws=sheet('ESI — salary cols only',[46,20,20,52])
+title(ws,'B. ESI — the SALARY SHEET\'s own columns only (NOT the reconciliation)',4)
+ws.append(['>> This sheet only reconciles the salary sheet against itself. For the actual ESI '
+           'reconciliation against the filed ESI (register + Future + regional files), see the '
+           '"ESI Merge & Match" sheet.'])
+_r=ws.max_row; ws.merge_cells(start_row=_r,start_column=1,end_row=_r,end_column=4)
+_c=ws.cell(_r,1); _c.fill=PatternFill('solid',fgColor='FFF2CC'); _c.border=B
+_c.alignment=Alignment(wrap_text=True,vertical='top'); ws.row_dimensions[_r].height=30
 ws.append([])
 hdr(ws,['Measure','₹','Rows','Note'])
 row(ws,['ESI wages (col AA)',T('ESI_WAGES'),'',''])

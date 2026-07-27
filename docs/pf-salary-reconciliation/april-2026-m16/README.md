@@ -165,7 +165,7 @@ ceiling binds — it does not bind for these employees.
 
 | File | What |
 |---|---|
-| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 12 sheets: Summary · **Detail (all 21,152 rows)** · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · **ESI Merge & Match** · **ESI Diff — summary** · **ESI Diff (emp-wise)** · **ESI Not-Paid (50)** · Checks (17 PASS / 8 REVIEW) · Exceptions |
+| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 12 sheets: Summary · **Detail (all 21,152 rows)** · PF · **ESI Merge & Match** · ECR-Only (250, split back-office vs client-site) · **ESI Diff — summary** · **ESI Diff (emp-wise)** · **ESI Not-Paid (50)** · ESI — salary cols only · Net Payable · Checks (17 PASS / 8 REVIEW) · Exceptions |
 
 **`Detail (all rows)`** is the main working sheet — one row per salary row (21,152), 30 columns,
 frozen panes + autofilter, with a totals strip pinned at row 1. Carries PF as paid, the merged

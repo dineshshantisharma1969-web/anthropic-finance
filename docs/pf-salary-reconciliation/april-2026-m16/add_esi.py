@@ -252,8 +252,9 @@ chk('ESIC deducted but no ESI filing', '0',
     f'{sum(1 for c in onlyS if by[c]["esic"] > 0)} / {onlyS_v:,.2f}', False)
 chk('Matched employees where filed != paid', '0', f'{sum(1 for c in M if abs(esi[c]-by[c]["esic"])>0.005):,}', False)
 
-order = ['Summary', 'Detail (all rows)', 'PF Reconciliation', 'ESI Reconciliation',
-         'ESI Merge & Match', 'ESI Diff — summary', 'ESI Diff (emp-wise)', 'ESI Not-Paid (50)',
+order = ['Summary', 'Detail (all rows)', 'PF Reconciliation',
+         'ESI Merge & Match', 'ESI Diff — summary', 'ESI Diff (emp-wise)',
+         'ESI Not-Paid (50)', 'ESI — salary cols only',
          'Net Payable Reconciliation', 'ECR-Only (250)', 'Checks', 'Exceptions']
 wb._sheets = [wb[s] for s in order if s in wb.sheetnames] + \
              [s for s in wb._sheets if s.title not in order]
