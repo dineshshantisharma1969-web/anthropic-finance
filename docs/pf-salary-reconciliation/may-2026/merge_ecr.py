@@ -152,7 +152,7 @@ print(f'\nemployees appearing in >1 PF file (EE summed): {len(multi)}')
 for k, v in list(multi.items())[:10]:
     print(f'   {k:>10} {v["name"][:24]:24} {v["files"]}  EE {v["ee"]:,.0f}')
 
-with open('ECR_MERGED_April2026.csv', 'w', newline='') as f:
+with open('ECR_MERGED_May2026.csv', 'w', newline='') as f:
     w = csv.writer(f)
     w.writerow(['EMP_CODE', 'NAME', 'UAN_NO', 'ECR_PF_EE', 'SOURCE_FILES',
                 'SITE_NAME', 'LOCATION', 'IS_BACK_OFFICE'])
@@ -161,4 +161,4 @@ with open('ECR_MERGED_April2026.csv', 'w', newline='') as f:
         w.writerow([k, scrub(v['name']), v['uan'], f"{v['ee']:.0f}",
                     '+'.join(v['files']), scrub(v['site']), scrub(v['loc']),
                     'Y' if 'BACK OFFICE' in v['site'].upper() else 'N'])
-print(f'\nwrote ECR_MERGED_April2026.csv  ({len(merged):,} employees, EE {tot_ee:,.0f})')
+print(f'\nwrote ECR_MERGED_May2026.csv  ({len(merged):,} employees, EE {tot_ee:,.0f})')

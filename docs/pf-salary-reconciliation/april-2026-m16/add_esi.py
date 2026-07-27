@@ -23,6 +23,10 @@ for r in csv.DictReader(open(ESI_CSV)):
     esi[c] = num(r['ESI_EMP']); esrc[c] = r['SOURCE']
     ename[c] = r['NAME']; ebr[c] = r['BRANCH']
 notpaid = list(csv.DictReader(open(NP_CSV)))
+# Both the register AND the Future workbook carry a not-paid list. An employee on
+# either one HAS been filed -- only the payment is outstanding -- so they must not
+# be counted as "deducted but never filed".
+npset = {code(r['EMP_CODE']) for r in notpaid}
 
 sal = list(csv.DictReader(open('SALARY_extract.csv')))
 T = lambda c: sum(num(r[c]) for r in sal)
@@ -47,11 +51,15 @@ onlyE_v = sum(esi[c] for c in onlyE); onlyS_v = sum(by[c]['esic'] for c in onlyS
 
 # per-source figures come straight from the merge script's own summary, so no
 # hardcoded totals can drift out of step with the data.
-SRC = list(csv.DictReader(open('../esi/ESI_SOURCE_SUMMARY.csv')))
+SRC = list(csv.DictReader(open('../esi/ESI_SOURCE_SUMMARY_April2026.csv')))
 SOURCES = [(r['SOURCE'], int(r['ROWS_KEPT']), num(r['ESIC_RAW']))
            for r in SRC if r['SOURCE'] != 'MERGED']
 RAW_SUM = sum(v for _, _, v in SOURCES)
 DUPS_DROPPED = sum(int(r['EXACT_DUPS_DROPPED'] or 0) for r in SRC if r['SOURCE'] != 'MERGED')
+
+bA_ = [c for c in S - E if by[c]['esic'] > 0]
+A_np = [c for c in bA_ if c in npset]
+A_NP_V = sum(by[c]['esic'] for c in A_np)
 
 wb = openpyxl.load_workbook(WB)
 H1 = Font(bold=True, size=13, color='FFFFFF'); HF = PatternFill('solid', fgColor='1F4E78')
@@ -114,6 +122,8 @@ row(ws, ['Filed but NOT in salary sheet', len(onlyE), onlyE_v, '',
 row(ws, ['In salary but NOT filed (ESIC deducted)',
          sum(1 for c in onlyS if by[c]['esic'] > 0), -onlyS_v, '',
          'ESIC deducted from staff with no ESI filing'], fill=WARN)
+row(ws, ['       of which on a NOT-PAID list', len(A_np), -A_NP_V, '',
+         'filing exists; only the payment is outstanding'], fill=OKF)
 row(ws, ['NET = GAP', '', (m_filed - m_paid) + onlyE_v - onlyS_v, '', 'ties to the gap above'],
     bold=True, fill=TOTF)
 ws.append([])
@@ -141,8 +151,10 @@ NOTE = [
  'Positive difference = filed more than deducted. Negative = deducted more than filed.',
  'Employees where filed = deducted exactly are NOT listed (12,778 of them). '
  'The differences below add up to the ₹20,345.61 overall gap.',
- 'The last two columns are the salary sheet\'s own Future columns, shown only for reference — '
- 'col GK is populated on just 21% of rows, so do NOT read a blank there as "Future filed nothing".']
+ 'ON NOT-PAID list = the filing does exist, only the payment is outstanding — treat those '
+ 'differently from a genuine non-filing.',
+ 'The last column is the salary sheet\'s own col GK, shown only for reference — it is '
+ 'populated on just 21% of rows, so do NOT read a blank there as "Future filed nothing".']
 for t in NOTE:
     ws.append([t]); r = ws.max_row
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=11)
@@ -152,7 +164,7 @@ ws.append([])
 
 HEAD = ['EMPCODE', 'NAME', 'STATE / BRANCH', 'WHY this employee is here',
         'ESIC deducted in salary ₹', 'ESI actually FILED ₹', 'DIFFERENCE (filed − deducted) ₹',
-        'Filed where', 'Salary rows', '[ref] ESIC as per Future (GK)', '[ref] Future_ESI (GJ)']
+        'Filed where', 'Salary rows', 'On NOT-PAID list?', '[ref] ESIC as per Future (GK)']
 CATS = {
  'A': 'A — Deducted in salary but NOT filed anywhere  → recover / file',
  'B': 'B — Filed, but employee is not on the salary sheet at all',
@@ -173,13 +185,13 @@ for c in sorted(S | E):
                      (bb['state'] if bb else ebr.get(c, '')), CATS[k],
                      paid, filed, diff, esrc.get(c, '— not in any ESI file —'),
                      (bb['rows'] if bb else 0),
-                     (bb['gk'] if bb else 0.0), (bb['fut'] if bb else 0.0), k])
+                     ('YES' if c in npset else ''), (bb['gk'] if bb else 0.0), k])
 rows_out.sort(key=lambda x: (x[11], -abs(x[6])))
 
 tot = ['TOTAL', f'{len(rows_out):,} employees with a difference', '',
        'these differences net to the overall ESI gap',
        sum(v[4] for v in rows_out), sum(v[5] for v in rows_out), sum(v[6] for v in rows_out),
-       '', '', sum(v[9] for v in rows_out), sum(v[10] for v in rows_out)]
+       '', '', sum(1 for v in rows_out if v[9] == 'YES'), sum(v[10] for v in rows_out)]
 ws.append(tot); tr = ws.max_row
 for i in range(1, 12):
     cc = ws.cell(tr, i); cc.font = Font(bold=True); cc.fill = TOTF; cc.border = B
@@ -192,6 +204,7 @@ for v in rows_out:
     r = row(ws, v, nf=5)
     ws.cell(r, 4).fill = CATFILL[k]
     ws.cell(r, 7).font = Font(bold=True)
+    if v[9] == 'YES': ws.cell(r, 10).fill = OKF
 ws.freeze_panes = 'C9'
 ws.auto_filter.ref = f'A8:{get_column_letter(11)}{ws.max_row}'
 
@@ -201,8 +214,10 @@ title(ws2, 'ESI differences — the four buckets', 4)
 ws2.append([])
 hdr(ws2, ['Bucket', 'Employees', '₹ (filed − deducted)', 'What it means / what to do'])
 MEAN = {
- 'A': 'ESIC was deducted from the employee but no ESI was filed for them anywhere. '
-      'Either file it, or refund the employee.',
+ 'A': f'ESIC was deducted from the employee but no ESI was filed for them anywhere. '
+      f'{len(A_np)} of these (Rs {A_NP_V:,.0f}) are on a not-paid list, so the filing does '
+      f'exist and only the payment is pending; the other {len(bA_)-len(A_np)} '
+      f'(Rs {onlyS_v-A_NP_V:,.0f}) are unaccounted for. File or refund those.',
  'B': 'ESI was filed for someone who never appears on the April salary sheet '
       '(mostly Future-managed staff, 287 of the 316).',
  'C': 'ESI filed exceeds what was deducted — the employee was under-deducted.',
@@ -221,13 +236,19 @@ row(ws2, ['NET = overall ESI gap', '', sum(agg[k][1] for k in 'ABCD'),
 ws2.freeze_panes = 'A3'
 
 # ============ ESI Not-Paid ============
-ws = sheet('ESI Not-Paid (50)', [13, 26, 34, 18, 16, 22, 11, 13])
-title(ws, 'ESI filed-but-NOT-PAID — from the register\'s NOT PAID sheet', 8)
+ws = sheet(f'ESI Not-Paid ({len(notpaid)})', [13, 26, 34, 18, 16, 22, 11, 13, 11, 10, 22])
+title(ws, 'ESI filed-but-NOT-PAID — the register\'s NOT PAID sheet AND the Future '
+          'workbook\'s own not-paid sheet', 11)
 hdr(ws, ['EMPCODE', 'NAME', 'SITE NAME', 'STATE', 'BRANCH', 'ESI NO / STATUS',
-         'TOTAL DAYS', 'PRESENT DAYS'])
+         'TOTAL DAYS', 'PRESENT DAYS', 'ESIC', 'LIST', 'Deducted in salary?'])
 for r in notpaid:
-    row(ws, [r['EMP_CODE'], r['NAME'][:26], r['SITE_NAME'][:34], r['STATE'], r['BRANCH'],
-             r['ESI_NO_STATUS'], num(r['TOTAL_DAYS']), num(r['PRESENT_DAYS'])], fmt=MI, nf=7)
+    c = code(r['EMP_CODE'])
+    rr = row(ws, [c, r['NAME'][:26], r['SITE_NAME'][:34], r['STATE'], r['BRANCH'],
+                  r['ESI_NO_STATUS'], num(r['TOTAL_DAYS']), num(r['PRESENT_DAYS']),
+                  num(r.get('ESIC', 0)), r.get('LIST', ''),
+                  (f"YES — Rs {by[c]['esic']:,.0f} deducted" if c in by and by[c]['esic'] > 0
+                   else '')], fmt=MI, nf=7)
+    if c in by and by[c]['esic'] > 0: ws.cell(rr, 11).fill = WARN
 ws.freeze_panes = 'A3'
 
 # ============ refresh Checks ============
@@ -250,11 +271,13 @@ chk('ESI bridge ties to the filed-vs-paid gap', f'{FILED - PAID:,.2f}',
 chk('ESI filed for employees absent from salary sheet', '0', f'{len(onlyE)} / {onlyE_v:,.2f}', False)
 chk('ESIC deducted but no ESI filing', '0',
     f'{sum(1 for c in onlyS if by[c]["esic"] > 0)} / {onlyS_v:,.2f}', False)
+chk('   …of those, filing exists but payment pending (not-paid lists)', '—',
+    f'{len(A_np)} / {A_NP_V:,.2f}', True)
 chk('Matched employees where filed != paid', '0', f'{sum(1 for c in M if abs(esi[c]-by[c]["esic"])>0.005):,}', False)
 
 order = ['Summary', 'Detail (all rows)', 'PF Reconciliation',
          'ESI Merge & Match', 'ESI Diff — summary', 'ESI Diff (emp-wise)',
-         'ESI Not-Paid (50)', 'ESI — salary cols only',
+         f'ESI Not-Paid ({len(notpaid)})', 'ESI — salary cols only',
          'Net Payable Reconciliation', 'ECR-Only (250)', 'Checks', 'Exceptions']
 wb._sheets = [wb[s] for s in order if s in wb.sheetnames] + \
              [s for s in wb._sheets if s.title not in order]

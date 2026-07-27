@@ -69,8 +69,11 @@ Unlike the PF merge, the regional files legitimately carry the same EMPCODE on s
 rows (a month split across day-blocks or sites) — 184 employees. Those are **summed**;
 deduping them would understate ESI. Only exact duplicate rows are dropped.
 
-The register's `NOT PAID` sheet (50 employees) is held aside — reasons are *left*,
-*bank error*, *ESIC not generated*, *data not received*.
+**Two** not-paid lists are held aside, not one: the register's `NOT PAID` sheet (50) and the
+Future workbook's own `Not Paid.` sheet (52) — 102 employees in all. Reasons are *left*,
+*bank error*, *ESIC not generated*, *data not received*. An employee on either list **has**
+been filed; only the payment is outstanding. (The Future list was missed in the first run of
+this reconciliation and is now included — see bucket A below.)
 
 ### Step 2 — match to the April salary sheet
 
@@ -121,6 +124,8 @@ reconciles. Four plain-language buckets, netting to the ₹20,345.61 gap:
 | Bucket | Employees | ₹ (filed − deducted) | Meaning |
 |---|--:|--:|---|
 | **A** — deducted in salary but **not filed anywhere** | 512 | −43,630.00 | file it, or refund the employee |
+| — of which on a **not-paid list** | 89 | −7,125.00 | filing exists; only payment is outstanding |
+| — remainder, genuinely unaccounted | 423 | −36,505.00 | **OPEN** |
 | **B** — filed, but employee **not on the salary sheet** | 316 | +20,046.00 | mostly Future-managed (287) |
 | **C** — filed **more** than deducted | 4,426 | +89,073.00 | employee under-deducted |
 | **D** — deducted **more** than filed | 1,639 | −45,143.39 | over-deducted, or a filing is missing |
@@ -165,7 +170,7 @@ ceiling binds — it does not bind for these employees.
 
 | File | What |
 |---|---|
-| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 12 sheets: Summary · **Detail (all 21,152 rows)** · PF · **ESI Merge & Match** · ECR-Only (250, split back-office vs client-site) · **ESI Diff — summary** · **ESI Diff (emp-wise)** · **ESI Not-Paid (50)** · ESI — salary cols only · Net Payable · Checks (17 PASS / 8 REVIEW) · Exceptions |
+| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 12 sheets: Summary · **Detail (all 21,152 rows)** · PF · **ESI Merge & Match** · ECR-Only (250, split back-office vs client-site) · **ESI Diff — summary** · **ESI Diff (emp-wise)** · **ESI Not-Paid (102)** · ESI — salary cols only · Net Payable · Checks (18 PASS / 8 REVIEW) · Exceptions |
 
 **`Detail (all rows)`** is the main working sheet — one row per salary row (21,152), 30 columns,
 frozen panes + autofilter, with a totals strip pinned at row 1. Carries PF as paid, the merged
@@ -174,10 +179,26 @@ deduction before/after, gross before/after, net before/after, the rule applied, 
 employee matched the ECR. ECR PF is attributed to the employee's `PF_ANCHOR` row so the gap
 column reads true per employee rather than double-counting across multi-site rows.
 | `ECR_MERGED_April2026.csv` | merged per-employee ECR — 18,639 rows, EE 2,55,59,370, incl. `SITE_NAME` / `LOCATION` / `IS_BACK_OFFICE` |
-| `merge_esi.py` | merges the 7-file ESI folder into `ESI_MERGED_April2026.csv`; sums day-split rows, drops only exact duplicates, emits `ESI_SOURCE_SUMMARY.csv` so no total is hardcoded downstream |
+| `merge_esi.py` | merges the 7-file ESI folder into `ESI_MERGED_April2026.csv`; sums day-split rows, drops only exact duplicates, reads **both** not-paid sheets, emits `ESI_SOURCE_SUMMARY_April2026.csv` so no total is hardcoded downstream. Month-agnostic — the same script produced the May run |
 | `add_esi.py` | adds the three ESI sheets to the workbook |
 | `merge_ecr.py` | merges any `FORMAT*APRIL*2026*.xlsx` dropped beside it; auto-detects header row (STEAGE has a blank leading row), dedupes per file, ties each to its footer |
 | `build_recon.py` | builds the workbook from `ECR_MERGED_April2026.csv` + `SALARY_extract.csv` |
 
 `SALARY_extract.csv` (39 columns × 21,152 rows lifted from the 221-column salary sheet) is not
 committed — regenerate it with the extract step in `build_recon.py`'s header comment.
+
+
+## Corrections applied 2026-07-27
+
+Found while running the May reconciliation and applied back to this month:
+
+1. **Bucket A was overstated.** The Future workbook carries its own `Not Paid.` sheet
+   (52 employees) alongside the register's (50). Only the register's was being read.
+   89 employees / ₹7,125 move out of "deducted but never filed" into "filed, payment
+   pending" — a different action entirely. The overall ₹20,345.61 ESI gap is unchanged.
+2. **Site names in `ECR_MERGED_April2026.csv` lost their commas.** A hand-rolled CSV
+   writer has been replaced with `csv.writer`; 865 site names now read correctly
+   (e.g. `INFOSYS LIMITED_GREEN PARK MAIN, NEW DELHI`). Employee set and EE totals
+   are unchanged.
+3. `ESI_SOURCE_SUMMARY.csv` renamed to `ESI_SOURCE_SUMMARY_April2026.csv` now that
+   `merge_esi.py` is month-agnostic.
