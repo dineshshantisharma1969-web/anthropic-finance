@@ -15,7 +15,8 @@ Drop every FORMAT*APRIL*2026*.xlsx into this folder and run.
 import glob, os, sys
 import openpyxl
 
-FILES = sorted(glob.glob('*.xlsx'))
+FILES = sorted(f for f in glob.glob('*.xlsx')
+                if 'RECONCILIATION' not in os.path.basename(f).upper())
 EXPECTED = ['DELHI', 'STEAGE', 'DMART']
 
 
@@ -109,13 +110,17 @@ for path in FILES:
         c = clean_code(r[idx['EMP CODE']])
         e = num(r[idx['EE']])
         if c not in merged:
-            merged[c] = {'ee': 0.0, 'files': [], 'name': '', 'uan': ''}
+            merged[c] = {'ee': 0.0, 'files': [], 'name': '', 'uan': '', 'site': '', 'loc': ''}
         merged[c]['ee'] += e          # sum across files (separate registrations)
         merged[c]['files'].append(tag)
         if not merged[c]['name'] and 'Name' in idx and r[idx['Name']]:
             merged[c]['name'] = str(r[idx['Name']]).strip()
         if not merged[c]['uan'] and 'UAN NO' in idx and r[idx['UAN NO']]:
             merged[c]['uan'] = clean_code(r[idx['UAN NO']])
+        if not merged[c]['site'] and 'Site name' in idx and r[idx['Site name']]:
+            merged[c]['site'] = str(r[idx['Site name']]).strip()
+        if not merged[c]['loc'] and 'Location' in idx and r[idx['Location']]:
+            merged[c]['loc'] = str(r[idx['Location']]).strip()
 
 print('=' * 96)
 print('PER-FILE LOAD & DEDUPE')
@@ -142,9 +147,11 @@ for k, v in list(multi.items())[:10]:
     print(f'   {k:>10} {v["name"][:24]:24} {v["files"]}  EE {v["ee"]:,.0f}')
 
 with open('ECR_MERGED_April2026.csv', 'w') as f:
-    f.write('EMP_CODE,NAME,UAN_NO,ECR_PF_EE,SOURCE_FILES\n')
+    f.write('EMP_CODE,NAME,UAN_NO,ECR_PF_EE,SOURCE_FILES,SITE_NAME,LOCATION,IS_BACK_OFFICE\n')
     for k in sorted(merged):
         v = merged[k]
         nm = v['name'].replace(',', ' ')
-        f.write(f'{k},{nm},{v["uan"]},{v["ee"]:.0f},"{"+".join(v["files"])}"\n')
+        st = v['site'].replace(',', ' ')
+        bo = 'Y' if 'BACK OFFICE' in v['site'].upper() else 'N'
+        f.write(f'{k},{nm},{v["uan"]},{v["ee"]:.0f},"{"+".join(v["files"])}",{st},{v["loc"]},{bo}\n')
 print(f'\nwrote ECR_MERGED_April2026.csv  ({len(merged):,} employees, EE {tot_ee:,.0f})')

@@ -14,9 +14,10 @@ def code(v):
     return s[:-2] if s.endswith('.0') else s.split('.')[0]
 
 # ---------------- data ----------------
-ecr, ecrname, ecrsrc = {}, {}, {}
+ecr, ecrname, ecrsrc, ecrsite, ecrbo = {}, {}, {}, {}, {}
 for r in csv.DictReader(open('ECR_MERGED_April2026.csv')):
     c=code(r['EMP_CODE']); ecr[c]=num(r['ECR_PF_EE']); ecrname[c]=r['NAME']; ecrsrc[c]=r['SOURCE_FILES']
+    ecrsite[c]=r.get('SITE_NAME',''); ecrbo[c]=r.get('IS_BACK_OFFICE','N')=='Y'
 sal=list(csv.DictReader(open('SALARY_extract.csv')))
 T=lambda c: sum(num(r[c]) for r in sal)
 
@@ -27,6 +28,8 @@ sal_emps=set(rows_by); ecr_emps=set(ecr)
 matched=sal_emps&ecr_emps; ecr_only=sorted(ecr_emps-sal_emps, key=lambda c:-ecr[c]); sal_only=sal_emps-ecr_emps
 
 ECR_TOT=sum(ecr.values()); MATCHED_ECR=sum(ecr[c] for c in matched); ECRONLY=sum(ecr[c] for c in ecr_only)
+BO=[c for c in ecr_only if ecrbo.get(c)]; NBO=[c for c in ecr_only if not ecrbo.get(c)]
+BO_V=sum(ecr[c] for c in BO); NBO_V=sum(ecr[c] for c in NBO)
 PF_PAID=T('PF'); PF_REV=T('REVISED_PF'); SHEET_ECR=T('ECR_PF_SHEET')
 NET=T('NETPAYABLE'); REVNET=T('REVISED_NET_PAYABLE')
 FILES=[('DELHI',18535,25407193,52890387.72),('DMART',69,98717,205648.405),('STEAGE',35,53460,111357.155)]
@@ -75,7 +78,9 @@ row(ws,['Salary sheet PF — as paid (col DQ)',PF_PAID,len(sal_emps),'',''])
 row(ws,['Salary sheet REVISED_PF (col GH)',PF_REV,'','',''])
 row(ws,['GAP  (Merged ECR − Salary PF)',ECR_TOT-PF_PAID,'','','= ECR-only employees, see below'],bold=True,fill=WARN)
 row(ws,['   ├ matched employees',MATCHED_ECR,len(matched),'','ECR = salary PF, gap ₹0'],fill=OKF)
-row(ws,['   └ in ECR but NOT in salary sheet',ECRONLY,len(ecr_only),'','ACTION — sheet ECR-Only (250)'],fill=WARN)
+row(ws,['   └ in ECR but NOT in salary sheet',ECRONLY,len(ecr_only),'','split below'])
+row(ws,['        ├ BACK OFFICE staff',BO_V,len(BO),'','EXPLAINED — separate payroll, not on site sheet'],fill=OKF)
+row(ws,['        └ at named client sites',NBO_V,len(NBO),'','OPEN — should have been on the salary sheet'],fill=WARN)
 row(ws,['   (in salary but not in ECR)',0,len(sal_only),'','all carry salary PF ₹0 — no impact'])
 ws.append([])
 
@@ -115,7 +120,8 @@ row(ws,['GAP',len(ecr)-len(sal_emps),ECR_TOT-PF_PAID,'','fully explained below']
 ws.append([])
 hdr(ws,['STEP 3 — bridge the gap','Employees','₹','','Treatment'])
 row(ws,['Matched — ECR = salary PF exactly',len(matched),MATCHED_ECR,'','no adjustment; per-employee gap ₹0'],fill=OKF)
-row(ws,['ECR only — absent from salary sheet',len(ecr_only),ECRONLY,'','ACTION: confirm these are payable'],fill=WARN)
+row(ws,['ECR only — BACK OFFICE staff',len(BO),BO_V,'','EXPLAINED — back-office payroll is separate'],fill=OKF)
+row(ws,['ECR only — at named client sites',len(NBO),NBO_V,'','OPEN — investigate omission from salary sheet'],fill=WARN)
 row(ws,['Salary only — no ECR entry',len(sal_only),0,'','salary PF already ₹0 — nil effect'])
 row(ws,['TOTAL',len(ecr),ECR_TOT,'',''],bold=True,fill=TOTF)
 ws.append([])
@@ -188,16 +194,17 @@ ws.freeze_panes='A3'
 
 # ================= ECR ONLY =================
 ws=sheet('ECR-Only (250)',[14,34,18,16,14,34])
-title(ws,'ACTION — in merged ECR but NOT in the April salary sheet  →  ₹%s'%f'{ECRONLY:,.0f}',6)
+title(ws,'In merged ECR but NOT in the April salary sheet  →  ₹%s   (%d back office ₹%s EXPLAINED · %d at client sites ₹%s OPEN)'
+      %(f'{ECRONLY:,.0f}',len(BO),f'{BO_V:,.0f}',len(NBO),f'{NBO_V:,.0f}'),6)
 ws.append([])
-hdr(ws,['EMP CODE','Name (per ECR)','UAN','ECR PF ₹','Source','Comment'])
-uan={}
-for r in csv.DictReader(open('ECR_MERGED_April2026.csv')): uan[code(r['EMP_CODE'])]=r['UAN_NO']
-for c in ecr_only:
-    cm='EE above ₹1,800 ceiling — check' if ecr[c]>1800 else ('EE = 0' if ecr[c]==0 else '')
-    r_=row(ws,[c,ecrname[c],uan.get(c,''),ecr[c],ecrsrc[c],cm],numfrom=4)
-    if ecr[c]>1800: ws.cell(r_,4).fill=WARN
-row(ws,['','','TOTAL',ECRONLY,'',''],bold=True,fill=TOTF,numfrom=4)
+hdr(ws,['EMP CODE','Name (per ECR)','ECR PF ₹','Site name (per ECR)','Category','Comment'])
+for c in sorted(NBO,key=lambda x:-ecr[x])+sorted(BO,key=lambda x:-ecr[x]):
+    cat='BACK OFFICE' if ecrbo.get(c) else 'CLIENT SITE'
+    cm=('EE above ₹1,800 ceiling — check' if ecr[c]>1800 else ('EE = 0' if ecr[c]==0 else ''))
+    if not ecrbo.get(c) and not cm: cm='on a client site — why not in salary sheet?'
+    r_=row(ws,[c,ecrname[c],ecr[c],ecrsite.get(c,'')[:46],cat,cm],numfrom=3)
+    ws.cell(r_,5).fill = OKF if ecrbo.get(c) else WARN
+row(ws,['','TOTAL',ECRONLY,'','',''],bold=True,fill=TOTF,numfrom=3)
 ws.freeze_panes='A3'
 
 # ================= CHECKS =================
@@ -218,6 +225,8 @@ chk(n,'No employee appears in >1 PF file','0','0',True); n+=1
 chk(n,'Matched employees: ECR = REVISED_PF','0 gaps','0 gaps',True); n+=1
 chk(n,'Salary REVISED_PF total = sheet ECR_PF column',f'{SHEET_ECR:,.0f}',f'{PF_REV:,.0f}',abs(SHEET_ECR-PF_REV)<1); n+=1
 chk(n,'PF gap fully explained by ECR-only employees',f'{ECR_TOT-PF_PAID:,.0f}',f'{ECRONLY:,.0f}',abs((ECR_TOT-PF_PAID)-ECRONLY)<1); n+=1
+chk(n,'ECR-only: back-office staff (separate payroll)','explained',f'{len(BO)} / {BO_V:,.0f}',True); n+=1
+chk(n,'ECR-only: at named client sites, absent from salary sheet','0',f'{len(NBO)} / {NBO_V:,.0f}',False); n+=1
 chk(n,'NET PAYABLE drift (Golden Rule 3)','0',f'{REVNET-NET:,.0f}',abs(REVNET-NET)<1); n+=1
 chk(n,'Employees in salary but not ECR carry PF ₹0','0',f'{sum(pf_by[c] for c in sal_only):,.0f}',sum(pf_by[c] for c in sal_only)==0); n+=1
 chk(n,'ESI: Future_ESI vs REVISED_ESIC','0',f'{T("FUTURE_ESI")-T("REVISED_ESIC"):,.2f}',False); n+=1

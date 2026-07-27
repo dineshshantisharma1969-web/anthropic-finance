@@ -36,7 +36,9 @@ Gap is **fully explained**, to the rupee:
 | Bucket | Employees | ₹ | Treatment |
 |---|--:|--:|---|
 | Matched — ECR = salary PF | 18,389 | 2,52,21,042 | no adjustment; **per-employee gap ₹0** |
-| In ECR, **absent from salary sheet** | 250 | 3,38,328 | **ACTION** — see `ECR-Only (250)` sheet |
+| In ECR, **absent from salary sheet** | 250 | 3,38,328 | split below |
+| — of which **BACK OFFICE** staff | 187 | 3,12,659 | **EXPLAINED** — back office is on a separate payroll, so never appears on the site-based salary sheet (confirmed by client 2026-07-27; the ECR's own `Site name` column labels them `BACK OFFICE <state>`) |
+| — of which at **named client sites** | 63 | 25,669 | **OPEN** — these sit at real client sites (Kamakhya, Bikaner OBHS, DLF Magnolias, Accenture, Adobe …) and should have been on the salary sheet |
 | In salary, not in ECR | 966 | 0 | salary PF already ₹0 — nil effect |
 
 The per-employee test is exact, not just aggregate: all 18,389 matched employees have
@@ -63,12 +65,17 @@ The ~₹4.68 Cr of PF/basic movement is absorbed entirely through OTHER DEDUCTIO
 
 ## Exceptions raised
 
-1. **EMP 23040315 (AMIT, Haryana)** — EE ₹5,812 on ₹15,000 PF wages (expected ₹1,800). The only
-   row across all three PF files where `EE ≠ 12% × PF WAGES`; also one of the 250 ECR-only
-   employees. Likely arrears — confirm.
-2. **4 rows where NET > GROSS** not explained by `REVISED_GROSS_NEW` (773 of the 777 such rows
+1. **63 ECR-only employees at named client sites — ₹25,669.** Not back office (their ECR `Site name`
+   is a real client site), so their omission from the salary sheet is unexplained. Mostly small
+   part-month amounts (₹43–₹1,680), which points at joiners/leavers missed in the April run.
+   Largest concentrations: Kamakhya MCC Depot (8, ₹8,786), Bikaner OBHS (4, ₹3,604),
+   Kamakhya (4, ₹2,412), DLF Magnolias (6, ₹964).
+2. **EMP 23040315 (AMIT)** — EE ₹5,812 on ₹15,000 PF wages (expected ₹1,800). The only row across
+   all three PF files where `EE ≠ 12% × PF WAGES`. He is back office, so within the explained
+   bucket, but the amount itself still looks like arrears — confirm.
+3. **4 rows where NET > GROSS** not explained by `REVISED_GROSS_NEW` (773 of the 777 such rows
    are explained — col DP is pre-restructure, col HH is the gross the net is paid from).
-3. **5 employees with identical GROSS *and* NET on two rows** — possible duplicated rows rather
+4. **5 employees with identical GROSS *and* NET on two rows** — possible duplicated rows rather
    than genuine multi-site.
 
 ## Note on the ₹15,000 ceiling
@@ -82,8 +89,8 @@ ceiling binds — it does not bind for these employees.
 
 | File | What |
 |---|---|
-| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 7 sheets: Summary · PF · ESI · Net Payable · ECR-Only (250) · Checks (13 PASS / 3 REVIEW) · Exceptions |
-| `ECR_MERGED_April2026.csv` | merged per-employee ECR — 18,639 rows, EE 2,55,59,370 |
+| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 7 sheets: Summary · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · Checks (14 PASS / 4 REVIEW) · Exceptions |
+| `ECR_MERGED_April2026.csv` | merged per-employee ECR — 18,639 rows, EE 2,55,59,370, incl. `SITE_NAME` / `LOCATION` / `IS_BACK_OFFICE` |
 | `merge_ecr.py` | merges any `FORMAT*APRIL*2026*.xlsx` dropped beside it; auto-detects header row (STEAGE has a blank leading row), dedupes per file, ties each to its footer |
 | `build_recon.py` | builds the workbook from `ECR_MERGED_April2026.csv` + `SALARY_extract.csv` |
 
