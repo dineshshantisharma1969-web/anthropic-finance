@@ -46,16 +46,70 @@ The per-employee test is exact, not just aggregate: all 18,389 matched employees
 
 ## ESI
 
+### Step 1 — merge the ESI folder
+
+Seven sources. They cover **different populations**, so the sum is additive, not a
+double count — the Future (FR) sheet and the in-house ESIC register overlap on exactly
+**one** employee.
+
+| Source | Employees | ESI employee ₹ | Covers |
+|---|--:|--:|---|
+| ESIC REGISTER (`ESIC` sheet) | 2,934 | 3,17,855.00 | Mumbai, Hyderabad, Bangalore, Pune, Ahmedabad, Chennai, Vizag, Nagpur, Aurangabad, Dehradun, Indore |
+| FUTURE (`FR_sheet`) | 9,188 | 8,77,142.25 | Future-managed population |
+| KOLKATA | 2,662 | 2,37,230.00 | West Bengal |
+| GUWAHATI | 722 | 50,742.00 | Assam |
+| ODISHA | 225 | 22,029.00 | Odisha |
+| JAMSHEDPUR | 43 | 5,072.00 | Jharkhand |
+| PATNA | 47 | 3,161.37 | Bihar |
+| rows read | 15,821 | 15,13,231.62 | |
+| less: 5 exact duplicate rows (all KOLKATA) | −5 | −33.01 | |
+| **MERGED ESI** | **15,576** | **15,13,198.61** | |
+
+Unlike the PF merge, the regional files legitimately carry the same EMPCODE on several
+rows (a month split across day-blocks or sites) — 184 employees. Those are **summed**;
+deduping them would understate ESI. Only exact duplicate rows are dropped.
+
+The register's `NOT PAID` sheet (50 employees) is held aside — reasons are *left*,
+*bank error*, *ESIC not generated*, *data not received*.
+
+### Step 2 — match to the April salary sheet
+
+| | Employees | ₹ |
+|---|--:|--:|
+| Merged ESI (filed) | 15,576 | 15,13,198.61 |
+| Salary sheet ESIC (col DR, as paid) | 19,355 | 14,92,853.00 |
+| **Gap (filed − paid)** | | **20,345.61** |
+
+Bridge (ties exactly):
+
+| Bucket | Employees | ₹ |
+|---|--:|--:|
+| Matched, filed ≠ paid | 15,260 | +43,929.61 |
+| Filed but **not in the salary sheet** | 316 | +20,046.00 |
+| In salary, ESIC deducted but **not filed** | 512 | −43,630.00 |
+| **= Gap** | | **20,345.61** |
+
+Filed-but-not-in-salary splits FUTURE 287 (₹17,396) · GUWAHATI 17 (₹1,039) ·
+KOLKATA 10 (₹1,436) · REGISTER 2 (₹175).
+
+### Salary-sheet ESI columns
+
 | | ₹ |
 |---|--:|
-| ESIC as paid (col DR) | 14,92,853 |
+| ESIC as paid (col DR) | 14,92,853.00 |
 | REVISED_ESIC (col GI) | 3,18,633.62 |
+| ESIC AS PER FUTURE (col GK) | 3,18,633.62 |
 | Future_ESI (col GJ) | 3,56,369.62 |
-| **Gap (Future − Revised)** | **37,736.00** |
+| **Future_ESI − REVISED_ESIC** | **37,736.00** |
 
-Still **open** — same ₹37,736 flagged in `vault/40-Workings/2026-04-april-reconciliation.md`;
-it has carried forward unresolved. By rule group: PF_SECONDARY 14,971 · SKIP_ZERO_BASIC 12,519 ·
-PF_ANCHOR 10,213 · ESI_ONLY 33. Verify before the ESI filing.
+`ESIC AS PER FUTURE` ties **exactly** to `REVISED_ESIC`, so the ₹37,736 is the
+Future_ESI-vs-Revised item carried forward from the June run — still open.
+
+**Employee-wise difference detail** is on the `ESI Diff (emp-wise)` sheet — 13,139
+employees, one row each, with `ESIC paid` / `ESIC as per Future` / `DIFF DR−GK`,
+`REVISED_ESIC` / `Future_ESI` / `DIFF GJ−GI`, and `merged filed ESI` / `DIFF filed−paid`.
+Headline differences: **DR − GK = ₹11,74,219.38** across 12,613 employees (paid > Future
+on 12,612 of them), **GJ − GI = ₹37,736**, **filed − paid = ₹20,345.61**.
 
 ## Net payable — Golden Rule 3
 
@@ -89,7 +143,7 @@ ceiling binds — it does not bind for these employees.
 
 | File | What |
 |---|---|
-| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 8 sheets: Summary · **Detail (all 21,152 rows)** · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · Checks (14 PASS / 4 REVIEW) · Exceptions |
+| `ISPL_April2026_PF_ESI_NetPayable_Reconciliation.xlsx` | 11 sheets: Summary · **Detail (all 21,152 rows)** · PF · ESI · Net Payable · ECR-Only (250, split back-office vs client-site) · **ESI Merge & Match** · **ESI Diff (emp-wise)** · **ESI Not-Paid (50)** · Checks (17 PASS / 8 REVIEW) · Exceptions |
 
 **`Detail (all rows)`** is the main working sheet — one row per salary row (21,152), 30 columns,
 frozen panes + autofilter, with a totals strip pinned at row 1. Carries PF as paid, the merged
@@ -98,6 +152,8 @@ deduction before/after, gross before/after, net before/after, the rule applied, 
 employee matched the ECR. ECR PF is attributed to the employee's `PF_ANCHOR` row so the gap
 column reads true per employee rather than double-counting across multi-site rows.
 | `ECR_MERGED_April2026.csv` | merged per-employee ECR — 18,639 rows, EE 2,55,59,370, incl. `SITE_NAME` / `LOCATION` / `IS_BACK_OFFICE` |
+| `merge_esi.py` | merges the 7-file ESI folder into `ESI_MERGED_April2026.csv`; sums day-split rows, drops only exact duplicates, emits `ESI_SOURCE_SUMMARY.csv` so no total is hardcoded downstream |
+| `add_esi.py` | adds the three ESI sheets to the workbook |
 | `merge_ecr.py` | merges any `FORMAT*APRIL*2026*.xlsx` dropped beside it; auto-detects header row (STEAGE has a blank leading row), dedupes per file, ties each to its footer |
 | `build_recon.py` | builds the workbook from `ECR_MERGED_April2026.csv` + `SALARY_extract.csv` |
 
