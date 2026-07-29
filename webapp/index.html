@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HealthSnap — Snap your food. Know your health.</title>
+<meta name="description" content="Click a photo of your food on Telegram — AI identifies the Indian dish and logs calories, protein, carbs in seconds. Track BP and sugar too. Built for Indian food.">
+<meta property="og:title" content="HealthSnap — AI food logging for Indian food">
+<meta property="og:description" content="Snap a photo on Telegram. AI logs your calories. Track BP & sugar. ₹149/month, 7-day free trial.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0F1117">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2300E5A0'/><text x='50' y='68' font-size='52' text-anchor='middle'>📸</text></svg>">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+<!-- ================= NAV ================= -->
+<nav class="nav">
+  <div class="container nav-inner">
+    <a class="logo" href="#"><span class="logo-mark">📸</span>HealthSnap</a>
+    <div class="nav-links">
+      <a class="nav-item" href="#how">How it works</a>
+      <a class="nav-item" href="#features">Features</a>
+      <a class="nav-item" href="#pricing">Pricing</a>
+      <a class="nav-item" href="#faq">FAQ</a>
+      <a class="btn btn-primary" style="padding:9px 20px;font-size:14px" href="#pricing">Start free trial</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <div class="container hero-grid">
+    <div>
+      <span class="chip"><span class="dot"></span>Made in India · Built for Indian food</span>
+      <h1 style="margin-top:18px">Snap your food.<br><span class="hl">Know your health.</span></h1>
+      <p class="sub">Click a photo of your khaana on Telegram — AI identifies the dish and logs
+        calories, protein, carbs &amp; fat in seconds. Track your BP and sugar in the same chat.
+        No new app to remember. No manual entry.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="https://t.me/" rel="noopener">📲 Start free on Telegram</a>
+        <a class="btn btn-ghost" href="app.html">See the live dashboard →</a>
+      </div>
+      <div class="trust-strip">
+        <span class="chip">🍛 1,000+ Indian dishes verified</span>
+        <span class="chip">🔬 IFCT 2017 nutrition data</span>
+        <span class="chip">🔒 Your data stays yours</span>
+      </div>
+    </div>
+
+    <!-- Phone mockup: the Telegram loop -->
+    <div class="phone" aria-label="Telegram conversation demo">
+      <div class="phone-screen">
+        <div class="tg-header">
+          <div class="tg-avatar">📸</div>
+          <div>
+            <div class="tg-name">HealthSnap Bot</div>
+            <div class="tg-status">● online</div>
+          </div>
+        </div>
+        <div class="tg-body">
+          <div class="msg-photo" role="img" aria-label="Photo of a thali"></div>
+          <div class="msg msg-in">🍛 Detected: <b>Dal Tadka + 2 Roti + Jeera Rice</b><br>
+            🔥 612 kcal · P 21g · C 96g · F 14g<br>Is this correct?
+            <span class="meta">1:24 PM</span>
+          </div>
+          <div class="tg-buttons">
+            <div class="tg-btn">✅ Save</div>
+            <div class="tg-btn">✏️ Edit</div>
+            <div class="tg-btn">❌ Wrong</div>
+          </div>
+          <div class="msg msg-out">✅ Save<span class="meta">1:24 PM</span></div>
+          <div class="msg msg-in">Logged under <b>Lunch</b> 🍽️<br>Today: 1,118 / 2,000 kcal — on track 🟢
+            <span class="meta">1:24 PM</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= PROBLEM STATS ================= -->
+<section class="section section-alt">
+  <div class="container center">
+    <span class="kicker">Why it matters</span>
+    <h2>India's health is a tracking problem</h2>
+    <p class="lead">Most diet apps are built for Western food and die of app fatigue in two weeks.
+      HealthSnap lives inside Telegram — the chat you already open every day.</p>
+    <div class="stats">
+      <div class="stat card"><div class="num" style="color:var(--red)">10 Cr+</div><div class="lbl">Indians living with diabetes</div><small>ICMR–INDIAB study</small></div>
+      <div class="stat card"><div class="num" style="color:var(--amber)">18 Cr+</div><div class="lbl">adults with hypertension</div><small>WHO India estimates</small></div>
+      <div class="stat card"><div class="num" style="color:var(--purple)">80%</div><div class="lbl">quit diet apps within weeks</div><small>industry retention studies</small></div>
+      <div class="stat card"><div class="num" style="color:var(--green)">2 taps</div><div class="lbl">to log a meal on HealthSnap</div><small>photo → confirm → done</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HOW IT WORKS ================= -->
+<section class="section" id="how">
+  <div class="container">
+    <span class="kicker">How it works</span>
+    <h2>Photo to logged meal in under 10 seconds</h2>
+    <div class="steps">
+      <div class="step card">
+        <div class="step-num">1</div>
+        <h3>📸 Snap</h3>
+        <p>Take a photo of your plate and send it to the HealthSnap bot on Telegram — dal chawal,
+          dosa, biryani, street food, anything. Or just type "2 roti aloo sabzi".</p>
+      </div>
+      <div class="step card">
+        <div class="step-num">2</div>
+        <h3>✅ Confirm</h3>
+        <p>AI identifies the dish against our verified Indian food database and shows calories &amp;
+          macros. One tap to confirm, or edit the portion — you stay in control, always.</p>
+      </div>
+      <div class="step card">
+        <div class="step-num">3</div>
+        <h3>📊 Track</h3>
+        <p>Your dashboard updates instantly — calories vs target, protein, BP trend, sugar trend
+          and a weekly AI health summary written for you, not a nutritionist.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FEATURES ================= -->
+<section class="section section-alt" id="features">
+  <div class="container">
+    <span class="kicker">Features</span>
+    <h2>One chat for food, BP and sugar</h2>
+    <p class="lead">Built around how Indian families actually eat and track health — not imported
+      from a US calorie app.</p>
+    <div class="features">
+      <div class="feature card"><div class="icon">🍛</div><h3>Knows Indian food</h3><p>Rajma chawal, thepla, chole bhature, idli sambar — 1,000+ dishes with regional aliases in Hindi &amp; English, nutrition from IFCT 2017 lab data, not AI guesses.</p></div>
+      <div class="feature card"><div class="icon">💬</div><h3>Telegram-first, zero app fatigue</h3><p>No new app to remember to open. The bot pings you, you reply in 2 taps. That's why HealthSnap users are still logging in month 3.</p></div>
+      <div class="feature card"><div class="icon">✅</div><h3>You confirm, AI learns</h3><p>Every entry is confirmed or corrected by you before it's saved — and your corrections make the AI sharper on your thali over time.</p></div>
+      <div class="feature card"><div class="icon">❤️</div><h3>BP tracking with alerts</h3><p>Send "128/84" in chat. Auto-classified (Normal → Stage 2), trended over 30 days, with an instant alert if a reading needs attention.</p></div>
+      <div class="feature card"><div class="icon">🩸</div><h3>Sugar &amp; estimated HbA1c</h3><p>Log fasting or post-meal glucose in chat. HealthSnap trends it and estimates your HbA1c from 90 days of readings — see your control improving.</p></div>
+      <div class="feature card"><div class="icon">🤖</div><h3>Weekly AI health summary</h3><p>A personalised, plain-language weekly summary connecting your food, BP and sugar — what went well, what to watch, in English or Hinglish.</p></div>
+      <div class="feature card"><div class="icon">👨‍👩‍👧</div><h3>Family plan</h3><p>Track mummy-papa's BP and sugar from your own phone. Up to 4 members, each with their own private log and dashboard.</p></div>
+      <div class="feature card"><div class="icon">🗣️</div><h3>Pooja, your voice assistant</h3><p>Ask on a call: "Pooja, what did I eat yesterday?" or "Is my BP okay this week?" — answers from your own data.</p></div>
+      <div class="feature card"><div class="icon">📤</div><h3>Doctor-ready reports</h3><p>Export a clean PDF of 30/90 days of food, BP and sugar for your next consultation. Your doctor will actually thank you.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= COMPARISON ================= -->
+<section class="section">
+  <div class="container">
+    <span class="kicker">Why HealthSnap</span>
+    <h2>Compare us honestly</h2>
+    <p class="lead">Great apps exist. None of them combine Indian-food photo accuracy, chat-first
+      logging and BP + sugar tracking at an Indian price.</p>
+    <div class="table-wrap">
+      <table class="compare">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="us">HealthSnap</th>
+            <th>HealthifyMe</th>
+            <th>Cal AI</th>
+            <th>MyFitnessPal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Photo → calories AI</td><td class="us yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="part">Premium</td></tr>
+          <tr><td>Verified Indian food database</td><td class="us yes">✓ core focus</td><td class="yes">✓</td><td class="no">✗</td><td class="part">partial</td></tr>
+          <tr><td>Works inside Telegram (no app)</td><td class="us yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td>BP tracking + classification</td><td class="us yes">✓</td><td class="part">devices</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td>Glucose + estimated HbA1c</td><td class="us yes">✓</td><td class="part">CGM plans ₹₹₹</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td>Human-confirm before save</td><td class="us yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td>Typical price / month</td><td class="us"><b>₹149</b></td><td>₹400–2,000+</td><td>~₹250–800</td><td>~₹660</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--text-3);font-size:12px;margin-top:10px">Competitor features and indicative prices as publicly listed; plans vary. Comparison for information only.</p>
+  </div>
+</section>
+
+<!-- ================= DASHBOARD PREVIEW ================= -->
+<section class="section section-alt">
+  <div class="container center">
+    <span class="kicker">Your dashboard</span>
+    <h2>All your health in one dark, beautiful screen</h2>
+    <p class="lead">Calories vs target, macros, BP trend, sugar trend, estimated HbA1c — live from
+      your Telegram logs. Install it to your home screen like an app.</p>
+    <div style="margin-top:36px">
+      <a class="btn btn-primary" href="app.html">Open the interactive demo →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRICING ================= -->
+<section class="section" id="pricing">
+  <div class="container">
+    <div class="center">
+      <span class="kicker">Pricing</span>
+      <h2>Less than one plate of biryani a month</h2>
+      <p class="lead">Start free. Upgrade when you're hooked. Cancel anytime — payments via UPI,
+        cards or netbanking (Razorpay).</p>
+    </div>
+    <div class="plans">
+      <div class="plan card">
+        <h3>Free</h3>
+        <div class="price">₹0</div>
+        <div class="price-note">forever</div>
+        <ul>
+          <li>3 photo logs per day</li>
+          <li>BP &amp; sugar logging</li>
+          <li>7-day history</li>
+          <li class="muted">AI weekly summary</li>
+          <li class="muted">Family members</li>
+          <li class="muted">Doctor-ready exports</li>
+        </ul>
+        <a class="btn btn-ghost btn-block" href="https://t.me/" rel="noopener">Start free</a>
+      </div>
+      <div class="plan card featured">
+        <span class="tag">MOST POPULAR</span>
+        <h3>Pro</h3>
+        <div class="price">₹149<small>/month</small></div>
+        <div class="price-note">or ₹999/year — save 44%</div>
+        <ul>
+          <li>Unlimited photo logs</li>
+          <li>Full history &amp; trends</li>
+          <li>Estimated HbA1c</li>
+          <li>Weekly AI health summary</li>
+          <li>Doctor-ready PDF exports</li>
+          <li>Priority dish corrections</li>
+        </ul>
+        <a class="btn btn-primary btn-block" href="https://t.me/" rel="noopener">Start 7-day free trial</a>
+      </div>
+      <div class="plan card">
+        <h3>Family</h3>
+        <div class="price">₹249<small>/month</small></div>
+        <div class="price-note">or ₹1,999/year · up to 4 members</div>
+        <ul>
+          <li>Everything in Pro</li>
+          <li>4 member profiles</li>
+          <li>Track parents' BP &amp; sugar remotely</li>
+          <li>Caregiver alerts</li>
+          <li>Shared family dashboard</li>
+          <li>Pooja voice assistant</li>
+        </ul>
+        <a class="btn btn-ghost btn-block" href="https://t.me/" rel="noopener">Start family trial</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="section section-alt" id="faq">
+  <div class="container">
+    <div class="center">
+      <span class="kicker">FAQ</span>
+      <h2>Questions, answered</h2>
+    </div>
+    <div class="faq">
+      <details>
+        <summary>How accurate is the AI on Indian food?</summary>
+        <p>Photos are matched against a database of 1,000+ verified Indian dishes with nutrition
+        values from IFCT 2017 (India's official food composition tables) — not raw AI guesses.
+        And nothing is saved without your confirmation, so a wrong guess never pollutes your data.
+        Your corrections also teach the system your specific dishes and portions.</p>
+      </details>
+      <details>
+        <summary>Do I need to install an app?</summary>
+        <p>No. HealthSnap works entirely inside Telegram. The web dashboard is optional and can be
+        added to your home screen like an app (PWA) — no Play Store download needed. A native
+        Android app is on the roadmap.</p>
+      </details>
+      <details>
+        <summary>Can I track my parents' health?</summary>
+        <p>Yes — the Family plan covers up to 4 members. Your parents log BP/sugar by sending a
+        simple message (or you log for them), and you see their trends and get alerts on your
+        phone, from any city.</p>
+      </details>
+      <details>
+        <summary>Is my health data private?</summary>
+        <p>Your logs are stored in your own private account and never sold or shared. You can
+        export or delete all your data anytime. Payments are handled by Razorpay — we never see
+        your card or UPI details.</p>
+      </details>
+      <details>
+        <summary>Is this medical advice?</summary>
+        <p>No. HealthSnap is a tracking and awareness tool. BP/sugar classifications follow
+        standard guideline ranges and the AI summary is general wellness guidance — always consult
+        your doctor for medical decisions.</p>
+      </details>
+      <details>
+        <summary>What happens after the 7-day trial?</summary>
+        <p>You drop to the Free plan automatically — no auto-charge without consent. Upgrade to Pro
+        anytime from the bot with UPI in under a minute.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CTA ================= -->
+<section class="container">
+  <div class="cta-band">
+    <h2>Your next meal can be your first log.</h2>
+    <p>Free to start · works in Telegram · built for Indian food</p>
+    <a class="btn btn-primary" href="https://t.me/" rel="noopener">📲 Start free on Telegram</a>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer>
+  <div class="container">
+    <div class="foot-grid">
+      <div>
+        <a class="logo" href="#"><span class="logo-mark">📸</span>HealthSnap</a>
+        <p style="margin-top:10px">Snap your food. Know your health.<br>Made with ❤️ in India.</p>
+      </div>
+      <div>
+        <p><b style="color:var(--text-2)">Product</b></p>
+        <p><a href="#how">How it works</a> · <a href="#features">Features</a> · <a href="#pricing">Pricing</a> · <a href="app.html">Demo</a></p>
+      </div>
+      <div>
+        <p><b style="color:var(--text-2)">Contact</b></p>
+        <p><a href="mailto:hello@healthsnapindian.com">hello@healthsnapindian.com</a></p>
+      </div>
+    </div>
+    <p class="disclaimer">HealthSnap is a health tracking and awareness tool, not a medical device
+    and not a substitute for professional medical advice, diagnosis or treatment. Nutrition values
+    are estimates. Always consult a qualified doctor about your blood pressure, blood sugar or
+    diet. © 2026 HealthSnap.</p>
+  </div>
+</footer>
+
+</body>
+</html>
