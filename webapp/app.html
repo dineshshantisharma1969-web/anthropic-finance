@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HealthSnap — Dashboard</title>
+<meta name="description" content="HealthSnap interactive dashboard demo — food, BP and sugar tracking for Indian users.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0F1117">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2300E5A0'/><text x='50' y='68' font-size='52' text-anchor='middle'>📸</text></svg>">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <div class="app-top">
+    <div>
+      <div class="hello">Namaste 🙏</div>
+      <div class="who">Priya's Health</div>
+    </div>
+    <span class="chip chip-green"><span class="dot"></span>Telegram bot connected</span>
+  </div>
+
+  <main class="app-main">
+    <div class="banner-demo">Demo with sample data · <a href="index.html">← back to healthsnap site</a></div>
+
+    <!-- ============ HOME ============ -->
+    <section class="screen active" id="scr-home">
+      <div class="card">
+        <div class="card-h"><h3>Today's calories</h3><span class="more">Tue 29 Jul</span></div>
+        <div class="ring-wrap">
+          <div id="cal-ring"></div>
+          <div class="ring-stats">
+            <div class="macro-row">
+              <div class="mr-top"><span>Protein</span><span>46 / 60 g</span></div>
+              <div class="bar"><i style="width:77%;background:var(--ch-purple)"></i></div>
+            </div>
+            <div class="macro-row">
+              <div class="mr-top"><span>Carbs</span><span>168 / 250 g</span></div>
+              <div class="bar"><i style="width:67%;background:var(--ch-amber)"></i></div>
+            </div>
+            <div class="macro-row">
+              <div class="mr-top"><span>Fat</span><span>38 / 65 g</span></div>
+              <div class="bar"><i style="width:58%;background:var(--ch-coral)"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="m-label">❤️ Blood pressure</div>
+          <div class="m-value">122/79 <small>mmHg</small></div>
+          <div class="m-sub"><span class="status-pill st-confirmed">NORMAL</span> · 7:05 AM</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">🩸 Glucose (fasting)</div>
+          <div class="m-value">96 <small>mg/dL</small></div>
+          <div class="m-sub"><span class="status-pill st-confirmed">NORMAL</span> · 6:58 AM</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">📉 Est. HbA1c</div>
+          <div class="m-value">5.6<small>%</small></div>
+          <div class="m-sub">from 90-day readings</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">🔥 Log streak</div>
+          <div class="m-value">23 <small>days</small></div>
+          <div class="m-sub">personal best!</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Calories — last 7 days</h3><span class="more">target 2,000</span></div>
+        <div class="chart-box" id="cal-week"></div>
+        <details class="data-table"><summary>View data as table</summary>
+          <table><thead><tr><th>Day</th><th>kcal</th></tr></thead><tbody id="cal-week-table"></tbody></table>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Recent logs</h3><span class="more">via Telegram</span></div>
+        <div class="loglist">
+          <div class="logrow"><div class="emoji">🍛</div><div class="what"><b>Dal Tadka + 2 Roti + Jeera Rice</b><span>Lunch · 1:24 PM · <span class="status-pill st-confirmed">CONFIRMED</span></span></div><div class="kcal">612 <small>kcal</small></div></div>
+          <div class="logrow"><div class="emoji">☕</div><div class="what"><b>Masala Chai + 2 Marie Biscuits</b><span>Snack · 11:10 AM · <span class="status-pill st-corrected">CORRECTED</span></span></div><div class="kcal">146 <small>kcal</small></div></div>
+          <div class="logrow"><div class="emoji">🥣</div><div class="what"><b>Poha with Peanuts</b><span>Breakfast · 8:32 AM · <span class="status-pill st-confirmed">CONFIRMED</span></span></div><div class="kcal">280 <small>kcal</small></div></div>
+          <div class="logrow"><div class="emoji">🥛</div><div class="what"><b>Haldi Doodh</b><span>Yesterday · 10:05 PM · <span class="status-pill st-estimated">AI ESTIMATED</span></span></div><div class="kcal">120 <small>kcal</small></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FOOD ============ -->
+    <section class="screen" id="scr-food">
+      <div class="card confirm-card">
+        <div class="card-h"><h3>📸 New photo — confirm entry</h3><span class="more">just now</span></div>
+        <div class="detected">
+          <div class="thumb" role="img" aria-label="Photo of thali"></div>
+          <div>
+            <b>Rajma Chawal (1 plate)</b>
+            <div class="conf">AI match confidence: high · IFCT-verified dish</div>
+            <div class="macro-mini"><span>🔥 485 kcal</span><span>P 15g</span><span>C 82g</span><span>F 9g</span></div>
+          </div>
+        </div>
+        <div class="confirm-actions">
+          <button class="btn btn-primary" onclick="this.closest('.card').querySelector('.card-h h3').textContent='✅ Saved to Lunch';this.closest('.confirm-actions').remove()">✅ Save</button>
+          <button class="btn btn-ghost">✏️ Edit</button>
+          <button class="btn btn-ghost">❌ Wrong</button>
+        </div>
+      </div>
+
+      <div class="seg" role="tablist" aria-label="Meal filter">
+        <button class="on">All</button><button>Breakfast</button><button>Lunch</button><button>Snack</button><button>Dinner</button>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Today's meals</h3><span class="more">1,523 kcal total</span></div>
+        <div class="loglist">
+          <div class="logrow"><div class="emoji">🍛</div><div class="what"><b>Dal Tadka + 2 Roti + Jeera Rice</b><span>Lunch · P 21g · C 96g · F 14g</span></div><div class="kcal">612 <small>kcal</small></div></div>
+          <div class="logrow"><div class="emoji">🍚</div><div class="what"><b>Rajma Chawal</b><span>Lunch · P 15g · C 82g · F 9g</span></div><div class="kcal">485 <small>kcal</small></div></div>
+          <div class="logrow"><div class="emoji">☕</div><div class="what"><b>Masala Chai + 2 Marie Biscuits</b><span>Snack · P 3g · C 22g · F 5g</span></div><div class="kcal">146 <small>kcal</small></div></div>
+          <div class="logrow"><div class="emoji">🥣</div><div class="what"><b>Poha with Peanuts</b><span>Breakfast · P 7g · C 42g · F 10g</span></div><div class="kcal">280 <small>kcal</small></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h3>Protein — last 7 days</h3><span class="more">target 60 g</span></div>
+        <div class="chart-box" id="protein-week"></div>
+      </div>
+    </section>
+
+    <!-- ============ BP ============ -->
+    <section class="screen" id="scr-bp">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="m-label">❤️ Latest reading</div>
+          <div class="m-value">122/79</div>
+          <div class="m-sub"><span class="status-pill st-confirmed">NORMAL</span> · today 7:05 AM</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">📊 14-day average</div>
+          <div class="m-value">125/81</div>
+          <div class="m-sub">pulse avg 74 bpm</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>BP trend — 14 days</h3></div>
+        <div class="chart-box" id="bp-chart"></div>
+        <div class="legend">
+          <span><i style="background:var(--ch-coral)"></i>Systolic</span>
+          <span><i style="background:var(--ch-purple)"></i>Diastolic</span>
+        </div>
+        <details class="data-table"><summary>View data as table</summary>
+          <table><thead><tr><th>Date</th><th>Sys</th><th>Dia</th></tr></thead><tbody id="bp-table"></tbody></table>
+        </details>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>How to log</h3></div>
+        <p style="color:var(--text-2);font-size:13.5px">Just send <b style="color:var(--text)">"122/79"</b> (or "BP 122 79 pulse 74")
+        to the Telegram bot — it classifies the reading instantly and alerts you if it needs attention.</p>
+      </div>
+    </section>
+
+    <!-- ============ SUGAR ============ -->
+    <section class="screen" id="scr-sugar">
+      <div class="metric-grid">
+        <div class="metric">
+          <div class="m-label">🩸 Fasting (today)</div>
+          <div class="m-value">96 <small>mg/dL</small></div>
+          <div class="m-sub"><span class="status-pill st-confirmed">NORMAL</span> · 70–100 range</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">📉 Est. HbA1c</div>
+          <div class="m-value">5.6<small>%</small></div>
+          <div class="m-sub">from 90-day average</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Glucose — 14 days</h3></div>
+        <div class="chart-box" id="glucose-chart"></div>
+        <div class="legend">
+          <span><i style="background:var(--ch-amber)"></i>Fasting</span>
+          <span><i style="background:var(--ch-purple)"></i>Post-meal</span>
+        </div>
+        <details class="data-table"><summary>View data as table</summary>
+          <table><thead><tr><th>Date</th><th>Fasting</th><th>Post-meal</th></tr></thead><tbody id="glucose-table"></tbody></table>
+        </details>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>How to log</h3></div>
+        <p style="color:var(--text-2);font-size:13.5px">Send <b style="color:var(--text)">"sugar 96 fasting"</b> or
+        <b style="color:var(--text)">"sugar 134 after lunch"</b> to the bot. HealthSnap trends every
+        reading and estimates HbA1c so you and your doctor see the bigger picture.</p>
+      </div>
+    </section>
+  </main>
+
+  <button class="fab" title="Log food (demo)" aria-label="Log food">📸</button>
+
+  <nav class="tabbar" aria-label="App sections">
+    <button class="on" data-scr="scr-home"><span class="ico">🏠</span>Home</button>
+    <button data-scr="scr-food"><span class="ico">🍛</span>Food</button>
+    <button data-scr="scr-bp"><span class="ico">❤️</span>BP</button>
+    <button data-scr="scr-sugar"><span class="ico">🩸</span>Sugar</button>
+  </nav>
+</div>
+
+<script src="js/charts.js"></script>
+<script>
+/* ---- sample data ---- */
+const days7 = ["Wed","Thu","Fri","Sat","Sun","Mon","Today"];
+const kcal7 = [1980, 2140, 1870, 2320, 1760, 1910, 1523];
+const prot7 = [58, 64, 51, 66, 49, 61, 46];
+
+const d14 = ["16 Jul","17","18","19","20","21","22","23","24","25","26","27","28","29 Jul"];
+const sys14 = [131,129,133,128,127,130,126,128,125,124,127,123,125,122];
+const dia14 = [86,84,87,85,83,85,82,84,82,81,83,80,82,79];
+const fast14 = [104,101,106,102,99,103,100,98,101,97,99,98,97,96];
+const post14 = [148,143,151,146,139,144,141,137,140,135,138,134,136,132];
+
+calorieRing("#cal-ring", 1523, 2000);
+barChart("#cal-week", days7, kcal7, { target: 2000, unit: "kcal", name: "Daily calories" });
+barChart("#protein-week", days7, prot7, { color: CH.purple, target: 60, unit: "g", name: "Daily protein" });
+lineChart("#bp-chart", d14, [
+  { name: "Systolic", values: sys14, color: CH.coral },
+  { name: "Diastolic", values: dia14, color: CH.purple }
+], { unit: " mmHg", band: [60, 120], ymin: 55, ymax: 145 });
+lineChart("#glucose-chart", d14, [
+  { name: "Fasting", values: fast14, color: CH.amber },
+  { name: "Post-meal", values: post14, color: CH.purple }
+], { unit: " mg/dL", band: [70, 140], ymin: 60, ymax: 165 });
+
+/* data tables */
+document.getElementById("cal-week-table").innerHTML =
+  days7.map((d,i)=>`<tr><td>${d}</td><td>${kcal7[i].toLocaleString("en-IN")}</td></tr>`).join("");
+document.getElementById("bp-table").innerHTML =
+  d14.map((d,i)=>`<tr><td>${d}</td><td>${sys14[i]}</td><td>${dia14[i]}</td></tr>`).join("");
+document.getElementById("glucose-table").innerHTML =
+  d14.map((d,i)=>`<tr><td>${d}</td><td>${fast14[i]}</td><td>${post14[i]}</td></tr>`).join("");
+
+/* tab switching */
+document.querySelectorAll(".tabbar button").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".tabbar button").forEach(x => x.classList.remove("on"));
+    document.querySelectorAll(".screen").forEach(x => x.classList.remove("active"));
+    b.classList.add("on");
+    document.getElementById(b.dataset.scr).classList.add("active");
+    window.scrollTo({ top: 0 });
+  });
+});
+
+/* meal filter demo */
+document.querySelectorAll(".seg button").forEach(b => {
+  b.addEventListener("click", () => {
+    b.closest(".seg").querySelectorAll("button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+  });
+});
+</script>
+</body>
+</html>
