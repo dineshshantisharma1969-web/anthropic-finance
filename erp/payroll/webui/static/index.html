@@ -23,7 +23,17 @@
         <span>Period</span>
         <select id="period-select"></select>
       </label>
+      <label class="period-picker">
+        <span>Status</span>
+        <select id="status-set" title="Change period status">
+          <option value="draft">Draft</option>
+          <option value="reconciled">Reconciled</option>
+          <option value="filed">Filed 🔒</option>
+          <option value="closed">Closed 🔒</option>
+        </select>
+      </label>
       <span id="period-status" class="status-chip"></span>
+      <button id="audit-btn" class="btn btn-ghost" title="View change history">History</button>
     </div>
   </header>
 
@@ -94,6 +104,32 @@
       ISPL ERP · Payroll module · data served live from Postgres
     </footer>
   </main>
+
+  <!-- edit-figure modal -->
+  <div id="edit-back" class="modal-back" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+      <h3 id="edit-title">Correct figure</h3>
+      <p id="edit-ctx" class="modal-ctx"></p>
+      <label class="fld"><span id="edit-field-label">Value</span>
+        <input id="edit-value" type="number" step="1"></label>
+      <label class="fld"><span>Reason <em>(required, audited)</em></span>
+        <input id="edit-reason" type="text" placeholder="why is this being changed?"></label>
+      <label class="fld"><span>Changed by</span>
+        <input id="edit-by" type="text" placeholder="your name"></label>
+      <div class="modal-actions">
+        <button class="btn" id="edit-cancel">Cancel</button>
+        <button class="btn btn-primary" id="edit-save">Save change</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- audit drawer -->
+  <div id="drawer-back" class="drawer-back" hidden>
+    <aside class="drawer" role="dialog" aria-label="Change history">
+      <div class="drawer-head"><h3>Change history</h3><button id="drawer-close" class="btn btn-ghost">✕</button></div>
+      <div id="audit-list" class="audit-list"></div>
+    </aside>
+  </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>

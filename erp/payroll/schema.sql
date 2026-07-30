@@ -122,6 +122,25 @@ CREATE TABLE IF NOT EXISTS action_item (
     updated_at     timestamptz NOT NULL DEFAULT now()
 );
 
+-- Immutable audit trail of every change to a financial figure or a period's
+-- status. Never updated or deleted — this is the "who changed what, when, and
+-- why" record that makes a corrected number defensible to an auditor / EPFO.
+CREATE TABLE IF NOT EXISTS figure_change (
+    id           bigserial PRIMARY KEY,
+    entity       text NOT NULL,            -- 'payroll_row' or 'salary_period'
+    entity_id    bigint NOT NULL,          -- row id / period id
+    period_id    integer REFERENCES salary_period(id),
+    emp_code     text,                     -- denormalized for quick filtering
+    field        text NOT NULL,            -- e.g. 'revised_pf', 'status'
+    old_value    text,
+    new_value    text,
+    changed_by   text,
+    reason       text NOT NULL,            -- reason is mandatory for a financial edit
+    changed_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_change_period ON figure_change (period_id);
+CREATE INDEX IF NOT EXISTS idx_change_entity ON figure_change (entity, entity_id);
+
 CREATE INDEX IF NOT EXISTS idx_payroll_period  ON payroll_row (period_id);
 CREATE INDEX IF NOT EXISTS idx_payroll_emp     ON payroll_row (emp_code);
 CREATE INDEX IF NOT EXISTS idx_payroll_site    ON payroll_row (site_code);

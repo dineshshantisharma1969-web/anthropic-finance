@@ -94,7 +94,25 @@ def summary():
            WHERE p.period = %s ORDER BY run_at DESC LIMIT 1""",
         (period,), one=True)
     return jsonify(period=period, kpis=kpis, reasons=reasons,
-                   rule_mix=rule_mix, status_mix=status_mix, run=run)
+                   rule_mix=rule_mix, status_mix=status_mix, run=run,
+                   golden=live_golden(period))
+
+
+def live_golden(period):
+    """Golden Rules recomputed from CURRENT figures vs the frozen anchors, so an
+    edit that breaks an invariant flips the badge to REVIEW immediately."""
+    p = q("""SELECT id, status, net_payable_anchor, ecr_pf_anchor, future_esi_anchor
+             FROM salary_period WHERE period = %s""", (period,), one=True)
+    if not p:
+        return None
+    s = q("""SELECT coalesce(sum(revised_pf),0) rp, coalesce(sum(ecr_pf),0) ep,
+                    coalesce(sum(net_payable),0) np, coalesce(sum(revised_esic),0) re
+             FROM payroll_row WHERE period_id = %s""", (p["id"],), one=True)
+    pf_gap  = float(s["rp"]) - float(s["ep"])
+    net_drift = float(s["np"]) - float(p["net_payable_anchor"] or s["np"])
+    esi_gap = float(p["future_esi_anchor"] or 0) - float(s["re"])
+    return {"status": p["status"], "pf_gap": pf_gap,
+            "net_drift": net_drift, "esi_gap": esi_gap}
 
 
 @app.get("/api/actions")
@@ -124,7 +142,8 @@ def actions():
                   JOIN site s ON s.site_code = a.site_code
                   WHERE {w}""", args, one=True)["n"]
     rows = q(f"""
-        SELECT a.id, a.emp_code, e.full_name, a.site_code, s.site_name, s.site_state,
+        SELECT a.id, r.id AS payroll_row_id, a.emp_code, e.full_name, a.site_code,
+               s.site_name, s.site_state,
                a.reason, a.excess_salary, a.status, a.assigned_to, a.resolution_note,
                r.gross_amt, r.net_payable, r.revised_pf, r.rule_applied
         FROM action_item a
@@ -157,6 +176,99 @@ def update_action(aid):
     q(f"UPDATE action_item SET {', '.join(fields)} WHERE id = %s", args)
     return jsonify(q("SELECT id, status, assigned_to, resolution_note FROM action_item WHERE id = %s",
                      (aid,), one=True))
+
+
+# Financial figures a correction may touch. Everything else is off-limits to
+# hand edits (identity, rule, projections) — those come from a re-load.
+EDITABLE_FIGURES = {"gross_amt", "revised_gross", "net_payable",
+                    "ecr_pf", "revised_pf", "revised_esic",
+                    "adj_working_days", "excess_salary"}
+LOCKED_STATES = {"filed", "closed"}
+
+
+@app.patch("/api/payroll/<int:rid>")
+def edit_figure(rid):
+    """Correct one financial figure on one payroll row — audited, and only while
+    the period is unlocked. Requires field, value, reason (and who)."""
+    body = request.get_json(force=True) or {}
+    field = body.get("field")
+    reason = (body.get("reason") or "").strip()
+    changed_by = body.get("changed_by") or "unknown"
+    if field not in EDITABLE_FIGURES:
+        return jsonify(error=f"field '{field}' is not editable by hand"), 400
+    if not reason:
+        return jsonify(error="a reason is required for a financial edit"), 400
+
+    row = q("""SELECT r.*, p.period, p.status
+               FROM payroll_row r JOIN salary_period p ON p.id = r.period_id
+               WHERE r.id = %s""", (rid,), one=True)
+    if not row:
+        return jsonify(error="row not found"), 404
+    if row["status"] in LOCKED_STATES:
+        return jsonify(error=f"period {row['period']} is {row['status']} — locked. "
+                             "Reopen it (with a reason) or post an adjustment in a later month."), 423
+
+    try:
+        new_val = None if body.get("value") in (None, "") else float(body["value"])
+    except (TypeError, ValueError):
+        return jsonify(error="value must be numeric"), 400
+    old_val = row[field]
+
+    q(f"UPDATE payroll_row SET {field} = %s WHERE id = %s", (new_val, rid))
+    q("""INSERT INTO figure_change (entity, entity_id, period_id, emp_code, field,
+                                    old_value, new_value, changed_by, reason)
+         VALUES ('payroll_row', %s, %s, %s, %s, %s, %s, %s, %s)""",
+      (rid, row["period_id"], row["emp_code"], field,
+       None if old_val is None else str(old_val),
+       None if new_val is None else str(new_val), changed_by, reason))
+    # keep the action_item excess in sync when that is the edited figure
+    if field == "excess_salary":
+        q("UPDATE action_item SET excess_salary = %s WHERE payroll_row_id = %s", (new_val, rid))
+
+    return jsonify(id=rid, field=field, old=old_val, new=new_val,
+                   golden=live_golden(row["period"]))
+
+
+@app.post("/api/periods/<period>/status")
+def set_status(period):
+    """Move a period through draft → reconciled → filed → closed, or reopen a
+    filed/closed period (which requires a reason). All transitions are audited."""
+    body = request.get_json(force=True) or {}
+    new = body.get("status")
+    reason = (body.get("reason") or "").strip()
+    changed_by = body.get("changed_by") or "unknown"
+    if new not in ("draft", "reconciled", "filed", "closed"):
+        return jsonify(error="bad status"), 400
+    p = q("SELECT id, status FROM salary_period WHERE period = %s", (period,), one=True)
+    if not p:
+        return jsonify(error="period not found"), 404
+    # reopening a locked period is privileged: demand a reason
+    if p["status"] in LOCKED_STATES and new not in LOCKED_STATES and not reason:
+        return jsonify(error=f"reopening a {p['status']} period requires a reason"), 400
+
+    q("UPDATE salary_period SET status = %s WHERE id = %s", (new, p["id"]))
+    q("""INSERT INTO figure_change (entity, entity_id, period_id, field,
+                                    old_value, new_value, changed_by, reason)
+         VALUES ('salary_period', %s, %s, 'status', %s, %s, %s, %s)""",
+      (p["id"], p["id"], p["status"], new, changed_by,
+       reason or f"status {p['status']} → {new}"))
+    return jsonify(period=period, status=new)
+
+
+@app.get("/api/audit")
+def audit():
+    """Recent changes for a period (figure edits + status transitions)."""
+    period = request.args.get("period")
+    limit = min(int(request.args.get("limit", 50)), 500)
+    rows = q("""SELECT fc.changed_at, fc.entity, fc.emp_code, fc.field,
+                       fc.old_value, fc.new_value, fc.changed_by, fc.reason,
+                       e.full_name
+                FROM figure_change fc
+                JOIN salary_period p ON p.id = fc.period_id
+                LEFT JOIN employee e ON e.emp_code = fc.emp_code
+                WHERE p.period = %s
+                ORDER BY fc.changed_at DESC LIMIT %s""", (period, limit))
+    return jsonify(rows=rows)
 
 
 if __name__ == "__main__":

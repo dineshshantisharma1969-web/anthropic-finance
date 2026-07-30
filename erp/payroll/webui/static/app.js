@@ -13,7 +13,9 @@ function compactINR(n) {
   return inr.format(Math.round(n));
 }
 
-const state = { period: null, status: "all", reason: "all", q: "", offset: 0, limit: 50, total: 0 };
+const state = { period: null, status: "all", reason: "all", q: "", offset: 0, limit: 50, total: 0, periodStatus: "draft", locked: false, by: "" };
+const LOCKED = new Set(["filed", "closed"]);
+const FIGURE_LABELS = { gross_amt: "Gross", net_payable: "Net payable", excess_salary: "Excess salary" };
 
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
@@ -39,6 +41,12 @@ async function boot() {
   $("#prev").onclick = () => { if (state.offset > 0) { state.offset -= state.limit; loadTable(); } };
   $("#next").onclick = () => { if (state.offset + state.limit < state.total) { state.offset += state.limit; loadTable(); } };
 
+  $("#status-set").onchange = onStatusChange;
+  $("#audit-btn").onclick = openAudit;
+  $("#drawer-close").onclick = () => $("#drawer-back").hidden = true;
+  $("#drawer-back").onclick = (e) => { if (e.target.id === "drawer-back") $("#drawer-back").hidden = true; };
+  wireModal();
+
   await loadAll();
 }
 
@@ -51,17 +59,20 @@ async function loadSummary() {
   const d = await api("/api/summary?period=" + encodeURIComponent(state.period));
   const k = d.kpis || {}, run = d.run || {};
 
-  // period status chip
+  // period status chip + lock state
+  const st = (d.golden && d.golden.status) || k.status || "draft";
+  state.periodStatus = st; state.locked = LOCKED.has(st);
   const chip = $("#period-status");
-  chip.textContent = k.status || "—"; chip.dataset.s = k.status || "draft";
+  chip.textContent = state.locked ? st + " 🔒" : st; chip.dataset.s = st;
+  $("#status-set").value = st;
 
-  // golden rules
-  const pfGap = run.pf_gap ?? 0, netDrift = run.net_drift ?? 0;
-  const esiGap = (run.checks && run.checks.esi_future_gap) ?? 0;
+  // golden rules — LIVE (recomputed from current figures vs frozen anchors),
+  // so a figure edit that breaks an invariant flips the badge immediately.
+  const g = d.golden || {};
   $("#golden").innerHTML = [
-    rule("PF gap", pfGap, "Σ Revised PF = ECR PF"),
-    rule("Net drift", netDrift, "Net payable never changes"),
-    rule("ESI vs Future", esiGap, "Σ Revised ESIC = Future ESI"),
+    rule("PF gap", g.pf_gap ?? 0, "Σ Revised PF = ECR PF"),
+    rule("Net drift", g.net_drift ?? 0, "Net payable never changes"),
+    rule("ESI vs Future", g.esi_gap ?? 0, "Σ Revised ESIC = Future ESI"),
   ].join("");
 
   // KPIs
@@ -136,10 +147,13 @@ async function loadTable() {
   const p = new URLSearchParams({ period: state.period, status: state.status, reason: state.reason, q: state.q, limit: state.limit, offset: state.offset });
   const d = await api("/api/actions?" + p.toString());
   state.total = d.total;
-  $("#table-count").textContent = `${inr.format(d.total)} tickets`;
+  $("#table-count").innerHTML = `${inr.format(d.total)} tickets` +
+    (state.locked ? ` &nbsp;<span class="locked-note">🔒 ${state.periodStatus} — figures locked</span>`
+                  : ` &nbsp;<span class="card-note">· click a Gross / Net / Excess cell to correct</span>`);
   $("#rows").innerHTML = d.rows.map(rowHtml).join("") ||
     `<tr><td colspan="9" style="text-align:center;padding:26px;color:var(--muted)">No matching tickets</td></tr>`;
   wireRow();
+  wireRowEdits();
   const from = d.total ? state.offset + 1 : 0, to = Math.min(state.offset + state.limit, d.total);
   $("#pageinfo").textContent = `${from}–${to} of ${inr.format(d.total)}`;
   $("#prev").disabled = state.offset === 0;
@@ -148,13 +162,16 @@ async function loadTable() {
 
 function rowHtml(r) {
   const statuses = ["open", "investigating", "resolved", "waived"];
+  const ed = state.locked ? "" : "editable";
+  const cell = (field, val, extra = "") =>
+    `<td class="num ${extra} ${ed}" ${ed ? `data-rid="${r.payroll_row_id || r.id}" data-field="${field}" data-val="${val ?? ""}" data-emp="${escapeAttr(r.full_name || r.emp_code)}"` : ""}>${money(val)}</td>`;
   return `<tr data-id="${r.id}">
     <td><div class="emp-name">${escapeHtml(r.full_name || "")}</div><div class="emp-code">${r.emp_code}</div></td>
     <td><div>${escapeHtml(shorten(r.site_name || "", 26))}</div><div class="site-state">${escapeHtml(r.site_state || "")}</div></td>
     <td><span class="tag">${r.rule_applied || "—"}</span></td>
-    <td class="num">${money(r.gross_amt)}</td>
-    <td class="num">${money(r.net_payable)}</td>
-    <td class="num excess">${money(r.excess_salary)}</td>
+    ${cell("gross_amt", r.gross_amt)}
+    ${cell("net_payable", r.net_payable)}
+    ${cell("excess_salary", r.excess_salary, "excess")}
     <td class="reason-cell">${escapeHtml(shorten(r.reason || "", 60))}</td>
     <td><select class="st-select st-${r.status}" data-role="status">
       ${statuses.map(s => `<option value="${s}" ${s === r.status ? "selected" : ""}>${s[0].toUpperCase() + s.slice(1)}</option>`).join("")}
@@ -182,6 +199,79 @@ function patch(id, body) {
   return fetch("/api/actions/" + id, {
     method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   }).then(r => r.json());
+}
+
+/* ---------- edit a figure (click cell → modal) ---------- */
+let editCtx = null;
+function wireRowEdits() {
+  $("#rows").querySelectorAll("td.editable").forEach(td => {
+    td.onclick = () => openEdit(td.dataset);
+  });
+}
+function openEdit(ds) {
+  if (state.locked) { toast("Period is " + state.periodStatus + " — figures are locked"); return; }
+  editCtx = { rid: ds.rid, field: ds.field };
+  $("#edit-title").textContent = "Correct " + (FIGURE_LABELS[ds.field] || ds.field);
+  $("#edit-ctx").innerHTML = `<b>${escapeHtml(ds.emp)}</b> · ${state.period} · current value <b>₹${money(+ds.val)}</b>`;
+  $("#edit-field-label").textContent = "New " + (FIGURE_LABELS[ds.field] || ds.field) + " (₹)";
+  $("#edit-value").value = ds.val || "";
+  $("#edit-reason").value = "";
+  $("#edit-by").value = state.by || "";
+  $("#edit-back").hidden = false;
+  $("#edit-value").focus();
+}
+function wireModal() {
+  $("#edit-cancel").onclick = () => $("#edit-back").hidden = true;
+  $("#edit-back").onclick = (e) => { if (e.target.id === "edit-back") $("#edit-back").hidden = true; };
+  $("#edit-save").onclick = saveEdit;
+}
+async function saveEdit() {
+  const reason = $("#edit-reason").value.trim();
+  if (!reason) { toast("A reason is required"); $("#edit-reason").focus(); return; }
+  state.by = $("#edit-by").value.trim();
+  const res = await fetch("/api/payroll/" + editCtx.rid, {
+    method: "PATCH", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ field: editCtx.field, value: $("#edit-value").value, reason, changed_by: state.by || "unknown" }),
+  }).then(r => r.json().then(j => ({ ok: r.ok, j })));
+  if (!res.ok) { toast(res.j.error || "Edit failed"); return; }
+  $("#edit-back").hidden = true;
+  toast("Saved · change audited");
+  await loadAll(); // refresh figures + LIVE golden badges
+}
+
+/* ---------- period status ---------- */
+async function onStatusChange(e) {
+  const next = e.target.value;
+  let reason = "";
+  if (LOCKED.has(state.periodStatus) && !LOCKED.has(next)) {
+    reason = prompt(`Reopening a ${state.periodStatus} period. Reason (required):`) || "";
+    if (!reason.trim()) { e.target.value = state.periodStatus; toast("Reopen cancelled — reason required"); return; }
+  }
+  const res = await fetch(`/api/periods/${encodeURIComponent(state.period)}/status`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: next, reason, changed_by: state.by || "unknown" }),
+  }).then(r => r.json().then(j => ({ ok: r.ok, j })));
+  if (!res.ok) { toast(res.j.error || "Failed"); e.target.value = state.periodStatus; return; }
+  toast("Period → " + next);
+  await loadAll();
+}
+
+/* ---------- audit drawer ---------- */
+async function openAudit() {
+  $("#drawer-back").hidden = false;
+  const d = await api("/api/audit?period=" + encodeURIComponent(state.period));
+  $("#audit-list").innerHTML = (d.rows || []).map(a => {
+    const who = escapeHtml(a.full_name || a.emp_code || (a.entity === "salary_period" ? "period" : ""));
+    const when = new Date(a.changed_at).toLocaleString("en-IN");
+    const fld = a.field === "status" ? "status" : (FIGURE_LABELS[a.field] || a.field);
+    const fmt = a.field === "status" ? (v) => v : (v) => v == null ? "—" : "₹" + money(+v);
+    return `<div class="audit-item">
+      <div class="top"><span class="who">${who}</span><span class="when">${when}</span></div>
+      <div class="chg"><span class="f">${fld}</span>: <span class="old">${escapeHtml(fmt(a.old_value))}</span>
+        → <span class="new">${escapeHtml(fmt(a.new_value))}</span></div>
+      <div class="rsn">“${escapeHtml(a.reason || "")}”${a.changed_by ? " — " + escapeHtml(a.changed_by) : ""}</div>
+    </div>`;
+  }).join("") || `<div class="audit-empty">No changes recorded for ${state.period} yet.</div>`;
 }
 
 /* ---------- utils ---------- */
