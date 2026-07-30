@@ -94,8 +94,37 @@ Validated end-to-end on Postgres 16 against the committed April action subset
 > and is what populates a period for real. **May 2026 loads the same way** once its
 > reconciled CSV is committed to `erp/payroll/data/` or supplied.
 
+## Web UI (`webui/`)
+
+A DB-backed console (Flask + vanilla JS, no build step) — browse periods, see the
+Golden-Rule position at a glance, and **work the ACTION_NEEDED list as tickets**
+whose status/owner changes persist back to Postgres.
+
+```bash
+pip install -r webui/requirements.txt
+export ERP_DB="host=<host> port=5432 user=<user> password=<pw> dbname=postgres"
+python webui/app.py            # http://127.0.0.1:8000
+```
+
+- **Overview** — Golden-Rule strip (PF gap / net drift / ESI vs Future), KPI tiles
+  (net payable, revised PF, action rows, excess salary in ₹ Cr/L), and three charts:
+  excess-by-reason, rule mix, ticket-status donut.
+- **Action list** — every ticket, filter by status / reason / free-text search,
+  ranked by excess ₹. Change status (open → investigating → resolved → waived) and
+  assign an owner inline; both save immediately via `PATCH /api/actions/<id>`.
+
+Design uses the validated data-viz categorical palette (blue/orange/aqua/yellow)
+and the reserved status colors (good/warning/serious/critical) for the rule badges
+and ticket states. Charts are hand-rolled HTML/SVG — no CDN, fully offline.
+
+**API:** `GET /api/periods`, `GET /api/summary?period=`, `GET /api/actions?…`
+(filters + pagination), `PATCH /api/actions/<id>`, `GET /api/health`.
+
+Validated locally on Postgres 16 against the April fixture: KPIs and charts render
+from live data, and status/owner edits round-trip to the DB (the ticket-status
+donut recounts live after each change).
+
 ## Next increments (not in this change)
-1. **DB-backed web UI** — browse periods, work the action list as tickets.
-2. **Reconciliation-as-a-service** — upload salary sheet + ECR → results land here.
-3. **Auth + roles** — view / approve / file.
-4. **P&L / GL modules** reading the same database.
+1. **Reconciliation-as-a-service** — upload salary sheet + ECR → results land here.
+2. **Auth + roles** — view / approve / file.
+3. **P&L / GL modules** reading the same database.

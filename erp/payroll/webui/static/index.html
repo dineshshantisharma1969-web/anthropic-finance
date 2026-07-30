@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ISPL Payroll · ERP</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ambient gradient wash -->
+  <div class="aurora" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">₹</div>
+      <div>
+        <div class="brand-title">ISPL&nbsp;Payroll</div>
+        <div class="brand-sub">Impressions Group · ERP</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <label class="period-picker">
+        <span>Period</span>
+        <select id="period-select"></select>
+      </label>
+      <span id="period-status" class="status-chip"></span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Golden rules strip -->
+    <section id="golden" class="golden" aria-label="Golden rule checks"></section>
+
+    <!-- KPI tiles -->
+    <section id="kpis" class="kpi-grid" aria-label="Key figures"></section>
+
+    <!-- charts -->
+    <section class="cards-3">
+      <article class="card">
+        <div class="card-head"><h2>Excess salary by reason</h2><span class="card-note">₹, action rows</span></div>
+        <div id="chart-reasons" class="chart"></div>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>Rule mix</h2><span class="card-note">rows</span></div>
+        <div id="chart-rules" class="chart"></div>
+      </article>
+      <article class="card">
+        <div class="card-head"><h2>Ticket status</h2><span class="card-note">action items</span></div>
+        <div id="chart-status" class="chart chart-status"></div>
+      </article>
+    </section>
+
+    <!-- action list -->
+    <section class="card table-card">
+      <div class="card-head table-head">
+        <div>
+          <h2>Action list</h2>
+          <span class="card-note" id="table-count">—</span>
+        </div>
+        <div class="filters">
+          <div class="chips" id="status-filter">
+            <button class="chip is-active" data-status="all">All</button>
+            <button class="chip" data-status="open">Open</button>
+            <button class="chip" data-status="investigating">Investigating</button>
+            <button class="chip" data-status="resolved">Resolved</button>
+            <button class="chip" data-status="waived">Waived</button>
+          </div>
+          <select id="reason-filter" class="select-sm"><option value="all">All reasons</option></select>
+          <input id="search" class="search" type="search" placeholder="Search employee / site…">
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table class="grid">
+          <thead>
+            <tr>
+              <th>Employee</th><th>Site</th><th>Rule</th>
+              <th class="num">Gross</th><th class="num">Net</th><th class="num">Excess ₹</th>
+              <th>Reason</th><th>Status</th><th>Owner</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <button id="prev" class="btn">‹ Prev</button>
+        <span id="pageinfo" class="card-note"></span>
+        <button id="next" class="btn">Next ›</button>
+      </div>
+    </section>
+
+    <footer class="foot">
+      ISPL ERP · Payroll module · data served live from Postgres
+    </footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
