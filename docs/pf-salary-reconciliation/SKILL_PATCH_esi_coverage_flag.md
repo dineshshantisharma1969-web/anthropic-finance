@@ -18,15 +18,16 @@ eligibility ceiling; employee 0.75% + employer 3.25%). The reconciliation must
 flag employees who are **eligible but not actually in ESI** — the coverage gap to
 regularise.
 
-The earlier flag keyed on **`REVISED_ESIC = 0`** — the *reconciled/revised* ESI
-value. That is wrong: the ESI passes legitimately set `REVISED_ESIC = 0` on many
-rows (secondary multi-site rows, Future-register alignment) **even when the
-employee actually had ESI deducted in the salary sheet**. Keying on `REVISED_ESIC`
-therefore flags people who are **already covered**.
+The earlier flag keyed **coverage on Future-reference-sheet membership**
+(`emp_in_esi`, `~ie` in `reconcile.py`; equivalently `REVISED_ESIC = 0`
+downstream). That is wrong: the Future sheet lists only a **subset** of the ESI
+population, and the ESI passes set `REVISED_ESIC = 0` on rows that **actually had
+ESI deducted in the salary sheet**. So the flag fires on employees who are
+**already covered**.
 
-In April 2026 this over-flagged badly: **1,940** rows were flagged, but **1,886**
-of them already had ESI deducted (`ESIC > 0`). The true gap was **541** — and the
-old rule caught only ~54 of them, **missing ~487 genuine gaps**.
+In April 2026 the `~ie` basis flagged **12,650** rows — most of them people who
+actually pay ESI. Keyed correctly on **`ESIC = 0`** (with wages earned), the true
+gap is **187**.
 
 ### Day-column basis (unchanged — do NOT alter)
 
@@ -47,10 +48,16 @@ month. Verified April 2026: `FIXEDGROSS / SITEDIVISIONDAYS × 30` equals the sto
 ```
 FULL_MONTH_GROSS = REAL_FULL_MONTH_GROSS            # = FIXEDGROSS / SITEDIVISIONDAYS × calendar days
 ESI_ELIGIBLE     = 0 < FULL_MONTH_GROSS <= 21000
+WAGES_EARNED     = GROSS_AMT > 0                     # earned wages this month (no wages -> no ESI due)
 ESI_DEDUCTED     = ESIC > 0                          # ESIC = ESI actually deducted in the salary sheet
 
-ESI_COVERAGE_GAP = ESI_ELIGIBLE and not ESI_DEDUCTED
+ESI_COVERAGE_GAP = ESI_ELIGIBLE and WAGES_EARNED and not ESI_DEDUCTED
 ```
+
+In `reconcile.py` this is the `ANOMALY_BELOW_CEILING` ESI term. The corrected code
+keys it on the salary sheet's original `ESIC` (`OESIC_v == 0`), **not** on
+`emp_in_esi` (`~ie`, Future-sheet membership) — the Future sheet lists only a
+subset of the ESI population, so `~ie` flags employees who actually pay ESI.
 
 - Flag `ESI_COVERAGE_GAP = True` rows: **"ESI applicable (full-month ≤ ₹21,000) but
   ESI not deducted — enrol / regularise."**
@@ -71,9 +78,12 @@ ESI_COVERAGE_GAP = ESI_ELIGIBLE and not ESI_DEDUCTED
 
 - ESI-eligible (full-month ≤ ₹21,000): **16,953**
 - Already deducted (`ESIC > 0`): 16,993
-- **True coverage gap (`ESI_ELIGIBLE and ESIC = 0`): 541** — est. ESI (emp+employer)
-  ≈ **₹3.37 L/month**
-- Old flag: 1,940 → **1,886 false positives removed, ~487 genuine gaps recovered**
+- **True coverage gap (`ESI_ELIGIBLE and GROSS_AMT > 0 and ESIC = 0`): 187** —
+  est. ESI (emp+employer) ≈ **₹1.30 L/month**
+- The `~ie` (Future-sheet) basis flagged **12,650** rows (misfire); the corrected
+  `ESIC = 0` basis with the wages-earned filter = **187**. (354 eligible rows with
+  `GROSS_AMT = 0` — no attendance this month — are correctly **not** flagged, since
+  no wages means no ESI due this month.)
 - PF gap **0**, NET **₹25,99,37,250 unchanged** after the correction.
 
 ### Where to Apply
