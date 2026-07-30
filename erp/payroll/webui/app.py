@@ -415,18 +415,12 @@ def upload_input(period, input_type):
 @app.post("/api/reconcile/<period>")
 @require_role("approver")
 def reconcile(period):
-    """Approver loads the reconciled result (CSV from the local reconcile.py run)
-    once all three inputs are in — populating payroll_rows + action_items."""
-    p = q("SELECT id FROM salary_period WHERE period=%s", (period,), one=True)
-    if not p:
-        return jsonify(error="period not found — upload inputs first"), 404
-    have = {r["input_type"] for r in q(
-        "SELECT DISTINCT input_type FROM period_input WHERE period_id=%s", (p["id"],))}
-    missing = [INPUT_LABELS[t] for t in INPUT_TYPES if t not in have]
-    if missing:
-        return jsonify(error="inputs incomplete — still waiting on: " + ", ".join(missing)), 409
+    """Approver loads a month's PROCESSED reconciliation file (the per-employee
+    output of the local reconcile.py run) — this is the primary way data enters a
+    month. The period is created if it doesn't exist. The raw-input intake board
+    is optional and does not gate this."""
     if "file" not in request.files or not request.files["file"].filename:
-        return jsonify(error="attach the reconciled result CSV"), 400
+        return jsonify(error="attach the processed reconciliation file (CSV)"), 400
 
     import io
     stream = io.TextIOWrapper(request.files["file"].stream, encoding="utf-8-sig")
@@ -438,7 +432,7 @@ def reconcile(period):
         summary = ingest.ingest_period(
             conn, period, fy_of(period), rows,
             run_by=current_user()["full_name"],
-            source_files="intake: salary + PF + ESI (owner-uploaded)")
+            source_files="processed file: " + request.files["file"].filename)
     finally:
         conn.close()
     return jsonify(ok=True, **summary)

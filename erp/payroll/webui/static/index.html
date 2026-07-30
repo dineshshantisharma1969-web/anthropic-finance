@@ -47,7 +47,7 @@
         </select>
       </label>
       <span id="period-status" class="status-chip"></span>
-      <button id="intake-btn" class="btn btn-ghost" title="Monthly intake &amp; reconciliation">Intake</button>
+      <button id="intake-btn" class="btn btn-ghost" title="Load a processed month">＋ Load month</button>
       <button id="audit-btn" class="btn btn-ghost" title="View change history">History</button>
       <div class="user-chip" id="user-chip" title="Signed in">
         <span class="user-avatar" id="user-avatar"></span>
@@ -143,16 +143,17 @@
     </div>
   </div>
 
-  <!-- intake drawer -->
-  <div id="intake-back" class="drawer-back" hidden><aside class="drawer" role="dialog" aria-label="Monthly intake">
-    <div class="drawer-head"><h3>Monthly intake</h3><button id="intake-close" class="btn btn-ghost">✕</button></div>
+  <!-- load-month drawer -->
+  <div id="intake-back" class="drawer-back" hidden><aside class="drawer" role="dialog" aria-label="Load a month">
+    <div class="drawer-head"><h3>Load a month</h3><button id="intake-close" class="btn btn-ghost">✕</button></div>
     <div class="intake-period">
       <label class="fld" style="flex:1"><span>Period</span><input id="intake-month" type="month" value="2026-06"></label>
       <div class="intake-fy"><span>FY</span><b id="intake-fy">—</b></div>
     </div>
-    <p class="card-note" id="intake-sub" style="margin:2px 0 14px">Owners upload their input; once all three are in, an approver runs the reconciliation.</p>
-    <div id="intake-slots" class="intake-slots"></div>
+    <p class="card-note" id="intake-sub" style="margin:2px 0 14px">Upload the processed reconciliation file — the per-employee output of your <code>reconcile.py</code> run. Loading creates (or refreshes) the month.</p>
     <div id="intake-recon" class="intake-recon"></div>
+    <details id="intake-optional" class="intake-optional"><summary>Optional: raw input readiness (salary / PF / ESI)</summary>
+      <div id="intake-slots" class="intake-slots"></div></details>
   </aside></div>
 
   <!-- audit drawer -->

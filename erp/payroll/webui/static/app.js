@@ -331,12 +331,25 @@ async function loadIntake() {
   const d = await api("/api/intake?period=" + encodeURIComponent(period));
   $("#intake-fy").textContent = d.fy || "—";
 
+  // PRIMARY: upload the processed file (gated by role only, not raw inputs)
+  const r = $("#intake-recon");
+  if (!state.canApprove) {
+    r.innerHTML = `<div class="recon-gate">An <b>approver</b> loads a month's processed reconciliation file.</div>`;
+  } else {
+    const exists = d.has_rows;
+    r.innerHTML = `${exists ? `<div class="recon-gate">${period} is already loaded. Uploading again <b>replaces</b> its rows as a new audited run.</div>` : ""}
+      <label class="fld"><span>Processed reconciliation file (reconcile.py output CSV)</span><input type="file" id="recon-file" accept=".csv"></label>
+      <button class="btn btn-primary" id="recon-run">${exists ? "Replace month" : "Load month"}</button>`;
+    $("#recon-run").onclick = () => runReconcile(period);
+  }
+
+  // OPTIONAL: raw-input readiness board (collapsed by default)
   $("#intake-slots").innerHTML = d.slots.map(s => {
     const got = s.received, L = got ? "received" : "pending";
     const meta = got ? `Uploaded by <b>${escapeHtml(s.latest.uploaded_by)}</b> · ${new Date(s.latest.uploaded_at).toLocaleString("en-IN")}<br><span class="card-note">${escapeHtml(s.latest.filename)}</span>`
                      : `Waiting on: ${escapeHtml(s.owners.join(", ") || "—")}`;
     const control = s.may_upload
-      ? `<div class="slot-upload"><input type="file" data-type="${s.input_type}"><button class="btn btn-primary" data-up="${s.input_type}">${got ? "Replace" : "Upload"}</button></div>`
+      ? `<div class="slot-upload"><input type="file" data-type="${s.input_type}"><button class="btn" data-up="${s.input_type}">${got ? "Replace" : "Upload"}</button></div>`
       : (got ? "" : `<div class="slot-locked">Only ${escapeHtml(s.owners.join(", ") || "the owner")} can upload this.</div>`);
     return `<div class="slot">
       <div class="slot-head"><div class="slot-dot ${L}">${got ? "✓" : "•"}</div>
@@ -345,22 +358,6 @@ async function loadIntake() {
       <div class="slot-meta">${meta}</div>${control}</div>`;
   }).join("");
   $("#intake-slots").querySelectorAll("[data-up]").forEach(btn => btn.onclick = () => uploadInput(period, btn.dataset.up));
-
-  // reconcile section
-  const r = $("#intake-recon");
-  if (d.has_rows) {
-    r.innerHTML = `<div class="recon-ready">✓ ${period} is reconciled — ${inr.format(0)} loaded. Switch to it from the Period selector to review.</div>`;
-  } else if (!d.ready) {
-    const miss = d.slots.filter(s => !s.received).map(s => s.label).join(", ");
-    r.innerHTML = `<div class="recon-gate">Reconciliation opens once all three inputs are in. Still waiting on: <b>${escapeHtml(miss)}</b>.</div>`;
-  } else if (!d.can_reconcile) {
-    r.innerHTML = `<div class="recon-gate">All inputs are in. An <b>approver</b> can now run the reconciliation.</div>`;
-  } else {
-    r.innerHTML = `<div class="recon-ready">All three inputs are in.</div>
-      <label class="fld"><span>Reconciled result CSV (from your reconcile.py run)</span><input type="file" id="recon-file" accept=".csv"></label>
-      <button class="btn btn-primary" id="recon-run">Run reconciliation</button>`;
-    $("#recon-run").onclick = () => runReconcile(period);
-  }
 }
 
 async function uploadInput(period, type) {
@@ -375,7 +372,7 @@ async function uploadInput(period, type) {
 
 async function runReconcile(period) {
   const f = $("#recon-file");
-  if (!f.files.length) { toast("Attach the reconciled CSV"); return; }
+  if (!f.files.length) { toast("Attach the processed reconciliation file"); return; }
   const fd = new FormData(); fd.append("file", f.files[0]);
   toast("Loading reconciled result…");
   const res = await fetch(`/api/reconcile/${encodeURIComponent(period)}`, { method: "POST", body: fd })

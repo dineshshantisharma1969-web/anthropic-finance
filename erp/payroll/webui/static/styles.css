@@ -310,7 +310,11 @@ h1,h2 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
 .slot-upload { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .slot-upload input[type=file] { font-size: 12px; flex: 1; min-width: 0; }
 .slot-locked { font-size: 12px; color: var(--muted); margin-top: 9px; font-style: italic; }
-.intake-recon { margin-top: 16px; border-top: 1px solid var(--hair); padding-top: 16px; }
+.intake-recon { margin-top: 4px; }
+.intake-recon code, .intake-slots code, #intake-sub code { font-size: 12px; background: var(--plane); padding: 1px 5px; border-radius: 5px; }
+.intake-optional { margin-top: 18px; border-top: 1px solid var(--hair); padding-top: 12px; }
+.intake-optional summary { font-size: 12.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; margin-bottom: 12px; }
+.intake-optional summary:hover { color: var(--ink); }
 .recon-gate { font-size: 13px; color: var(--ink-2); background: #fff6e6; border: 1px solid #f6dfa8; border-radius: 10px; padding: 10px 12px; }
 .recon-ready { font-size: 13px; color: var(--good); font-weight: 600; margin-bottom: 10px; }
 
