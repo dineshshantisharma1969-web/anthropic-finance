@@ -26,9 +26,21 @@ from flask import Flask, jsonify, request, session, send_from_directory
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
+import ingest
 
 DSN = os.environ.get("ERP_DB", "host=/tmp/pgs user=postgres dbname=erp")
 HERE = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.environ.get("ERP_UPLOAD_DIR", os.path.join(HERE, "uploads"))
+INPUT_TYPES = ("salary", "pf", "esi")
+INPUT_LABELS = {"salary": "Salary sheet", "pf": "ECR / PF", "esi": "ESI / Future"}
+
+
+def fy_of(period):
+    """Indian FY (Apr–Mar) label for a YYYY-MM period, e.g. 2026-06 → '2026-27'."""
+    y, m = int(period[:4]), int(period[5:7])
+    start = y if m >= 4 else y - 1
+    return f"{start}-{str(start + 1)[-2:]}"
 app = Flask(__name__, static_folder=os.path.join(HERE, "static"), static_url_path="")
 app.secret_key = os.environ.get("ERP_SECRET", "dev-insecure-secret-change-me")
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
@@ -324,6 +336,112 @@ def audit():
                 LEFT JOIN employee e ON e.emp_code = fc.emp_code
                 WHERE p.period = %s ORDER BY fc.changed_at DESC LIMIT %s""", (period, limit))
     return jsonify(rows=rows)
+
+
+# ---------------------------------------------------------------- intake
+def may_upload(username, role, input_type):
+    if role == "admin":
+        return True
+    row = q("SELECT 1 FROM input_owner WHERE input_type=%s AND username=%s",
+            (input_type, username), one=True)
+    return bool(row)
+
+
+@app.get("/api/intake")
+@login_required
+def intake():
+    """Readiness board for a period: the three input slots, who owns each, what's
+    been uploaded, and whether the period is ready to reconcile."""
+    period = request.args.get("period")
+    if not period:
+        return jsonify(error="period required"), 400
+    u = current_user()
+    p = q("SELECT id, status FROM salary_period WHERE period=%s", (period,), one=True)
+    period_id = p["id"] if p else None
+    has_rows = False
+    if period_id:
+        has_rows = q("SELECT 1 FROM payroll_row WHERE period_id=%s LIMIT 1", (period_id,), one=True) is not None
+
+    owners = {t: [] for t in INPUT_TYPES}
+    for r in q("SELECT input_type, username FROM input_owner ORDER BY username"):
+        owners[r["input_type"]].append(r["username"])
+
+    slots = []
+    for t in INPUT_TYPES:
+        latest = None
+        if period_id:
+            latest = q("""SELECT filename, uploaded_by, uploaded_at, status, byte_size
+                          FROM period_input WHERE period_id=%s AND input_type=%s
+                          ORDER BY uploaded_at DESC LIMIT 1""", (period_id, t), one=True)
+        slots.append({"input_type": t, "label": INPUT_LABELS[t], "owners": owners[t],
+                      "received": latest is not None, "latest": latest,
+                      "may_upload": may_upload(u["username"], u["role"], t)})
+    ready = all(s["received"] for s in slots)
+    return jsonify(period=period, fy=fy_of(period), status=(p["status"] if p else None),
+                   has_rows=has_rows, ready=ready, slots=slots,
+                   can_reconcile=(RANK.get(u["role"], -1) >= RANK["approver"]))
+
+
+@app.post("/api/intake/<period>/<input_type>")
+@require_role("clerk")
+def upload_input(period, input_type):
+    """A preparer uploads their input file for a period. Owner-locked by type."""
+    if input_type not in INPUT_TYPES:
+        return jsonify(error="unknown input type"), 400
+    u = current_user()
+    if not may_upload(u["username"], u["role"], input_type):
+        return jsonify(error=f"you are not an owner of the {INPUT_LABELS[input_type]} input"), 403
+    if "file" not in request.files or not request.files["file"].filename:
+        return jsonify(error="no file"), 400
+    f = request.files["file"]
+
+    # get-or-create the period (starts as draft = intake in progress)
+    p = q("""INSERT INTO salary_period (period, fy) VALUES (%s, %s)
+             ON CONFLICT (period) DO UPDATE SET fy=EXCLUDED.fy RETURNING id, status""",
+          (period, fy_of(period)), one=True)
+    dest_dir = os.path.join(UPLOAD_DIR, period)
+    os.makedirs(dest_dir, exist_ok=True)
+    safe = secure_filename(f.filename)
+    path = os.path.join(dest_dir, f"{input_type}__{safe}")
+    f.save(path)
+    size = os.path.getsize(path)
+    q("""INSERT INTO period_input (period_id, input_type, filename, byte_size, stored_path, uploaded_by)
+         VALUES (%s,%s,%s,%s,%s,%s)""",
+      (p["id"], input_type, f.filename, size, path, u["username"]))
+    return jsonify(ok=True, period=period, input_type=input_type,
+                   filename=f.filename, uploaded_by=u["username"], byte_size=size)
+
+
+@app.post("/api/reconcile/<period>")
+@require_role("approver")
+def reconcile(period):
+    """Approver loads the reconciled result (CSV from the local reconcile.py run)
+    once all three inputs are in — populating payroll_rows + action_items."""
+    p = q("SELECT id FROM salary_period WHERE period=%s", (period,), one=True)
+    if not p:
+        return jsonify(error="period not found — upload inputs first"), 404
+    have = {r["input_type"] for r in q(
+        "SELECT DISTINCT input_type FROM period_input WHERE period_id=%s", (p["id"],))}
+    missing = [INPUT_LABELS[t] for t in INPUT_TYPES if t not in have]
+    if missing:
+        return jsonify(error="inputs incomplete — still waiting on: " + ", ".join(missing)), 409
+    if "file" not in request.files or not request.files["file"].filename:
+        return jsonify(error="attach the reconciled result CSV"), 400
+
+    import io
+    stream = io.TextIOWrapper(request.files["file"].stream, encoding="utf-8-sig")
+    rows = ingest.read_rows(stream)
+    if not rows:
+        return jsonify(error="no data rows in the reconciled CSV"), 400
+    conn = psycopg2.connect(DSN)
+    try:
+        summary = ingest.ingest_period(
+            conn, period, fy_of(period), rows,
+            run_by=current_user()["full_name"],
+            source_files="intake: salary + PF + ESI (owner-uploaded)")
+    finally:
+        conn.close()
+    return jsonify(ok=True, **summary)
 
 
 if __name__ == "__main__":

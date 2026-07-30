@@ -49,6 +49,8 @@ def main():
     r = sub.add_parser("role"); r.add_argument("username"); r.add_argument("role", choices=ROLES)
     d = sub.add_parser("disable"); d.add_argument("username")
     e = sub.add_parser("enable"); e.add_argument("username")
+    o = sub.add_parser("own"); o.add_argument("username"); o.add_argument("input_type", choices=("salary", "pf", "esi"))
+    do = sub.add_parser("disown"); do.add_argument("username"); do.add_argument("input_type", choices=("salary", "pf", "esi"))
     sub.add_parser("list")
     args = ap.parse_args()
 
@@ -70,13 +72,24 @@ def main():
     elif args.cmd in ("disable", "enable"):
         cur.execute("UPDATE app_user SET active=%s WHERE username=%s", (args.cmd == "enable", args.username))
         print(f"{args.username} {'enabled' if args.cmd=='enable' else 'disabled'}" if cur.rowcount else "No such user.")
+    elif args.cmd == "own":
+        cur.execute("INSERT INTO input_owner (input_type, username) VALUES (%s,%s) ON CONFLICT DO NOTHING",
+                    (args.input_type, args.username))
+        print(f"{args.username} now owns the {args.input_type} input.")
+    elif args.cmd == "disown":
+        cur.execute("DELETE FROM input_owner WHERE input_type=%s AND username=%s", (args.input_type, args.username))
+        print(f"{args.username} no longer owns {args.input_type}." if cur.rowcount else "Was not an owner.")
     elif args.cmd == "list":
-        cur.execute("SELECT username, role, active, coalesce(full_name,'') FROM app_user ORDER BY role, username")
+        cur.execute("""SELECT u.username, u.role, u.active, coalesce(u.full_name,''),
+                              coalesce(string_agg(io.input_type,',' ORDER BY io.input_type),'')
+                       FROM app_user u LEFT JOIN input_owner io ON io.username=u.username
+                       GROUP BY u.username, u.role, u.active, u.full_name ORDER BY u.role, u.username""")
         rows = cur.fetchall()
         if not rows:
             print("No users yet. Add one:  python manage_users.py add <name> --role admin")
-        for u, role, active, name in rows:
-            print(f"  {u:16} {role:9} {'active' if active else 'DISABLED':9} {name}")
+        for u, role, active, name, owns in rows:
+            tail = f"  owns[{owns}]" if owns else ""
+            print(f"  {u:16} {role:9} {'active' if active else 'DISABLED':9} {name}{tail}")
     c.close()
 
 

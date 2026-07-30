@@ -131,6 +131,38 @@ a figure or ticket → 403; clerk filing a period → 403; approver files/reopen
 200; a clerk editing a *filed* period → 423 (the lock still holds); every audit
 entry records the real signed-in user.
 
+### Monthly intake & reconciliation
+
+How a new month (e.g. June) goes from raw inputs to a reconciled period. A period
+needs **three inputs, each owned by specific people** (owner-locked upload):
+
+| Input | Owners | Feeds reconcile.py |
+|---|---|---|
+| **Salary sheet** | Amit, Vishnu | `--salary` |
+| **ECR / PF** | Ajay | `--ecr` |
+| **ESI / Future** | Pradeep | `--future` |
+
+Flow (open the **Intake** panel):
+1. Each owner uploads their input for the period. The **readiness board** shows
+   received / pending and who's responsible; a non-owner cannot upload another's
+   input (403).
+2. Once all three are in, an **approver** clicks **Run reconciliation** and attaches
+   the reconciled result CSV produced by the local `reconcile.py` run. The module
+   ingests it (via the shared `ingest.py` code path — same as the CLI loader),
+   creating the period's `payroll_row`s + `action_item`s and the Golden-Rule checks,
+   and moves the period `draft → reconciled`. Reconciliation is blocked until all
+   inputs are present (409) and to non-approvers (403).
+3. The month's action list appears — the review → correct → file lifecycle above.
+
+Ownership is managed with `manage_users.py own <user> <salary|pf|esi>` (and
+`disown`). Uploaded files land under `ERP_UPLOAD_DIR` (default `webui/uploads/`,
+git-ignored). Compute stays in the proven local pipeline; the module is the system
+of record and the readiness/orchestration layer.
+
+**Intake API:** `GET /api/intake?period=`, `POST /api/intake/<period>/<type>`
+(owner-locked file upload), `POST /api/reconcile/<period>` (approver; loads the
+reconciled CSV once inputs are complete).
+
 
 - **Overview** — Golden-Rule strip (PF gap / net drift / ESI vs Future), KPI tiles
   (net payable, revised PF, action rows, excess salary in ₹ Cr/L), and three charts:
@@ -150,7 +182,13 @@ Validated locally on Postgres 16 against the April fixture: KPIs and charts rend
 from live data, and status/owner edits round-trip to the DB (the ticket-status
 donut recounts live after each change).
 
-## Next increments (not in this change)
-1. **Reconciliation-as-a-service** — upload salary sheet + ECR → results land here.
-2. **Auth + roles** — view / approve / file.
+## Done so far
+- Schema + loader · DB-backed console · editable figures with audit + period lock
+- Auth + roles (viewer / clerk / approver / admin)
+- Monthly intake (owner-locked uploads) + reconcile-load
+
+## Next increments
+1. **Load real data** — full April sheet + May, against the production Supabase.
+2. **In-app reconciliation engine** — run `reconcile.py` server-side from the
+   uploaded inputs (today the compute stays local and the result CSV is loaded).
 3. **P&L / GL modules** reading the same database.

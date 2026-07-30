@@ -86,6 +86,10 @@ async function boot() {
 
   $("#status-set").onchange = onStatusChange;
   $("#audit-btn").onclick = openAudit;
+  $("#intake-btn").onclick = openIntake;
+  $("#intake-close").onclick = () => $("#intake-back").hidden = true;
+  $("#intake-back").onclick = (e) => { if (e.target.id === "intake-back") $("#intake-back").hidden = true; };
+  $("#intake-month").onchange = loadIntake;
   $("#drawer-close").onclick = () => $("#drawer-back").hidden = true;
   $("#drawer-back").onclick = (e) => { if (e.target.id === "drawer-back") $("#drawer-back").hidden = true; };
   wireModal();
@@ -316,6 +320,80 @@ async function openAudit() {
       <div class="rsn">“${escapeHtml(a.reason || "")}”${a.changed_by ? " — " + escapeHtml(a.changed_by) : ""}</div>
     </div>`;
   }).join("") || `<div class="audit-empty">No changes recorded for ${state.period} yet.</div>`;
+}
+
+/* ---------- monthly intake ---------- */
+function openIntake() { $("#intake-back").hidden = false; loadIntake(); }
+
+async function loadIntake() {
+  const period = $("#intake-month").value; // 'YYYY-MM'
+  if (!period) return;
+  const d = await api("/api/intake?period=" + encodeURIComponent(period));
+  $("#intake-fy").textContent = d.fy || "—";
+
+  $("#intake-slots").innerHTML = d.slots.map(s => {
+    const got = s.received, L = got ? "received" : "pending";
+    const meta = got ? `Uploaded by <b>${escapeHtml(s.latest.uploaded_by)}</b> · ${new Date(s.latest.uploaded_at).toLocaleString("en-IN")}<br><span class="card-note">${escapeHtml(s.latest.filename)}</span>`
+                     : `Waiting on: ${escapeHtml(s.owners.join(", ") || "—")}`;
+    const control = s.may_upload
+      ? `<div class="slot-upload"><input type="file" data-type="${s.input_type}"><button class="btn btn-primary" data-up="${s.input_type}">${got ? "Replace" : "Upload"}</button></div>`
+      : (got ? "" : `<div class="slot-locked">Only ${escapeHtml(s.owners.join(", ") || "the owner")} can upload this.</div>`);
+    return `<div class="slot">
+      <div class="slot-head"><div class="slot-dot ${L}">${got ? "✓" : "•"}</div>
+        <div><div class="slot-title">${escapeHtml(s.label)}</div><div class="slot-owners">owners: ${escapeHtml(s.owners.join(", ") || "—")}</div></div>
+        <div class="slot-state ${L}">${got ? "RECEIVED" : "PENDING"}</div></div>
+      <div class="slot-meta">${meta}</div>${control}</div>`;
+  }).join("");
+  $("#intake-slots").querySelectorAll("[data-up]").forEach(btn => btn.onclick = () => uploadInput(period, btn.dataset.up));
+
+  // reconcile section
+  const r = $("#intake-recon");
+  if (d.has_rows) {
+    r.innerHTML = `<div class="recon-ready">✓ ${period} is reconciled — ${inr.format(0)} loaded. Switch to it from the Period selector to review.</div>`;
+  } else if (!d.ready) {
+    const miss = d.slots.filter(s => !s.received).map(s => s.label).join(", ");
+    r.innerHTML = `<div class="recon-gate">Reconciliation opens once all three inputs are in. Still waiting on: <b>${escapeHtml(miss)}</b>.</div>`;
+  } else if (!d.can_reconcile) {
+    r.innerHTML = `<div class="recon-gate">All inputs are in. An <b>approver</b> can now run the reconciliation.</div>`;
+  } else {
+    r.innerHTML = `<div class="recon-ready">All three inputs are in.</div>
+      <label class="fld"><span>Reconciled result CSV (from your reconcile.py run)</span><input type="file" id="recon-file" accept=".csv"></label>
+      <button class="btn btn-primary" id="recon-run">Run reconciliation</button>`;
+    $("#recon-run").onclick = () => runReconcile(period);
+  }
+}
+
+async function uploadInput(period, type) {
+  const inp = $(`#intake-slots input[data-type="${type}"]`);
+  if (!inp.files.length) { toast("Choose a file first"); return; }
+  const fd = new FormData(); fd.append("file", inp.files[0]);
+  const res = await fetch(`/api/intake/${encodeURIComponent(period)}/${type}`, { method: "POST", body: fd })
+    .then(r => r.json().then(j => ({ ok: r.ok, j })));
+  if (!res.ok) { toast(res.j.error || "Upload failed"); return; }
+  toast(res.j.filename + " uploaded"); loadIntake(); refreshPeriods();
+}
+
+async function runReconcile(period) {
+  const f = $("#recon-file");
+  if (!f.files.length) { toast("Attach the reconciled CSV"); return; }
+  const fd = new FormData(); fd.append("file", f.files[0]);
+  toast("Loading reconciled result…");
+  const res = await fetch(`/api/reconcile/${encodeURIComponent(period)}`, { method: "POST", body: fd })
+    .then(r => r.json().then(j => ({ ok: r.ok, j })));
+  if (!res.ok) { toast(res.j.error || "Reconciliation failed"); return; }
+  const c = res.j.checks;
+  toast(`${period} reconciled — ${inr.format(res.j.rows)} rows, PF gap ${c.rule1_pass ? "0 ✓" : "REVIEW"}`);
+  await refreshPeriods(period);
+  $("#intake-back").hidden = true;
+}
+
+async function refreshPeriods(select) {
+  const periods = await api("/api/periods");
+  const sel = $("#period-select");
+  sel.innerHTML = periods.map(p => `<option value="${p.period}">${p.period}</option>`).join("");
+  state.period = select || state.period || periods[0]?.period;
+  sel.value = state.period;
+  await loadAll();
 }
 
 /* ---------- utils ---------- */

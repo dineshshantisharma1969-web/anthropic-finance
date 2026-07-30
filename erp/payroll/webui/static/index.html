@@ -47,6 +47,7 @@
         </select>
       </label>
       <span id="period-status" class="status-chip"></span>
+      <button id="intake-btn" class="btn btn-ghost" title="Monthly intake &amp; reconciliation">Intake</button>
       <button id="audit-btn" class="btn btn-ghost" title="View change history">History</button>
       <div class="user-chip" id="user-chip" title="Signed in">
         <span class="user-avatar" id="user-avatar"></span>
@@ -141,6 +142,18 @@
       </div>
     </div>
   </div>
+
+  <!-- intake drawer -->
+  <div id="intake-back" class="drawer-back" hidden><aside class="drawer" role="dialog" aria-label="Monthly intake">
+    <div class="drawer-head"><h3>Monthly intake</h3><button id="intake-close" class="btn btn-ghost">✕</button></div>
+    <div class="intake-period">
+      <label class="fld" style="flex:1"><span>Period</span><input id="intake-month" type="month" value="2026-06"></label>
+      <div class="intake-fy"><span>FY</span><b id="intake-fy">—</b></div>
+    </div>
+    <p class="card-note" id="intake-sub" style="margin:2px 0 14px">Owners upload their input; once all three are in, an approver runs the reconciliation.</p>
+    <div id="intake-slots" class="intake-slots"></div>
+    <div id="intake-recon" class="intake-recon"></div>
+  </aside></div>
 
   <!-- audit drawer -->
   <div id="drawer-back" class="drawer-back" hidden>

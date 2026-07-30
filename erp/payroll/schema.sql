@@ -139,6 +139,35 @@ CREATE TABLE IF NOT EXISTS app_user (
     created_at    timestamptz NOT NULL DEFAULT now()
 );
 
+-- Intake: the raw input files a period needs before it can be reconciled.
+-- Three input types, each owned by specific people (input_owner):
+--   salary → the salary sheet (Amit, Vishnu)
+--   pf     → the ECR / PF file(s) (Ajay)
+--   esi    → the ESI / Future sheet (Pradeep)
+-- The readiness board reads from here; a period can't be reconciled until all
+-- three input types are received.
+CREATE TABLE IF NOT EXISTS period_input (
+    id           bigserial PRIMARY KEY,
+    period_id    integer NOT NULL REFERENCES salary_period(id),
+    input_type   text NOT NULL CHECK (input_type IN ('salary','pf','esi')),
+    filename     text NOT NULL,
+    byte_size    bigint,
+    stored_path  text,
+    uploaded_by  text NOT NULL,
+    status       text NOT NULL DEFAULT 'received'
+                   CHECK (status IN ('received','validated','rejected')),
+    note         text,
+    uploaded_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_input_period ON period_input (period_id, input_type);
+
+-- Who may upload each input type (owner-locked intake).
+CREATE TABLE IF NOT EXISTS input_owner (
+    input_type text NOT NULL CHECK (input_type IN ('salary','pf','esi')),
+    username   text NOT NULL REFERENCES app_user(username),
+    PRIMARY KEY (input_type, username)
+);
+
 -- Immutable audit trail of every change to a financial figure or a period's
 -- status. Never updated or deleted — this is the "who changed what, when, and
 -- why" record that makes a corrected number defensible to an auditor / EPFO.
