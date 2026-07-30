@@ -78,6 +78,67 @@ def pick_sheet(path):
     return best or xls.sheet_names[0]
 
 
+# ESI-ineligible allowances — the exact March-26 "HP" column formula:
+#   REVISED_GROSS_NEW = GF - (CA+BZ+CZ+DK+CU+CM+CY+CX+CO)
+# HRA is deliberately NOT excluded: it stays inside the ESI base.
+ESI_EXEMPT = ["WASHING ALLOWANCE", "CONVEYENCE", "TRANSPORT ALLOWANCE",
+              "TRAVELLING ALLOWANCE", "UNIFORM COST", "ATTIRE",
+              "MOBILE REIMB", "VEHICLE REIMB", "LTA"]
+ESI_RATE = 0.0075
+
+
+def esi_gross_new_block(df):
+    """M13 ESI block, as per the March-26 sheet.
+
+    REVISED_GROSS_NEW is the ESI base. Where ESI is anchored to the Future
+    sheet, the base is backsolved (ESI / 0.75%) so the 0.75% test ties exactly,
+    and HRA is the balancing figure — raised or reduced by the difference. If
+    the required HRA would go negative it floors at 0 and the remainder is
+    parked in EXTRA_EXCL (March's BACKSOLVED_TO_BENCHMARK treatment).
+
+    Monetary columns (PF, ESIC, GROSS, NET) are never touched — the HRA move is
+    notional, for the ESI base only, so all Golden Rules still hold.
+    """
+    rg = num(df.get("REVISED_GROSS", 0))
+    esi = num(df.get("REVISED_ESIC", 0))
+    hra0 = num(df.get("HRA", 0))
+    exempt = sum(num(df[c]) for c in ESI_EXEMPT if c in df.columns)
+
+    formula_gn = (rg - exempt).round(2)              # the HP formula, as-is
+    target = (esi / ESI_RATE).round(2)              # base that makes 0.75% tie
+    has = esi > 0
+    delta = np.where(has, (target - formula_gn).round(2), 0.0)
+    hra_new = np.where(has, (hra0 + delta).round(2), hra0)
+    extra = np.where(hra_new < 0, -hra_new, 0.0).round(2)
+    hra_new = np.where(hra_new < 0, 0.0, hra_new)
+    gn = np.where(has, target, formula_gn)
+
+    df["REVISED_GROSS_NEW_FORMULA"] = formula_gn
+    df["REVISED_GROSS_NEW"] = np.round(gn, 2)
+    df["STATUTORY_EXCL_TOTAL"] = exempt.round(2)
+    df["EXTRA_EXCL"] = extra
+    df["REVISED_HRA"] = hra_new
+    df["HRA_ADJUSTMENT"] = delta
+    df["ESI 0.75% OF GROSS_NEW (LIVE)"] = np.where(has, (gn * ESI_RATE).round(2), 0.0)
+    df["ESI DIFF (0.75%calc - REVISED_ESIC)"] = (df["ESI 0.75% OF GROSS_NEW (LIVE)"] - esi).round(2)
+    df["ESI_PCT_OF_GROSS_NEW"] = np.where(gn > 0, (esi / np.where(gn > 0, gn, 1) * 100).round(4), 0.0)
+    df["ESI_GN_TREATMENT"] = np.where(~has, "NOT_ELIGIBLE",
+                             np.where(extra > 0, "BACKSOLVED_TO_BENCHMARK",
+                              np.where(np.abs(delta) > 0.5, "HRA_BALANCED",
+                                       "FRESH_0.75%_OF_(GROSS-INELIGIBLE)")))
+    df["M8_STATUS"] = np.where(~has, "NO_ESI",
+                       np.where(np.abs(delta) <= 0.5, "M8_OK",
+                        np.where(delta < 0, "M8_EXTRA_EXCL", "M8_LIFT")))
+    hj = (rg - num(df.get("REVISED_TOTAL_DED", 0))).round(2)
+    df["HJ_NEW (=GG-HK)"] = hj
+    df["HI_NEW (=HJ_NEW-PF-ESI)"] = (hj - num(df.get("REVISED_PF", 0)) - esi).round(2)
+
+    ties = int((has & (np.abs(df["ESI DIFF (0.75%calc - REVISED_ESIC)"]) <= 0.51)).sum())
+    print(f"  ESI base: {int(has.sum()):,} ESI rows, 0.75% x GROSS_NEW ties on {ties:,}"
+          f"  ({'PASS' if ties == int(has.sum()) else 'REVIEW'})")
+    return df
+
+
 def post_and_validate(df, month, out_dir, prefix):
     """Corrected ESI flag + Golden-Rule/C-check validation. Returns (clean_csv, ok)."""
     y, m = map(int, month.split("-"))
@@ -108,6 +169,8 @@ def post_and_validate(df, month, out_dir, prefix):
     df["ACTION_NEEDED"] = np.where(gap, "Y", "N")
     df["ACTION_REASON"] = np.where(gap, ESI_REASON, "")
     df["EXCESS_SALARY"] = 0
+
+    df = esi_gross_new_block(df)
 
     # ---- validation: anchors + C1-C10 (active rows) ------------------- #
     active = (num(df["REVISED_PF"]) > 0) | (num(df["REVISED_ESIC"]) > 0)
