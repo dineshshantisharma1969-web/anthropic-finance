@@ -13,7 +13,7 @@ function compactINR(n) {
   return inr.format(Math.round(n));
 }
 
-const state = { period: null, status: "all", reason: "all", q: "", offset: 0, limit: 50, total: 0, periodStatus: "draft", locked: false, user: null, canWrite: false, canApprove: false };
+const state = { period: null, status: "all", reason: "all", q: "", offset: 0, limit: 50, total: 0, periodStatus: "draft", locked: false, user: null, canWrite: false, canApprove: false, view: "actions" };
 const LOCKED = new Set(["filed", "closed"]);
 const RANK = { viewer: 0, clerk: 1, approver: 2, admin: 3 };
 const FIGURE_LABELS = { gross_amt: "Gross", net_payable: "Net payable", excess_salary: "Excess salary" };
@@ -78,6 +78,15 @@ async function boot() {
     const b = e.target.closest(".chip"); if (!b) return;
     [...$("#status-filter").children].forEach(c => c.classList.toggle("is-active", c === b));
     state.status = b.dataset.status; state.offset = 0; loadTable();
+  };
+  $("#view-switch").onclick = (e) => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    [...$("#view-switch").children].forEach(c => c.classList.toggle("is-active", c === b));
+    state.view = b.dataset.view; state.offset = 0;
+    // status/reason filters only apply to the action list
+    $("#status-filter").style.display = state.view === "actions" ? "" : "none";
+    $("#reason-filter").style.display = state.view === "actions" ? "" : "none";
+    loadTable();
   };
   $("#reason-filter").onchange = (e) => { state.reason = e.target.value; state.offset = 0; loadTable(); };
   let deb; $("#search").oninput = (e) => { clearTimeout(deb); deb = setTimeout(() => { state.q = e.target.value.trim(); state.offset = 0; loadTable(); }, 300); };
@@ -189,23 +198,64 @@ function donut(sel, mix) {
   $(sel).innerHTML = svg + legend;
 }
 
-/* ---------- action table ---------- */
+/* ---------- action list / salary register table ---------- */
+const HEAD_ACTIONS = `<tr><th>Employee</th><th>Site</th><th>Rule</th>
+  <th class="num">Gross</th><th class="num">Net</th><th class="num">Excess ₹</th>
+  <th>Reason</th><th>Status</th><th>Owner</th></tr>`;
+const HEAD_REGISTER = `<tr><th>Employee</th><th>Site</th><th>Rule</th>
+  <th class="num">Days</th><th class="num">Gross</th><th class="num">Revised gross</th>
+  <th class="num">PF</th><th class="num">ESIC</th><th class="num">Net</th><th>Flag</th></tr>`;
+
 async function loadTable() {
-  const p = new URLSearchParams({ period: state.period, status: state.status, reason: state.reason, q: state.q, limit: state.limit, offset: state.offset });
-  const d = await api("/api/actions?" + p.toString());
-  state.total = d.total;
   const hint = state.locked ? ` &nbsp;<span class="locked-note">🔒 ${state.periodStatus} — figures locked</span>`
-    : state.canWrite ? ` &nbsp;<span class="card-note">· click a Gross / Net / Excess cell to correct</span>`
+    : state.canWrite ? ` &nbsp;<span class="card-note">· click a Gross / Net cell to correct</span>`
     : ` &nbsp;<span class="card-note">· read-only (viewer)</span>`;
-  $("#table-count").innerHTML = `${inr.format(d.total)} tickets` + hint;
-  $("#rows").innerHTML = d.rows.map(rowHtml).join("") ||
-    `<tr><td colspan="9" style="text-align:center;padding:26px;color:var(--muted)">No matching tickets</td></tr>`;
-  wireRow();
-  wireRowEdits();
-  const from = d.total ? state.offset + 1 : 0, to = Math.min(state.offset + state.limit, d.total);
-  $("#pageinfo").textContent = `${from}–${to} of ${inr.format(d.total)}`;
+  const from_ = (total) => total ? state.offset + 1 : 0;
+
+  if (state.view === "register") {
+    $("#table-head").innerHTML = HEAD_REGISTER;
+    const p = new URLSearchParams({ period: state.period, q: state.q, limit: state.limit, offset: state.offset });
+    const d = await api("/api/register?" + p.toString());
+    state.total = d.total;
+    $("#table-count").innerHTML = `${inr.format(d.total)} employees — full salary register` + hint;
+    $("#rows").innerHTML = d.rows.map(registerRowHtml).join("") ||
+      `<tr><td colspan="10" style="text-align:center;padding:26px;color:var(--muted)">No matching employees</td></tr>`;
+    wireRowEdits();
+    $("#pageinfo").textContent = `${from_(d.total)}–${Math.min(state.offset + state.limit, d.total)} of ${inr.format(d.total)}`;
+  } else {
+    $("#table-head").innerHTML = HEAD_ACTIONS;
+    const p = new URLSearchParams({ period: state.period, status: state.status, reason: state.reason, q: state.q, limit: state.limit, offset: state.offset });
+    const d = await api("/api/actions?" + p.toString());
+    state.total = d.total;
+    $("#table-count").innerHTML = `${inr.format(d.total)} tickets` + hint;
+    $("#rows").innerHTML = d.rows.map(rowHtml).join("") ||
+      `<tr><td colspan="9" style="text-align:center;padding:26px;color:var(--muted)">No matching tickets</td></tr>`;
+    wireRow();
+    wireRowEdits();
+    $("#pageinfo").textContent = `${from_(d.total)}–${Math.min(state.offset + state.limit, d.total)} of ${inr.format(d.total)}`;
+  }
   $("#prev").disabled = state.offset === 0;
-  $("#next").disabled = state.offset + state.limit >= d.total;
+  $("#next").disabled = state.offset + state.limit >= state.total;
+}
+
+function registerRowHtml(r) {
+  const ed = (state.locked || !state.canWrite) ? "" : "editable";
+  const cell = (field, val, extra = "") =>
+    `<td class="num ${extra} ${ed}" ${ed ? `data-rid="${r.payroll_row_id}" data-field="${field}" data-val="${val ?? ""}" data-emp="${escapeAttr(r.full_name || r.emp_code)}"` : ""}>${money(val)}</td>`;
+  const d0 = r.normal_days != null ? Math.round(r.normal_days) : "—";
+  const days = `${d0}${r.adj_working_days != null ? " / " + Math.round(r.adj_working_days) : ""}`;
+  return `<tr data-id="reg-${r.payroll_row_id}">
+    <td><div class="emp-name">${escapeHtml(r.full_name || "")}</div><div class="emp-code">${r.emp_code}</div></td>
+    <td><div>${escapeHtml(shorten(r.site_name || "", 24))}</div><div class="site-state">${escapeHtml(r.site_state || "")}</div></td>
+    <td><span class="tag">${r.rule_applied || "—"}</span></td>
+    <td class="num" title="worked / adjusted days">${days}</td>
+    ${cell("gross_amt", r.gross_amt)}
+    <td class="num">${money(r.revised_gross)}</td>
+    <td class="num">${money(r.revised_pf)}</td>
+    <td class="num">${money(r.revised_esic)}</td>
+    ${cell("net_payable", r.net_payable)}
+    <td>${r.action_needed ? '<span class="tag tag-flag">ESI</span>' : ""}</td>
+  </tr>`;
 }
 
 function rowHtml(r) {

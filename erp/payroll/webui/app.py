@@ -233,6 +233,43 @@ def actions():
     return jsonify(total=total, limit=limit, offset=offset, rows=rows)
 
 
+@app.get("/api/register")
+@login_required
+def register():
+    """The full salary register: every payroll row of the period (not just
+    flagged ones), searchable and paginated."""
+    period = request.args.get("period")
+    search = request.args.get("q")
+    rule = request.args.get("rule")
+    limit = min(int(request.args.get("limit", 50)), 500)
+    offset = int(request.args.get("offset", 0))
+
+    where = ["p.period = %s"]; args = [period]
+    if rule and rule != "all":
+        where.append("r.rule_applied = %s"); args.append(rule)
+    if search:
+        where.append("(r.emp_code ILIKE %s OR e.full_name ILIKE %s OR s.site_name ILIKE %s)")
+        args += [f"%{search}%", f"%{search}%", f"%{search}%"]
+    w = " AND ".join(where)
+
+    total = q(f"""SELECT count(*) AS n FROM payroll_row r
+                  JOIN salary_period p ON p.id = r.period_id
+                  JOIN employee e ON e.emp_code = r.emp_code
+                  JOIN site s ON s.site_code = r.site_code WHERE {w}""", args, one=True)["n"]
+    rows = q(f"""
+        SELECT r.id AS payroll_row_id, r.emp_code, e.full_name, r.site_code,
+               s.site_name, s.site_state, r.normal_days, r.adj_working_days,
+               r.gross_amt, r.revised_gross, r.net_payable, r.ecr_pf, r.revised_pf,
+               r.revised_esic, r.future_esi, r.rule_applied, r.action_needed
+        FROM payroll_row r
+        JOIN salary_period p ON p.id = r.period_id
+        JOIN employee e ON e.emp_code = r.emp_code
+        JOIN site s ON s.site_code = r.site_code
+        WHERE {w} ORDER BY r.emp_code, r.site_code
+        LIMIT %s OFFSET %s""", args + [limit, offset])
+    return jsonify(total=total, limit=limit, offset=offset, rows=rows)
+
+
 # ---------------------------------------------------------------- write (gated)
 @app.patch("/api/actions/<int:aid>")
 @require_role("clerk")

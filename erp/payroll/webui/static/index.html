@@ -84,7 +84,10 @@
     <section class="card table-card">
       <div class="card-head table-head">
         <div>
-          <h2>Action list</h2>
+          <div class="chips view-chips" id="view-switch">
+            <button class="chip is-active" data-view="actions">Action list</button>
+            <button class="chip" data-view="register">Salary register</button>
+          </div>
           <span class="card-note" id="table-count">—</span>
         </div>
         <div class="filters">
@@ -102,7 +105,7 @@
 
       <div class="table-scroll">
         <table class="grid">
-          <thead>
+          <thead id="table-head">
             <tr>
               <th>Employee</th><th>Site</th><th>Rule</th>
               <th class="num">Gross</th><th class="num">Net</th><th class="num">Excess ₹</th>

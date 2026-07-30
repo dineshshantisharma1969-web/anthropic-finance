@@ -88,8 +88,12 @@ def post_and_validate(df, month, out_dir, prefix):
     missing = [c for c in need if c not in df.columns]
     if missing:
         sys.exit(f"missing required columns: {missing}")
-    df = df[num(df["EMPCODE"]).ne(0) | df["EMPCODE"].astype(str).str.strip().ne("")].copy()
     df = df[df["EMPCODE"].notna() & df["EMPCODE"].astype(str).str.strip().ne("")].copy()
+    # skill rule: strip the Excel float '.0' suffix from codes so an employee is
+    # ONE employee across months ('10010010.0' == '10010010')
+    for col in ("EMPCODE", "SITECODE"):
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip().str.split(".").str[0]
 
     sdd = num(df["SITEDIVISIONDAYS"])
     fg = num(df["FIXEDGROSS"])

@@ -194,6 +194,9 @@ h1,h2 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
 /* ---- table ---- */
 .table-card { padding: 18px 18px 12px; }
 .table-head { align-items: flex-end; flex-wrap: wrap; }
+.view-chips { margin-bottom: 6px; }
+.view-chips .chip.is-active { font-weight: 700; }
+.tag-flag { background: #fff6e6; border-color: #f6dfa8; color: #7a5800; }
 .filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .chips { display: inline-flex; background: var(--plane); border: 1px solid var(--hair); border-radius: 999px; padding: 3px; }
 .chip {
