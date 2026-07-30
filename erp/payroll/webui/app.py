@@ -479,4 +479,10 @@ if __name__ == "__main__":
     if app.secret_key == "dev-insecure-secret-change-me":
         print("WARNING: ERP_SECRET not set — using an insecure dev key. Set it in production.")
     port = int(os.environ.get("PORT", 8000))
-    app.run(host="127.0.0.1", port=port, debug=False)
+    # ERP_HOST=0.0.0.0 makes the app reachable from other PCs on the office LAN
+    # (default stays localhost-only). Never expose this straight to the internet —
+    # for outside access, host it properly behind HTTPS.
+    host = os.environ.get("ERP_HOST", "127.0.0.1")
+    if host != "127.0.0.1":
+        print(f"  LAN mode: other office PCs can reach this at http://<this-PC-IP>:{port}")
+    app.run(host=host, port=port, debug=False)
