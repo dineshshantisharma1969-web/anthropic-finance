@@ -57,6 +57,33 @@ h1,h2 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
     radial-gradient(50vw 42vh at 60% 0%, rgba(42,120,214,.14), transparent 62%);
 }
 
+/* ---- login gate ---- */
+.login-gate[hidden] { display: none !important; }  /* class display must not override [hidden] */
+.login-gate { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; }
+.login-card {
+  position: relative; z-index: 1; width: min(380px, 94vw);
+  background: var(--surface); border: 1px solid var(--hair); border-radius: 22px;
+  box-shadow: var(--shadow-lift); padding: 30px 28px 26px; text-align: center;
+}
+.login-mark { width: 56px; height: 56px; border-radius: 16px; font-size: 28px; margin: 0 auto 14px; }
+.login-title { font-size: 22px; font-weight: 720; letter-spacing: -0.02em; }
+.login-sub { font-size: 13px; color: var(--ink-2); margin: 2px 0 20px; }
+.login-card .fld { text-align: left; }
+.login-btn { width: 100%; margin-top: 8px; padding: 11px; font-size: 15px; }
+.login-err { background: #fdecec; color: var(--critical); font-size: 13px; font-weight: 600; border-radius: 10px; padding: 9px 12px; margin-bottom: 12px; }
+
+/* ---- user chip ---- */
+.user-chip { display: flex; align-items: center; gap: 9px; background: var(--surface); border: 1px solid var(--hair); border-radius: 999px; padding: 5px 8px 5px 6px; box-shadow: var(--shadow); }
+.user-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--grad); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+.user-meta { display: flex; flex-direction: column; line-height: 1.15; }
+#user-name { font-size: 13px; font-weight: 650; }
+.role-badge { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; padding: 1px 7px; border-radius: 999px; align-self: flex-start; margin-top: 1px; }
+.role-badge.viewer { background: var(--muted); } .role-badge.clerk { background: var(--blue); }
+.role-badge.approver { background: var(--aqua); } .role-badge.admin { background: var(--violet); }
+.logout { padding: 6px 9px; font-size: 15px; }
+/* elements hidden by role */
+.role-hide { display: none !important; }
+
 /* ---- top bar ---- */
 .topbar {
   position: relative; z-index: 2;

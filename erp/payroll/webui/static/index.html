@@ -10,6 +10,20 @@
   <!-- ambient gradient wash -->
   <div class="aurora" aria-hidden="true"></div>
 
+  <!-- login gate -->
+  <div id="login-gate" class="login-gate" hidden>
+    <form id="login-form" class="login-card">
+      <div class="brand-mark login-mark">₹</div>
+      <h1 class="login-title">ISPL Payroll</h1>
+      <p class="login-sub">Impressions Group · ERP</p>
+      <label class="fld"><span>Username</span><input id="login-user" autocomplete="username" required></label>
+      <label class="fld"><span>Password</span><input id="login-pass" type="password" autocomplete="current-password" required></label>
+      <div id="login-err" class="login-err" hidden></div>
+      <button class="btn btn-primary login-btn" type="submit">Sign in</button>
+    </form>
+  </div>
+
+  <div id="app" hidden>
   <header class="topbar">
     <div class="brand">
       <div class="brand-mark">₹</div>
@@ -34,6 +48,11 @@
       </label>
       <span id="period-status" class="status-chip"></span>
       <button id="audit-btn" class="btn btn-ghost" title="View change history">History</button>
+      <div class="user-chip" id="user-chip" title="Signed in">
+        <span class="user-avatar" id="user-avatar"></span>
+        <span class="user-meta"><span id="user-name"></span><span id="user-role" class="role-badge"></span></span>
+        <button id="logout-btn" class="btn btn-ghost logout" title="Sign out">⎋</button>
+      </div>
     </div>
   </header>
 
@@ -104,6 +123,7 @@
       ISPL ERP · Payroll module · data served live from Postgres
     </footer>
   </main>
+  </div><!-- /#app -->
 
   <!-- edit-figure modal -->
   <div id="edit-back" class="modal-back" hidden>
@@ -114,8 +134,7 @@
         <input id="edit-value" type="number" step="1"></label>
       <label class="fld"><span>Reason <em>(required, audited)</em></span>
         <input id="edit-reason" type="text" placeholder="why is this being changed?"></label>
-      <label class="fld"><span>Changed by</span>
-        <input id="edit-by" type="text" placeholder="your name"></label>
+      <p id="edit-as" class="modal-ctx"></p>
       <div class="modal-actions">
         <button class="btn" id="edit-cancel">Cancel</button>
         <button class="btn btn-primary" id="edit-save">Save change</button>

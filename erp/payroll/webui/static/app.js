@@ -13,14 +13,57 @@ function compactINR(n) {
   return inr.format(Math.round(n));
 }
 
-const state = { period: null, status: "all", reason: "all", q: "", offset: 0, limit: 50, total: 0, periodStatus: "draft", locked: false, by: "" };
+const state = { period: null, status: "all", reason: "all", q: "", offset: 0, limit: 50, total: 0, periodStatus: "draft", locked: false, user: null, canWrite: false, canApprove: false };
 const LOCKED = new Set(["filed", "closed"]);
+const RANK = { viewer: 0, clerk: 1, approver: 2, admin: 3 };
 const FIGURE_LABELS = { gross_amt: "Gross", net_payable: "Net payable", excess_salary: "Excess salary" };
 
 function toast(msg) {
   const t = $("#toast"); t.textContent = msg; t.classList.add("show");
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 1800);
 }
+
+/* ---------- auth gate ---------- */
+async function init() {
+  const r = await fetch("/api/me");
+  if (r.ok) { const d = await r.json(); enterApp(d.user); }
+  else showLogin();
+}
+
+function showLogin() {
+  $("#login-gate").hidden = false; $("#app").hidden = true;
+  $("#login-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const res = await fetch("/api/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: $("#login-user").value, password: $("#login-pass").value }),
+    });
+    if (res.ok) { const d = await res.json(); enterApp(d.user); }
+    else { const e2 = $("#login-err"); e2.textContent = "Invalid username or password"; e2.hidden = false; }
+  };
+  $("#login-user").focus();
+}
+
+function enterApp(user) {
+  state.user = user;
+  state.canWrite = RANK[user.role] >= RANK.clerk;
+  state.canApprove = RANK[user.role] >= RANK.approver;
+  $("#login-gate").hidden = true; $("#app").hidden = false;
+
+  // user chip
+  $("#user-avatar").textContent = initials(user.full_name || user.username);
+  $("#user-name").textContent = user.full_name || user.username;
+  const rb = $("#user-role"); rb.textContent = user.role; rb.className = "role-badge " + user.role;
+  $("#logout-btn").onclick = async () => { await fetch("/api/logout", { method: "POST" }); location.reload(); };
+
+  // role gating (server also enforces — this just hides what won't work)
+  $("#status-set").disabled = !state.canApprove;
+  $("#status-set").title = state.canApprove ? "Change period status" : "Requires approver role";
+  if (!state.canWrite) { $("#edit-by-fld") && ($("#edit-by-fld").hidden = true); }
+
+  boot();
+}
+function initials(s) { return (s || "?").split(/\s+/).map(w => w[0]).slice(0, 2).join("").toUpperCase(); }
 
 /* ---------- boot ---------- */
 async function boot() {
@@ -147,9 +190,10 @@ async function loadTable() {
   const p = new URLSearchParams({ period: state.period, status: state.status, reason: state.reason, q: state.q, limit: state.limit, offset: state.offset });
   const d = await api("/api/actions?" + p.toString());
   state.total = d.total;
-  $("#table-count").innerHTML = `${inr.format(d.total)} tickets` +
-    (state.locked ? ` &nbsp;<span class="locked-note">🔒 ${state.periodStatus} — figures locked</span>`
-                  : ` &nbsp;<span class="card-note">· click a Gross / Net / Excess cell to correct</span>`);
+  const hint = state.locked ? ` &nbsp;<span class="locked-note">🔒 ${state.periodStatus} — figures locked</span>`
+    : state.canWrite ? ` &nbsp;<span class="card-note">· click a Gross / Net / Excess cell to correct</span>`
+    : ` &nbsp;<span class="card-note">· read-only (viewer)</span>`;
+  $("#table-count").innerHTML = `${inr.format(d.total)} tickets` + hint;
   $("#rows").innerHTML = d.rows.map(rowHtml).join("") ||
     `<tr><td colspan="9" style="text-align:center;padding:26px;color:var(--muted)">No matching tickets</td></tr>`;
   wireRow();
@@ -162,7 +206,7 @@ async function loadTable() {
 
 function rowHtml(r) {
   const statuses = ["open", "investigating", "resolved", "waived"];
-  const ed = state.locked ? "" : "editable";
+  const ed = (state.locked || !state.canWrite) ? "" : "editable";
   const cell = (field, val, extra = "") =>
     `<td class="num ${extra} ${ed}" ${ed ? `data-rid="${r.payroll_row_id || r.id}" data-field="${field}" data-val="${val ?? ""}" data-emp="${escapeAttr(r.full_name || r.emp_code)}"` : ""}>${money(val)}</td>`;
   return `<tr data-id="${r.id}">
@@ -184,13 +228,14 @@ function wireRow() {
   $("#rows").querySelectorAll("tr[data-id]").forEach(tr => {
     const id = tr.dataset.id;
     const sel = tr.querySelector('[data-role="status"]');
+    const owner = tr.querySelector('[data-role="owner"]');
+    if (!state.canWrite) { sel.disabled = true; owner.disabled = true; return; }
     sel.onchange = async () => {
       sel.className = "st-select st-" + sel.value;
       await patch(id, { status: sel.value });
       toast("Status → " + sel.value);
       loadSummary(); // refresh donut / status counts
     };
-    const owner = tr.querySelector('[data-role="owner"]');
     owner.onchange = async () => { await patch(id, { assigned_to: owner.value }); toast("Owner saved"); };
   });
 }
@@ -216,7 +261,7 @@ function openEdit(ds) {
   $("#edit-field-label").textContent = "New " + (FIGURE_LABELS[ds.field] || ds.field) + " (₹)";
   $("#edit-value").value = ds.val || "";
   $("#edit-reason").value = "";
-  $("#edit-by").value = state.by || "";
+  $("#edit-as").textContent = "Signed as " + (state.user.full_name || state.user.username) + " · this change is audited";
   $("#edit-back").hidden = false;
   $("#edit-value").focus();
 }
@@ -228,10 +273,9 @@ function wireModal() {
 async function saveEdit() {
   const reason = $("#edit-reason").value.trim();
   if (!reason) { toast("A reason is required"); $("#edit-reason").focus(); return; }
-  state.by = $("#edit-by").value.trim();
   const res = await fetch("/api/payroll/" + editCtx.rid, {
     method: "PATCH", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ field: editCtx.field, value: $("#edit-value").value, reason, changed_by: state.by || "unknown" }),
+    body: JSON.stringify({ field: editCtx.field, value: $("#edit-value").value, reason }),
   }).then(r => r.json().then(j => ({ ok: r.ok, j })));
   if (!res.ok) { toast(res.j.error || "Edit failed"); return; }
   $("#edit-back").hidden = true;
@@ -249,7 +293,7 @@ async function onStatusChange(e) {
   }
   const res = await fetch(`/api/periods/${encodeURIComponent(state.period)}/status`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: next, reason, changed_by: state.by || "unknown" }),
+    body: JSON.stringify({ status: next, reason }),
   }).then(r => r.json().then(j => ({ ok: r.ok, j })));
   if (!res.ok) { toast(res.j.error || "Failed"); e.target.value = state.periodStatus; return; }
   toast("Period → " + next);
@@ -279,4 +323,4 @@ function shorten(s, n) { return s && s.length > n ? s.slice(0, n - 1) + "…" : 
 function escapeHtml(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function escapeAttr(s) { return escapeHtml(s); }
 
-boot();
+init();

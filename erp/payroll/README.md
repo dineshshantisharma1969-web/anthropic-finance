@@ -103,8 +103,34 @@ whose status/owner changes persist back to Postgres.
 ```bash
 pip install -r webui/requirements.txt
 export ERP_DB="host=<host> port=5432 user=<user> password=<pw> dbname=postgres"
+export ERP_SECRET="<a long random string>"        # signs the session cookie — REQUIRED in production
+python webui/manage_users.py add dinesh --role admin   # seed a first user
 python webui/app.py            # http://127.0.0.1:8000
 ```
+
+### Auth & roles
+
+Login-gated, with server-enforced role-based access (the UI also hides what a
+role can't do, but the server is the authority). Passwords are stored as salted
+hashes (Werkzeug pbkdf2); the audit `changed_by` is always the **logged-in user**,
+never a client-supplied name.
+
+| Role | Can |
+|---|---|
+| **viewer** | read everything (periods, tickets, charts) |
+| **clerk** | + work tickets, correct figures on open periods |
+| **approver** | + file/close periods, reopen locked periods |
+| **admin** | + manage users |
+
+Manage users with `manage_users.py` (`add` / `passwd` / `role` / `disable` /
+`enable` / `list`). Passwords come from the `ERP_USER_PW` env var if set, else a
+hidden prompt — never from the command line.
+
+Enforcement (all verified on Postgres 16): unauthenticated → 401; viewer editing
+a figure or ticket → 403; clerk filing a period → 403; approver files/reopens →
+200; a clerk editing a *filed* period → 423 (the lock still holds); every audit
+entry records the real signed-in user.
+
 
 - **Overview** — Golden-Rule strip (PF gap / net drift / ESI vs Future), KPI tiles
   (net payable, revised PF, action rows, excess salary in ₹ Cr/L), and three charts:

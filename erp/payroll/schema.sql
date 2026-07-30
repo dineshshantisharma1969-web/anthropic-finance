@@ -122,6 +122,23 @@ CREATE TABLE IF NOT EXISTS action_item (
     updated_at     timestamptz NOT NULL DEFAULT now()
 );
 
+-- Application users + their role. Auth is enforced server-side; the role gates
+-- who may work tickets, correct figures, and file/reopen periods.
+--   viewer   → read-only
+--   clerk    → + work tickets, correct figures on open periods
+--   approver → + file/close periods, reopen locked periods
+--   admin    → + manage users
+CREATE TABLE IF NOT EXISTS app_user (
+    id            serial PRIMARY KEY,
+    username      text NOT NULL UNIQUE,
+    password_hash text NOT NULL,
+    full_name     text,
+    role          text NOT NULL DEFAULT 'viewer'
+                    CHECK (role IN ('viewer','clerk','approver','admin')),
+    active        boolean NOT NULL DEFAULT true,
+    created_at    timestamptz NOT NULL DEFAULT now()
+);
+
 -- Immutable audit trail of every change to a financial figure or a period's
 -- status. Never updated or deleted — this is the "who changed what, when, and
 -- why" record that makes a corrected number defensible to an auditor / EPFO.
