@@ -1,7 +1,7 @@
 # 🧠 SALARY KNOWLEDGEBASE — ISPL (Impressions Services)
 
 **The single entry point for all salary / PF / ESI reconciliation knowledge.**
-Last updated: 2026-07-08 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
+Last updated: 2026-07-31 · Maintained on branch `claude/pf-salary-reconciliation-2026-1x7pmd`
 (FY2024-25 Maharashtra added on `claude/maharashtra-aisss-salary-validation-v1v0sz`)
 
 > **How to use this file:** Start here. Every source file, verified number, methodology
@@ -149,7 +149,14 @@ April-26 run folder is mirrored locally as the "desktop salary folder". Find it 
 
 **M13 (annual true-up):** PF = 12% on BASIC+DA; ECR>0 → REVISED_BASIC = ECR/0.12 − DA (plug to attendance allowance); ECR=0 → project above ₹15,000 via day-reduction then basic lift. GROSS/PF/NET held.
 
-**Validation set:** C1 OTHER_DED≥0 · C2 |NET drift|≤1 · C3 PF=12%±1 · C5 ATT_ALW≥0 · C7 GROSS foots · C9 days∈[1,31] · C10 ECR_capped≤REVISED_PF · C-MW basic≥floor.
+**Day-column semantics (CRITICAL — never hardcode 30):** three different "day" numbers, not interchangeable:
+- `NORMALDAYS` / `ADJ_WORKING_DAYS` = actual (or adjusted) days worked → the divisor for "earned per day".
+- `SITEDIVISIONDAYS` = the site's **rate divisor** (1, 24, 26, 27, 28, 30, or 31 — varies per row) → turns `FIXED_BASIC`/`FIXED_DA` into a daily rate: `DAILY_RATE = FIXED_BASIC / SITEDIVISIONDAYS`.
+- Calendar full-month days = 28/29 (Feb), 30 (Apr/Jun/Sep/Nov), 31 (rest) → the **multiplier** for full-month projection.
+
+All PF/ESI ceiling and full-month projections use: **`FULL_MONTH_EQUIVALENT = (EARNED_AMOUNT / NORMALDAYS-or-ADJ_WORKING_DAYS) × CALENDAR_FULL_MONTH_DAYS`** — actual-days-worked as the divisor, calendar days as the multiplier. Substituting a hardcoded `30` for either the `SITEDIVISIONDAYS` rate-divisor or the calendar multiplier silently corrupts every non-30-day site (26/27/24/1). Field-verified on Apr-26 M13: real SITEDIVISIONDAYS ties ADJ_WORKING_DAYS on 14,875/18,389 PF rows vs 14,651 with hardcoded 30 (gap widens on the 5,037 non-30-day rows). Codified in the `pf-salary-reconciliation` skill's "Day-Column Semantics" section.
+
+**Validation set:** C1 OTHER_DED≥0 · C2 |NET drift|≤1 · C3 PF=12%±1 · C5 ATT_ALW≥0 · C7 GROSS foots · C9 days∈[1,31] · C10 ECR_capped≤REVISED_PF · C-MW basic≥floor · DAY-BASIS day-tinker uses per-row SITEDIVISIONDAYS (not 30).
 
 **To rerun a month:**
 ```
