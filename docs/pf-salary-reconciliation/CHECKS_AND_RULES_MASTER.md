@@ -118,13 +118,33 @@ All must be **0 violations** on the filed workbook unless marked informational.
 | **C9** | ADJ_WORKING_DAYS ∈ [1, FULL_MONTH] | active PF/ESI rows; zero-activity rows at 0 days are legitimate |
 | **C10** | ECR_PF>0 ⇒ (BASIC+DA)×FULL_MONTH/ADJ ≤ 15,000 | statutory PF ceiling (= M6) |
 | **C11** | PF=0 ⇒ (BASIC+DA)×FULL_MONTH/ADJ > 15,000 | self-consistency: absence from PF justified |
-| **C12** | ESI>0 ⇒ REVISED_GROSS ≤ 21,000 | statutory ESI ceiling |
+| **C12** | ESI>0 ⇒ **REVISED_GROSS_NEW** ≤ 21,000 | statutory ESI ceiling — test the **ESI base**, not full gross (see below) |
 | **C13** | ESI=0 ⇒ REVISED_GROSS×FULL_MONTH/ADJ > 21,000 | self-consistency: absence from ESI justified |
 | **C-MW** | REVISED_BASIC ≥ minimum-wage floor | on PF>0 rows |
 | **DAY-BASIS** | day-tinker derivations use per-row SITEDIVISIONDAYS, never a hardcoded 30 | ties better on non-30-day sites |
 
 > Note: C1 and the base Cond-2 rule ("OTHER_DED may go negative") are reconciled by M5 —
 > negatives are transient and cleaned in the final pass, after which C1 holds.
+
+### C12 must test REVISED_GROSS_NEW, not REVISED_GROSS
+₹21,000 is an **ESI-wage** ceiling, so the test runs on the ESI base (M8's
+`REVISED_GROSS_NEW` = gross − ESI-ineligible allowances, HRA retained) — the same
+principle as the ESI coverage-gap flag. Testing full `REVISED_GROSS` over-states
+violations by counting ineligible allowances against the ceiling.
+
+Because M8 sets `REVISED_GROSS_NEW = REVISED_ESIC / 0.0075` on every ESI row
+(verified: 9,210/9,210 rows in May-26), C12 is **arithmetically identical to
+`REVISED_ESIC ≤ ₹157.50`** (0.75% × 21,000) — the ESI twin of M2's ₹1,800 PF cap.
+
+Any residual is **ESI filed above the statutory cap in the Future sheet**, not a
+computation error. Golden Rule 2 pins `REVISED_ESIC` to the Future sheet, so these
+cannot be reduced in the reconciliation — they are a reconciling item exactly like
+the above-cap ECR PF rows under M2/C10. Escalate to whoever files ESI.
+
+| Month | C12 on REVISED_GROSS | C12 on REVISED_GROSS_NEW (correct) | excess employee ESI |
+|---|--:|--:|--:|
+| April-26 | 40 | **20** | ₹348/month |
+| May-26 | 1,069 | **877** | ₹25,742/month |
 
 ---
 
