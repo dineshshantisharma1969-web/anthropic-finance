@@ -26,33 +26,47 @@ ESI deducted in the salary sheet**. So the flag fires on employees who are
 **already covered**.
 
 In April 2026 the `~ie` basis flagged **12,650** rows — most of them people who
-actually pay ESI. Keyed correctly on **`ESIC = 0`** (with wages earned), the true
-gap is **187**.
+actually pay ESI. Keyed correctly on **`ESIC = 0`** (with wages earned), the gap on
+the first-cut basis was 187; **on the corrected basis below it is 40** (see the
+2026-07-31 refinement).
 
-### Day-column basis (unchanged — do NOT alter)
+### Day-column basis (REFINED 2026-07-31 — REVISED_GROSS_NEW ÷ NORMALDAYS)
 
-Full-month gross for the ₹21,000 test is the existing `REAL_FULL_MONTH_GROSS`:
+Full-month gross for the ₹21,000 test uses the **ESI base** and the **actual days
+worked**, per the SKILL.md "Day-Column Semantics" rule (earned amount ÷ actual days
+worked × calendar days in month — never SITEDIVISIONDAYS, never a hardcoded 30):
 
 ```
-FULL_MONTH_GROSS = (FIXEDGROSS / SITEDIVISIONDAYS) × CALENDAR_DAYS   # Apr=30, etc.
+FULL_MONTH_GROSS = (REVISED_GROSS_NEW / NORMALDAYS) × CALENDAR_DAYS   # Apr=30, etc.
 ```
 
-`SITEDIVISIONDAYS` (1, 26, 27, 28, 30, 31) is the divisor the FIXED_* rates are
-expressed at. **Do not replace this with "if per-day, × days-in-month"** — FIXEDGROSS
-is not always per-day; at 26/27/28-day sites that shortcut over-states the full
-month. Verified April 2026: `FIXEDGROSS / SITEDIVISIONDAYS × 30` equals the stored
-`REAL_FULL_MONTH_GROSS` on all 21,152 rows.
+- **Amount = REVISED_GROSS_NEW**, not FIXEDGROSS or raw GROSS AMT. This is the M8 ESI
+  base (REVISED_GROSS minus the ESI-ineligible allowances — washing, conveyance,
+  transport, travelling, uniform, attire, mobile/vehicle reimbursement, LTA — with
+  HRA retained). The ₹21,000 ceiling is an ESI-wage ceiling, so the test must run on
+  the ESI wage, not the full gross.
+- **Divisor = NORMALDAYS** (real attendance), so a part-month worker is projected to
+  their true full-month equivalent. `SITEDIVISIONDAYS` is only the FIXED-rate divisor
+  and must NOT be used here.
+- Supersedes the earlier "FIXEDGROSS / SITEDIVISIONDAYS × calendar days" basis, which
+  over-stated eligibility (187) by testing the full fixed gross instead of the ESI wage.
 
 ### The Rule
 
 ```
-FULL_MONTH_GROSS = REAL_FULL_MONTH_GROSS            # = FIXEDGROSS / SITEDIVISIONDAYS × calendar days
+FULL_MONTH_GROSS = (REVISED_GROSS_NEW / NORMALDAYS) × CALENDAR_DAYS
 ESI_ELIGIBLE     = 0 < FULL_MONTH_GROSS <= 21000
 WAGES_EARNED     = GROSS_AMT > 0                     # earned wages this month (no wages -> no ESI due)
 ESI_DEDUCTED     = ESIC > 0                          # ESIC = ESI actually deducted in the salary sheet
 
 ESI_COVERAGE_GAP = ESI_ELIGIBLE and WAGES_EARNED and not ESI_DEDUCTED
 ```
+
+Note on the M4a option: for a genuine full-month worker projecting ≤ ₹21,000, the
+skill's M4a rule *can* raise REVISED_ATTENDANCE_ALLOWANCE to lift the ESI base above
+₹21,000 (absorbed in OTHER_DEDUCTION, NET unchanged) and reconcile them as out of ESI.
+Decision on the Apr-2026 book: **do NOT apply the lift — keep the 40 flagged as genuine
+enrolment gaps.** The flag stays a flag; the M4a lift is not applied by the pipeline.
 
 In `reconcile.py` this is the `ANOMALY_BELOW_CEILING` ESI term. The corrected code
 keys it on the salary sheet's original `ESIC` (`OESIC_v == 0`), **not** on
@@ -76,20 +90,29 @@ subset of the ESI population, so `~ie` flags employees who actually pay ESI.
 
 ### Field-Tested Result — April 2026
 
-- ESI-eligible (full-month ≤ ₹21,000): **16,953**
-- Already deducted (`ESIC > 0`): 16,993
-- **True coverage gap (`ESI_ELIGIBLE and GROSS_AMT > 0 and ESIC = 0`): 187** —
-  est. ESI (emp+employer) ≈ **₹1.30 L/month**
-- The `~ie` (Future-sheet) basis flagged **12,650** rows (misfire); the corrected
-  `ESIC = 0` basis with the wages-earned filter = **187**. (354 eligible rows with
-  `GROSS_AMT = 0` — no attendance this month — are correctly **not** flagged, since
-  no wages means no ESI due this month.)
-- PF gap **0**, NET **₹25,99,37,250 unchanged** after the correction.
+Progression of the flag as each correction was applied (all keyed on `ESIC = 0` +
+wages earned; monetary columns untouched throughout):
+
+| Basis | Flags |
+|---|--:|
+| `~ie` Future-sheet membership (original misfire) | 12,650 |
+| `FIXEDGROSS / SITEDIVISIONDAYS × 30` (first cut) | 187 |
+| **`REVISED_GROSS_NEW / NORMALDAYS × 30` (final — ESI base, real days)** | **40** |
+
+- The 40 are genuine near-full-month workers (avg NORMALDAYS ≈ 27.8) whose ESI-base
+  wage still projects ≤ ₹21,000 — real enrolment gaps to regularise.
+- The 147 that dropped (187 → 40) were rows whose *full fixed gross* was ≤ ₹21,000
+  but whose *ESI wage* (gross minus ineligible allowances) or real-attendance
+  projection actually clears the ceiling — never true gaps.
+- Rows with `GROSS_AMT = 0` (no attendance) are correctly **not** flagged.
+- Flag/ACTION_REASON only — PF gap **0**, NET **₹25,99,37,250 unchanged**.
 
 ### Where to Apply
 
-Replace the old coverage-gap flag step (the one keyed on `REVISED_ESIC = 0`) at the
-point where ACTION_REASON is assigned, after the ESI passes E1–E4. The output the
-coverage-gap list should carry per row: `EMPCODE, SITECODE, SITESTATE, NORMALDAYS,
-SITEDIVISIONDAYS, FIXEDGROSS, FULL_MONTH_GROSS, ESI_WAGES, EST_ESI_EMPLOYEE (0.75%),
-EST_ESI_EMPLOYER (3.25%)`.
+Compute `REVISED_GROSS_NEW` (the M8 ESI base) **first**, then set the coverage-gap
+flag at the point where ACTION_REASON is assigned (after ESI passes E1–E4). Keyed on
+the salary sheet's original `ESIC = 0` — never `REVISED_ESIC` or `~ie`. Implemented in
+`month_pipeline.py::post_and_validate` (REAL_FULL_MONTH_GROSS = REVISED_GROSS_NEW /
+NORMALDAYS × calendar days). The coverage-gap list should carry per row: `EMPCODE,
+SITECODE, SITESTATE, NORMALDAYS, REVISED_GROSS_NEW, FULL_MONTH_GROSS, ESI_WAGES,
+EST_ESI_EMPLOYEE (0.75%), EST_ESI_EMPLOYER (3.25%)`.

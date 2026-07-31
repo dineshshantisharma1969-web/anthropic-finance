@@ -8,8 +8,9 @@ Runs the full chain for a month:
        ECR PF файлы   FORMAT*.xls[x]  (one or more)
        ESI / Future   *ESIC*.xlsx / *FUTURE*.xlsx
   2. Run reconcile.py (the ESI-corrected pipeline) -> <prefix>_Final_Complete.xlsx
-  3. Post-step: corrected ESI coverage flag ONLY (no overpayment/excess flags),
-     REAL_FULL_MONTH_GROSS = FIXEDGROSS / SITEDIVISIONDAYS x calendar days.
+  3. Post-step: corrected ESI coverage flag ONLY (no overpayment/excess flags).
+     Day-column rule: REAL_FULL_MONTH_GROSS = REVISED_GROSS_NEW (the ESI base)
+     / NORMALDAYS x calendar days-in-month (never SITEDIVISIONDAYS, never 30).
   4. Validate: Golden Rules + C1-C10 row checks. Any hard FAIL aborts the load.
   5. Write  <Month>_CLEAN.csv  and  <Month>_RULES_OUTCOME.csv  into the folder.
   6. --load: ingest the clean CSV straight into the payroll ERP database
@@ -144,7 +145,7 @@ def post_and_validate(df, month, out_dir, prefix):
     y, m = map(int, month.split("-"))
     fmd = calendar.monthrange(y, m)[1]
 
-    need = ["EMPCODE", "ESIC", "GROSS AMT", "FIXEDGROSS", "SITEDIVISIONDAYS",
+    need = ["EMPCODE", "ESIC", "GROSS AMT", "NORMALDAYS", "REVISED_GROSS",
             "REVISED_PF", "ECR_PF", "REVISED_ESIC", "NETPAYABLE"]
     missing = [c for c in need if c not in df.columns]
     if missing:
@@ -156,21 +157,31 @@ def post_and_validate(df, month, out_dir, prefix):
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().str.split(".").str[0]
 
-    sdd = num(df["SITEDIVISIONDAYS"])
-    fg = num(df["FIXEDGROSS"])
-    full_month = np.where(sdd > 0, fg / sdd.replace(0, np.nan) * fmd, 0.0)
-    df["REAL_FULL_MONTH_GROSS"] = np.round(np.nan_to_num(full_month), 2)
+    # Build REVISED_GROSS_NEW (the ESI base: gross minus ESI-ineligible allowances,
+    # HRA retained) FIRST — the ESI coverage-gap test projects on it, not on GROSS.
+    df = esi_gross_new_block(df)
+
     if "Future_ESI" not in df.columns:
         df["Future_ESI"] = df["ESIC AS PER FUTURE"] if "ESIC AS PER FUTURE" in df.columns \
             else df["REVISED_ESIC"]
+
+    # ESI coverage-gap flag — per the day-column rule (SKILL.md "Day-Column
+    # Semantics"): full-month equivalent = earned amount / ACTUAL days worked x
+    # calendar days in month. Amount = REVISED_GROSS_NEW (the ESI base), divisor =
+    # NORMALDAYS (never SITEDIVISIONDAYS, never a hardcoded 30). A row is a genuine
+    # ESI enrolment gap only if this projection is still <= Rs.21,000 at the
+    # employee's real attendance. (Apr-2026 M13: this basis = 40 gaps; the old
+    # FIXEDGROSS/SITEDIVISIONDAYS basis over-stated it at 187.)
+    rgn = num(df["REVISED_GROSS_NEW"])
+    nd = num(df["NORMALDAYS"])
+    full_month = np.where(nd > 0, rgn / nd.replace(0, np.nan) * fmd, 0.0)
+    df["REAL_FULL_MONTH_GROSS"] = np.round(np.nan_to_num(full_month), 2)
 
     gap = (num(df["ESIC"]) == 0) & (num(df["GROSS AMT"]) > 0) \
         & (df["REAL_FULL_MONTH_GROSS"] > 0) & (df["REAL_FULL_MONTH_GROSS"] <= 21000)
     df["ACTION_NEEDED"] = np.where(gap, "Y", "N")
     df["ACTION_REASON"] = np.where(gap, ESI_REASON, "")
     df["EXCESS_SALARY"] = 0
-
-    df = esi_gross_new_block(df)
 
     # ---- validation: anchors + C1-C10 (active rows) ------------------- #
     active = (num(df["REVISED_PF"]) > 0) | (num(df["REVISED_ESIC"]) > 0)
