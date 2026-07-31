@@ -20,7 +20,7 @@ Run:
   python manage_users.py add dinesh --role admin   # seed a first user
   python app.py                                    # http://127.0.0.1:8000
 """
-import os
+import os, sys
 from functools import wraps
 from flask import Flask, jsonify, request, session, send_from_directory
 import psycopg2
@@ -29,7 +29,14 @@ from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 import ingest
 
-DSN = os.environ.get("ERP_DB", "host=/tmp/pgs user=postgres dbname=erp")
+DSN = os.environ.get("ERP_DB", "").strip()
+if not DSN or "YOUR_HOST" in DSN:
+    sys.exit(
+        "\n  ERP_DB is not configured.\n"
+        "  Open erp.config.bat (same folder as run.bat) and set the line:\n"
+        "    set ERP_DB=host=<your-supabase-host> port=5432 user=<your-user> "
+        "password=<your-password> dbname=postgres\n"
+        "  (all on ONE line), save, then run again.")
 HERE = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_DIR = os.environ.get("ERP_UPLOAD_DIR", os.path.join(HERE, "uploads"))
 INPUT_TYPES = ("salary", "pf", "esi")

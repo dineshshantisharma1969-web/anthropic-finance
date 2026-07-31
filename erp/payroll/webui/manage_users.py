@@ -21,7 +21,14 @@ import argparse, getpass, os, sys
 import psycopg2
 from werkzeug.security import generate_password_hash
 
-DSN = os.environ.get("ERP_DB", "host=/tmp/pgs user=postgres dbname=erp")
+DSN = os.environ.get("ERP_DB", "").strip()
+if not DSN or "YOUR_HOST" in DSN:
+    sys.exit(
+        "\n  ERP_DB is not configured.\n"
+        "  Open erp.config.bat (same folder as run.bat) and set the line:\n"
+        "    set ERP_DB=host=<your-supabase-host> port=5432 user=<your-user> "
+        "password=<your-password> dbname=postgres\n"
+        "  (all on ONE line), save, then run again.")
 ROLES = ("viewer", "clerk", "approver", "admin")
 
 
