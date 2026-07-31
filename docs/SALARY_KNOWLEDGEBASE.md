@@ -86,6 +86,7 @@ Last updated: 2026-07-31 · Maintained on branch `claude/pf-salary-reconciliatio
 ### A. In this repo (`docs/pf-salary-reconciliation/`)
 | File | What it is |
 |---|---|
+| **`CHECKS_AND_RULES_MASTER.md`** | **⭐ THE consolidated reference** — checks C1–C13 + rules M1–M17 + base 4 rules + all patches, in one place |
 | `CHECKS_AND_BALANCES_FY2025-26.md` | Full-year checks report (7 PASS · 5 REVIEW · 0 FAIL) |
 | `SUMMARY_FY2025-26.csv` · `M13_RULE_STATS_FY2025-26.csv` | Month-wise summary + M13 rule stats |
 | `dashboard.html` | Interactive FY25-26 dashboard (self-contained, open in browser) |
