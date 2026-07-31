@@ -180,15 +180,30 @@ def reconcile(sal, ecr, fut, fmd):
     adj = np.where(ip & (bd > 0), np.maximum(adj, np.minimum(fmd, np.ceil(bd * fmd / 15000))), adj)
     sal["ADJ_WORKING_DAYS"] = np.clip(adj, 1, fmd).astype(int)
 
-    # Real full-month rate from FIXED columns (independent of the faked-day trap).
-    real_gross = np.where(sdd > 0, fg * fmd / sdd, gr * fmd / np.maximum(nd0, 1))
-    real_bd = np.where(sdd > 0, fb * fmd / sdd, bd * fmd / np.maximum(nd0, 1))
-    # Flag — don't fake — register inconsistencies: real rate below the statutory
-    # ceiling but employee not covered (should be in ESI / PF per his wage).
+    # Full-month wage for the ceiling tests — day-column rule (SKILL.md "Day-Column
+    # Semantics"): earned amount / ACTUAL days worked (NORMALDAYS) x calendar days in
+    # month. NEVER FIXED/SITEDIVISIONDAYS or a hardcoded 30.
+    #   ESI amount = REVISED_GROSS_NEW = REVISED_GROSS minus the ESI-ineligible
+    #     allowances (HRA retained) — the 0.75% ESI wage, matching
+    #     month_pipeline.esi_gross_new_block (Apr-2026: this basis = 40 gaps, vs the
+    #     old FIXEDGROSS/SITEDIVISIONDAYS basis's over-stated 187).
+    #   PF  amount = REVISED_BASIC + REVISED_DA.
+    ESI_EXEMPT = ["WASHING ALLOWANCE", "CONVEYENCE", "TRANSPORT ALLOWANCE",
+                  "TRAVELLING ALLOWANCE", "UNIFORM COST", "ATTIRE",
+                  "MOBILE REIMB", "VEHICLE REIMB", "LTA"]
+    exempt = np.zeros(len(sal))
+    for _c in ESI_EXEMPT:
+        if _c in sal.columns:
+            exempt = exempt + pd.to_numeric(sal[_c], errors="coerce").fillna(0).values
+    esi_base = np.maximum(gr - exempt, 0.0)                  # REVISED_GROSS_NEW (formula)
+    real_gross = esi_base * fmd / np.maximum(nd0, 1)         # ESI base / NORMALDAYS x calendar days
+    real_bd = bd * fmd / np.maximum(nd0, 1)                  # (B+D)     / NORMALDAYS x calendar days
+    sal["REAL_FULL_MONTH_GROSS"] = np.round(real_gross, 2)
+    # Flag — don't fake — register inconsistencies: real full-month wage below the
+    # statutory ceiling but employee not covered (should be in ESI / PF per his wage).
     # ESI coverage is judged on ACTUAL ESI DEDUCTED (OESIC_v == 0), NOT Future-sheet
     # membership (~ie). Keying on ~ie over-flagged every employee absent from the
-    # Future reference even though ESI was deducted in the salary sheet
-    # (Apr-2026: ~ie basis flagged ~13k / caught 1,940; ESIC basis = 541 true gaps).
+    # Future reference even though ESI was deducted in the salary sheet.
     oesic = sal["OESIC_v"].values
     sal["ANOMALY_BELOW_CEILING"] = (
         ((oesic == 0) & (gr > 0) & (real_gross > 0) & (real_gross <= 21000))

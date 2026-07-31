@@ -173,9 +173,14 @@ def post_and_validate(df, month, out_dir, prefix):
     # employee's real attendance. (Apr-2026 M13: this basis = 40 gaps; the old
     # FIXEDGROSS/SITEDIVISIONDAYS basis over-stated it at 187.)
     rgn = num(df["REVISED_GROSS_NEW"])
-    nd = num(df["NORMALDAYS"])
-    full_month = np.where(nd > 0, rgn / nd.replace(0, np.nan) * fmd, 0.0)
-    df["REAL_FULL_MONTH_GROSS"] = np.round(np.nan_to_num(full_month), 2)
+    # Cap attendance at the calendar month: a full-month earner (NORMALDAYS >=
+    # days-in-month — e.g. 31 when paid holidays/weekly-offs push it past a 30-day
+    # April) must NOT be projected DOWN. Their earned wage already IS the monthly
+    # wage; dividing by 31 x 30 would shrink a >Rs.21,000 earner below the ceiling
+    # and wrongly flag them. Matches reconcile.py's ND_v.round().clip(1, fmd).
+    nd = num(df["NORMALDAYS"]).round().clip(1, fmd)
+    full_month = rgn / nd * fmd
+    df["REAL_FULL_MONTH_GROSS"] = np.round(full_month, 2)
 
     gap = (num(df["ESIC"]) == 0) & (num(df["GROSS AMT"]) > 0) \
         & (df["REAL_FULL_MONTH_GROSS"] > 0) & (df["REAL_FULL_MONTH_GROSS"] <= 21000)
