@@ -67,6 +67,19 @@ value exist and must all be kept — five ₹12,515 government credits on
 08-Sep-2026, two Interglobe Air Transport pairs on 28-Aug-2026. Only a shared
 underlying *reference* proves a duplicate.
 
+### Also fixed at source (14-Sep-2026)
+
+The suffix originates in the importer workflow `hqrLbu8oBQxIURU3`
+("ISPL Bank Statement Loop (LIVE)"): the HDFC and KOTAK parsers build the
+Reference No as `rawref-YYYY-MM-DD-amount`, and `Append To Tracker` uses
+`appendOrUpdate` keyed on the Txn Key. When a receipt is re-imported after that
+format was introduced, its key no longer matches the earlier clean-reference
+row, so it is appended as a new row. The `normRefKey` that builds the Txn Key
+(in the `Fix SBI Statement Dates` node — the last code node before the append)
+now strips the same `-YYYY-MM-DD-amount` suffix and rebuilds every row's key, so
+a re-import updates the existing row instead of duplicating it. This reporting
+layer keeps its own normalisation as defence in depth — both layers agree.
+
 ## Files
 
 - `clientlib.py` — payer attribution and dedupe (Python, used by the artifact refresh)
