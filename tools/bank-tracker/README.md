@@ -48,3 +48,30 @@ Day-wise client totals must tie exactly to bank-side receipts for every date.
 As of 12-Sep-2026: ₹78.90cr on both sides, zero variance across all 43 days.
 If a day ever differs by more than ₹1, something is wrong — investigate rather
 than publish.
+
+## Dedupe: normalise the reference before comparing
+
+`_dedupe_key()` strips a trailing `-YYYY-MM-DD-<amount>` from the reference
+segment of the Txn Key before comparing.
+
+The importer sometimes writes the same receipt twice — once with a plain
+reference and once with that suffix appended. The two rows then carry
+different Txn Keys, so a raw Txn-Key dedupe keeps both and the receipt is
+counted twice. Found 14-Sep-2026 when Dinesh spotted ITC Hotels showing
+₹31.93L on 01-Sep against a bank credit of ₹15.97L. A ₹1.32L JLL credit into
+KOTAK on 09-Sep had the same defect. Together they overstated collections by
+₹17,28,248.96.
+
+**Do not dedupe on (bank, date, amount).** Genuine separate receipts of equal
+value exist and must all be kept — five ₹12,515 government credits on
+08-Sep-2026, two Interglobe Air Transport pairs on 28-Aug-2026. Only a shared
+underlying *reference* proves a duplicate.
+
+## Files
+
+- `clientlib.py` — payer attribution and dedupe (Python, used by the artifact refresh)
+- `rebuild_bank.py` — bank-side day matrix for the artifact's `DATA` payload
+- `daywise_core.js` — the same logic in JavaScript, mirrored into the n8n Code
+  node of workflow `LcAhZwHuDdFW4FDf` ("ISPL — Collections Daywise by Client"),
+  which rebuilds the Sheet's `<Month> <Year> - Collections Daywise` tab.
+  Keep the two in sync; they are verified to agree to the paisa.

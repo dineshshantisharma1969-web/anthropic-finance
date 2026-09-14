@@ -5,7 +5,8 @@ KNOWN={'ICICI 039951000005','SBI 31024290656','HDFC 57500000129944',
 
 BANKWORD = re.compile(r'\b(BANK|BANKING|HDFC|ICICI|AXIS|KOTAK|IDBI|CANARA|UNION|PNB|PUNJAB|SBI|HSBC|CITI|CITIBANK|'
                       r'STANDARD|CHARTERED|DEUTSCHE|BARCLAYS|RBL|INDUSIND|FEDERAL|IDFC|BANDHAN|DBS|'
-                      r'YESB|BOFA|AMERICA|JP|MORGAN|OVERSEAS|CENTRAL|BARODA|MAHARASHTRA|SINDH|INDIAN)\b')
+                      r'YESB|BOFA|AMERICA|JP|MORGAN|OVERSEAS|CENTRAL|BARODA|MAHARASHTRA|SINDH|INDIAN|'
+                      r'MIZUHO|SUMITOMO|MUFG|SHINHAN|WOORI|SCB|DBSS|NATWEST|BNP|PARIBAS|CREDIT|AGRICOLE)\b')
 MODETOK  = re.compile(r'(?i)^(NEFT|FT|RTG|RTGS|IMPS|UPI|CHQ|CASH|TRANSFER|COLL|COLLECTION|CR)$')
 IFSCTOK  = re.compile(r'^[A-Z]{4}[0O][A-Z0-9]{4,7}$')
 REFTOK   = re.compile(r'^(?=.*\d)[A-Z0-9]{8,}$')
@@ -46,6 +47,8 @@ def from_narration(n):
 
     # Government / aggregator credits -> bucket, not a client
     if 'PFMS' in U:            return 'Credit Through PFMS (Govt)'
+    # SBI cheque deposits carry only the instrument number, never a payer
+    if re.match(r'(?i)^CHEQUE\s+DEPOSIT[\s-]*\d*$', N.strip()): return 'Cheque Deposit (payer not named)'
     if U.startswith('EZY/') or 'ICICIPOS' in U or U.startswith('POS '): return 'POS Settlement'
 
     # CMS/ TRANSFER/NAME   |  CMS/<ref>/NAME
@@ -109,6 +112,11 @@ def canonical(names):
         # is not evidence of the same client
         for m in (uniq if len(n)>=10 else []):
             if m!=n and len(m)>len(n) and m.startswith(n):
+                # never fold a clean name into one whose only extra text is a
+                # bank descriptor (JFE STEEL PVT LTD -> "... MIZUHO BANK")
+                tail=m[len(n):].split()
+                if tail and any(BANKWORD.match(t) for t in tail) \
+                   and all(BANKWORD.match(t) or CONNECT.match(t) for t in tail): continue
                 tgt=m; break
         parent[n]=tgt
     # resolve chains
@@ -117,6 +125,24 @@ def canonical(names):
         while parent[n]!=n and parent[n] not in seen:
             seen.add(parent[n]); parent[n]=parent[parent[n]]
     return parent
+
+REFSUFFIX = re.compile(r'-\d{4}-\d{2}-\d{2}-[\d.]+$')
+
+def _dedupe_key(tk, dt, bank, narr, deb, cred, bal):
+    """Dedupe key with the reference normalised.
+
+    The importer sometimes writes a second copy of a row whose Reference No has
+    '-<date>-<amount>' appended, which changes the Txn Key and defeats a plain
+    Txn-Key dedupe (ITC Hotels 01-Sep was counted twice this way). Stripping that
+    suffix collapses the pair while leaving genuinely distinct references alone.
+    """
+    if isinstance(tk, str) and tk:
+        parts = tk.split('|')
+        if len(parts) >= 3:
+            parts[2] = REFSUFFIX.sub('', parts[2])
+            return '|'.join(parts)
+        return tk
+    return f"{dt}|{bank}|{str(narr or '')[:40]}|{deb}|{cred}|{bal}"
 
 def load(path='tracker.xlsx', tabs=('August 2026','September 2026'), floor='2026-08-01'):
     """Yield deduped, rule-compliant client receipt rows."""
@@ -130,7 +156,7 @@ def load(path='tracker.xlsx', tabs=('August 2026','September 2026'), floor='2026
             if bank not in KNOWN: continue
             dt=dr.strftime('%Y-%m-%d') if isinstance(dr,(datetime.datetime,datetime.date)) else None
             if dt is None or dt<floor: continue
-            key=tk if (isinstance(tk,str) and tk) else f"{dt}|{bank}|{str(narr or '')[:40]}|{deb}|{cred}|{bal}"
+            key=_dedupe_key(tk, dt, bank, narr, deb, cred, bal)
             if key in seen: stats['dupes']+=1; continue
             seen.add(key)
             if not isinstance(cred,(int,float)) or cred<=0: continue
@@ -139,6 +165,8 @@ def load(path='tracker.xlsx', tabs=('August 2026','September 2026'), floor='2026
             if not ib and '*IMPRESSIONS SERV' in nu: ib=True; stats['rule5']+=1
             if ib: stats['interbank']+=1; continue
             p=_clean(pty)
+            # a bare number in Party Name is a cheque/instrument no., not a payer
+            if p and re.fullmatch(r'[\d\s.]+', p): p=''
             src='party'
             if not p:
                 p=from_narration(narr); src='narration' if p else 'none'
