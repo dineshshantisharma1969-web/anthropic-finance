@@ -19,14 +19,25 @@ never overwritten — only blank cells are filled.
 
 ## Result (EMPCODE → UAN lookup)
 
-| Month | ECR filed rows | Unique EMPCODE→UAN | Blank/no-UAN (excluded) | Conflicts | UAN length |
-|-------|----------------|--------------------|-------------------------|-----------|------------|
-| June  | 19,146 | 19,146 | 0 | 0 | all 12-digit |
-| July  | 19,118 | 19,118 | 0 | 0 | all 12-digit |
-| Aug   | 19,124 | 17,578 | 1,546 new joiners (no UAN filed yet) | 0 | all 12-digit |
+June–August 2026 (FY2026-27 dataset) and September 2025 – March 2026 (FY2025-26):
+
+| Month | PF ECR source | Unique EMPCODE→UAN | Blank/no-UAN excluded | Conflicts | UAN length |
+|-------|---------------|--------------------|-----------------------|-----------|------------|
+| Jun 2026 | FORMAT-JUNE_2026 | 19,146 | 0 | 0 | all 12-digit |
+| Jul 2026 | ECR_PF_JULY2026_MERGED | 19,118 | 0 | 0 | all 12-digit |
+| Aug 2026 | ECR_PF_AUGUST2026_BUILD (DELHI+DMART+STEAGE) | 17,578 | 1,546 new joiners | 0 | all 12-digit |
+| Sep 2025 | FORMAT-SEPTEMBER_2025 (DELHI+DMART+STEAGE) | 17,335 | 3 | 0 | all 12-digit |
+| Oct 2025 | FORMAT-OCT_2025 (+CCUHISAR) | 17,114 | 0 | 0 | all 12-digit |
+| Nov 2025 | FORMAT-NOV_2025 (+CCUHISAR) | 17,262 | 0 | 0 | all 12-digit |
+| Dec 2025 | FORMAT-DEC_2025 (+CCUHISAR) | 17,716 | 0 | 0 | all 12-digit |
+| Jan 2026 | FORMAT-JANUARY_2026 (+GWALIOR) | 18,040 | 0 | 0 | all 12-digit |
+| Feb 2026 | FORMAT-FEBRUARY_2026 (DELHI+DMART+STEAGE) | 17,910 | 0 | 0 | all 12-digit |
+| Mar 2026 | FORMAT-MARCH_2026 (DELHI+DMART+STEAGE) | 18,374 | 15 | 0 | all 12-digit |
 
 Every EMPCODE maps to exactly one 12-digit UAN — no duplicates, no conflicts.
-August new joiners have no UAN in the ECR (not yet generated), so they cannot be filled.
+Excluded rows are new joiners / rows with no UAN filed in the ECR (cannot be filled).
+Feb 2026 also had 151 "NO EMP" placeholder rows (no employee code) excluded as unusable keys.
+Sept 2025 – March 2026 PF ECRs are the per-branch challan FORMAT files, merged per month.
 
 ## Deliverable
 
